@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Templates API</title>
+</head>
+<body>
+    <h1>Teste da API de Templates</h1>
+    <div id="resultado"></div>
+    
+    <script>
+        console.log('Testando API de templates...');
+        
+        fetch('/api/templates/')
+            .then(response => {
+                console.log('Status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Dados recebidos:', data);
+                document.getElementById('resultado').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                document.getElementById('resultado').innerHTML = 'Erro: ' + error.message;
+            });
+    </script>
+</body>
+</html>

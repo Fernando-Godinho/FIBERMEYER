@@ -1,0 +1,3063 @@
+<style>
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+        
+        /* Estilos para tabela de componentes editáveis */
+        .fator-input {
+            width: 80px !important;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        
+        .fator-input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .quantidade-display, .custo-total-display {
+            font-weight: 500;
+        }
+        
+        #componentesCalculadosTable th {
+            background-color: #f8f9fa;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        #componentesCalculadosTable td {
+            vertical-align: middle;
+            font-size: 0.875rem;
+        }
+        
+        .btn-sm i {
+            font-size: 0.75rem;
+        }
+        
+        /* Destaque para linha de total */
+        #componentesCalculadosTable tr:last-child {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
+</style>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Produtos / MP - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+<div class="d-flex">
+  <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+          <h4 class="mb-4">FIBERMEYER</h4>
+          <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+                <span>Parâmetros</span>
+                <span class="ms-auto caret-indicator" style="transition: transform 0.2s;"></span>
+              </a>
+              <div class="collapse ms-3" id="parametrosSubmenu">
+                <ul class="nav flex-column">
+                  <li class="nav-item"><a class="nav-link active" href="/mp/">Produtos / MP</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/produtos-compostos/">Produtos Compostos</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+                </ul>
+              </div>
+            </li>
+            <li><a href="/" class="nav-link">Dashboard</a></li>
+            <li><a href="/orcamento/" class="nav-link">Orçamentos</a></li>
+            <li><a href="/about/" class="nav-link">Sobre</a></li>
+            <li><a href="/admin/" class="nav-link">Administração</a></li>
+          </ul>
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+              var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+              var caret = parametrosLink.querySelector('.caret-indicator');
+              parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+                caret.style.transform = 'rotate(180deg)';
+              });
+              parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+                caret.style.transform = 'rotate(0deg)';
+              });
+            });
+          </script>
+  </nav>
+  <div class="container-fluid p-4">
+    <h1>Produtos / MP</h1>
+    <div class="mb-3">
+      <button class="btn btn-primary me-2" onclick="openFormProduto()">
+        <i class="fas fa-plus"></i> Adicionar Produto Simples
+      </button>
+      <button class="btn btn-success me-2" onclick="openFormProdutoComposto()">
+        <i class="fas fa-layer-group"></i> Criar Produto Composto
+      </button>
+      <button class="btn btn-warning me-2" onclick="openFormProdutoParametrizado()">
+        <i class="fas fa-calculator"></i> Produto Parametrizado
+      </button>
+      <button class="btn btn-info" onclick="openCreateFromExisting()">
+        <i class="fas fa-clone"></i> Criar Baseado em Produto Existente
+      </button>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <label for="filtroDescricao" class="form-label">Filtrar por Descrição:</label>
+            <input type="text" class="form-control" id="filtroDescricao" placeholder="Digite para filtrar..." onkeyup="aplicarFiltros()">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroTipo" class="form-label">Tipo:</label>
+            <select class="form-select" id="filtroTipo" onchange="aplicarFiltros()">
+              <option value="">Todos</option>
+              <option value="Simples">Simples</option>
+              <option value="Composto">Composto</option>
+              <option value="Parametrizado">Parametrizado</option>
+              <option value="Resina">Apenas Resinas</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="filtroReferencia" class="form-label">Referência:</label>
+            <select class="form-select" id="filtroReferencia" onchange="aplicarFiltros()">
+              <option value="">Todas</option>
+              <option value="Votorantim">Votorantim</option>
+              <option value="Gerdau">Gerdau</option>
+              <option value="ArcelorMittal">ArcelorMittal</option>
+              <option value="CSN">CSN</option>
+              <option value="Usiminas">Usiminas</option>
+              <option value="Belgo">Belgo</option>
+              <option value="Aperam">Aperam</option>
+              <option value="Nippon">Nippon</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <button type="button" class="btn btn-outline-secondary d-block w-100" onclick="limparFiltros()">
+              <i class="fas fa-times"></i> Limpar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <table class="table table-bordered" id="produtos-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Custo</th>
+                <th>Peso (Kg)</th>
+                <th>Unidade</th>
+                <th>Referência</th>
+                <th>Data Revisão</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Produto -->
+<div class="modal" tabindex="-1" id="produtoModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleProduto">Adicionar Produto</h5>
+        <button type="button" class="btn-close" onclick="closeFormProduto()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="produtoForm">
+          <input type="hidden" id="produtoId">
+          <input type="hidden" id="isDuplicate">
+          
+          <!-- Alert para duplicação -->
+          <div id="duplicateAlert" class="alert alert-info d-none" role="alert">
+            <i class="fas fa-info-circle"></i> Você está criando uma cópia de um produto existente. Modifique os dados conforme necessário.
+          </div>
+          
+          <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <input type="text" class="form-control" id="descricao" required>
+          </div>
+          <div class="mb-3">
+            <label for="custo_centavos" class="form-label">Custo (R$)</label>
+            <input type="text" class="form-control" id="custo_centavos" required pattern="^\d+(,\d{2})?$" placeholder="Ex: 12,34">
+          </div>
+          <div class="mb-3">
+            <label for="peso_und" class="form-label">Peso UND</label>
+            <input type="number" step="0.000001" class="form-control" id="peso_und" required>
+          </div>
+          <div class="mb-3">
+            <label for="unidade" class="form-label">Unidade</label>
+            <select class="form-select" id="unidade" required>
+              <option value="">Selecione</option>
+              <option value="UN">UN</option>
+              <option value="M">M</option>
+              <option value="M²">M²</option>
+              <option value="CM">CM</option>
+              <option value="KG">KG</option>
+              <option value="L">L</option>
+              <option value="PÇ">PÇ</option>
+              <option value="CX">CX</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="referencia" class="form-label">Referência</label>
+            <select class="form-select" id="referencia">
+              <option value="">Selecione</option>
+              <option value="Votorantim">Votorantim</option>
+              <option value="Gerdau">Gerdau</option>
+              <option value="ArcelorMittal">ArcelorMittal</option>
+              <option value="CSN">CSN</option>
+              <option value="Usiminas">Usiminas</option>
+              <option value="Belgo">Belgo</option>
+              <option value="Aperam">Aperam</option>
+              <option value="Nippon">Nippon</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeFormProduto()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="submitFormProduto()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Seleção de Produto Base -->
+<div class="modal" tabindex="-1" id="selectProductModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Selecionar Produto Base</h5>
+        <button type="button" class="btn-close" onclick="closeSelectProductModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Selecione um produto existente para usar como base para o novo produto:</p>
+        
+        <!-- Campo de busca -->
+        <div class="mb-3">
+          <input type="text" class="form-control" id="searchProduct" placeholder="Digite para filtrar produtos..." onkeyup="filterProducts()">
+        </div>
+        
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-hover">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>ID</th>
+                <th>Descrição</th>
+                <th>Custo</th>
+                <th>Unidade</th>
+                <th>Referência</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="selectProductTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeSelectProductModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Produto Parametrizado -->
+<div class="modal fade" id="produtoParametrizadoModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Criar Produto Parametrizado</h5>
+        <button type="button" class="btn-close" onclick="closeProdutoParametrizadoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Seleção de Template -->
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">1. Selecione o Tipo</h6>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <select class="form-select" id="templateSelect" onchange="carregarTemplate()">
+                    <option value="">Escolha um template...</option>
+                  </select>
+                </div>
+                <div id="templateDescription" class="text-muted small"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Parâmetros -->
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">2. Parâmetros</h6>
+              </div>
+              <div class="card-body" id="parametrosContainer">
+                <p class="text-muted">Selecione um template primeiro</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Resultado -->
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">3. Resultado</h6>
+              </div>
+              <div class="card-body" id="resultadoContainer">
+                <p class="text-muted">Configure os parâmetros para ver o resultado</p>
+                <div id="resultadoCalculado" style="display: none;">
+                  <div class="mb-3">
+                    <strong>Produto Base:</strong> <span id="nomeProdutoCalculado"></span>
+                  </div>
+                  <div class="mb-2">
+                    <strong>Custo Total:</strong> <span id="custoTotalCalculado" class="text-success"></span>
+                  </div>
+                  <div class="mb-2">
+                    <strong>Peso Total:</strong> <span id="pesoTotalCalculado"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Componentes calculados -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">Componentes Calculados</h6>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Componente</th>
+                        <th>Produto</th>
+                        <th>Fator %</th>
+                        <th>Quantidade</th>
+                        <th>Custo Unit.</th>
+                        <th>Custo Total</th>
+                        <th>Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody id="componentesCalculadosTable">
+                      <tr>
+                        <td colspan="7" class="text-center text-muted">Nenhum cálculo realizado</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeProdutoParametrizadoModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="salvarProdutoParametrizado()" disabled id="salvarProdutoBtn">
+          <i class="fas fa-save"></i> Salvar na Base
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Produto Composto -->
+<div class="modal fade" id="produtoCompostoModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleProdutoComposto">Criar Produto Composto</h5>
+        <button type="button" class="btn-close" onclick="closeProdutoCompostoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="produtoCompostoForm">
+          <input type="hidden" id="produtoCompostoId">
+          
+          <!-- Informações básicas do produto -->
+          <div class="row mb-3">
+            <div class="col-md-8">
+              <label for="descricaoComposto" class="form-label">Descrição do Produto Composto *</label>
+              <input type="text" class="form-control" id="descricaoComposto" required 
+                     placeholder="Ex: Kit de Montagem de Estrutura Completa">
+            </div>
+            <div class="col-md-4">
+              <label for="referenciaComposto" class="form-label">Referência</label>
+              <input type="text" class="form-control" id="referenciaComposto" placeholder="Referência personalizada">
+            </div>
+          </div>
+          
+          <!-- Seção de componentes -->
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">Componentes do Produto</h6>
+            </div>
+            <div class="card-body">
+              <!-- Adicionar componente -->
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="componenteProduto" class="form-label">Produto</label>
+                  <select class="form-select" id="componenteProduto">
+                    <option value="">Selecione um produto...</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="componenteQuantidade" class="form-label">Quantidade</label>
+                  <input type="number" step="0.01" class="form-control" id="componenteQuantidade" min="0.01" placeholder="1.00">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">&nbsp;</label>
+                  <button type="button" class="btn btn-success d-block w-100" onclick="adicionarComponente()">
+                    <i class="fas fa-plus"></i> Adicionar
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Lista de componentes -->
+              <div class="table-responsive">
+                <table class="table table-striped" id="componentesTable">
+                  <thead>
+                    <tr>
+                      <th>Produto</th>
+                      <th>Quantidade</th>
+                      <th>Custo Unitário</th>
+                      <th>Custo Total</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="componentesTableBody">
+                    <tr id="noComponentsRow">
+                      <td colspan="5" class="text-center text-muted">Nenhum componente adicionado</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Resumo de custos -->
+              <div class="row mt-3">
+                <div class="col-md-6 offset-md-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col-6"><strong>Custo Total:</strong></div>
+                        <div class="col-6 text-end"><span id="custoTotalComposto">R$ 0,00</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeProdutoCompostoModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="salvarProdutoComposto()">Salvar Produto Composto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const apiProdutos = '/api/produtos/';
+const apiComponentes = '/api/componentes/';
+const apiTemplates = '/api/templates/';
+const apiCalcular = '/calcular-produto/';
+let produtoModal = null;
+let selectProductModal = null;
+let produtoCompostoModal = null;
+let produtoParametrizadoModal = null;
+let allProducts = []; // Cache dos produtos para filtragem
+let allProductsOriginal = []; // Cache original sem filtro
+let componentesTemp = []; // Array temporário para componentes
+let templateAtual = null;
+let templatesCache = [];
+let ultimoCalculo = null;
+
+if(document.getElementById('produtoModal')) produtoModal = new bootstrap.Modal(document.getElementById('produtoModal'));
+if(document.getElementById('selectProductModal')) selectProductModal = new bootstrap.Modal(document.getElementById('selectProductModal'));
+if(document.getElementById('produtoCompostoModal')) produtoCompostoModal = new bootstrap.Modal(document.getElementById('produtoCompostoModal'));
+if(document.getElementById('produtoParametrizadoModal')) produtoParametrizadoModal = new bootstrap.Modal(document.getElementById('produtoParametrizadoModal'));
+
+// PRODUTOS CRUD
+function fetchProdutos() {
+    console.log('Fazendo fetch de produtos na URL:', apiProdutos);
+    fetch(apiProdutos)
+        .then(res => {
+            console.log('Resposta da API:', res.status, res.statusText);
+            return res.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            console.log('Total de produtos:', data.length);
+            allProductsOriginal = data.map(produto => ({
+                ...produto,
+                tipo: produto.is_composto ? 'Composto' : 'Simples'
+            }));
+            displayProductsInTable(allProductsOriginal);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar produtos:', error);
+            alert('Erro ao carregar produtos: ' + error.message);
+        });
+}
+
+function displayProductsInTable(produtos) {
+    const tbody = document.querySelector('#produtos-table tbody');
+    tbody.innerHTML = '';
+    
+  produtos.forEach(async produto => {
+    let tipo = produto.tipo || 'Simples';
+    let tipoClass = tipo === 'Composto' ? 'badge bg-success' : (tipo === 'Parametrizado' ? 'badge bg-warning' : 'badge bg-primary');
+    let custo_reais = 'R$ 0,00';
+    let pesoFormatado = Number(produto.peso_und).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    if (tipo === 'Composto') {
+      // Calcular custo somando componentes atuais
+      let custoTotal = 0;
+      try {
+        const res = await fetch(`/api/componentes/?produto_principal=${produto.id}`);
+        const componentes = await res.json();
+        componentes.forEach(comp => {
+          const prodComp = allProductsOriginal.find(p => p.id == comp.produto_componente);
+          if (prodComp) {
+            custoTotal += (prodComp.custo_centavos / 100) * comp.quantidade;
+          }
+        });
+      } catch (e) {}
+      custo_reais = 'R$ ' + custoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    } else if (tipo === 'Parametrizado') {
+      // Se possível, calcular custo dos componentes calculados
+      if (produto.detalhes_calculo && produto.detalhes_calculo.custo_total) {
+        custo_reais = 'R$ ' + Number(produto.detalhes_calculo.custo_total).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      } else {
+        let centavos = Number(produto.custo_centavos);
+        let reais = !isNaN(centavos) ? centavos / 100 : 0;
+        custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+    } else {
+      let centavos = Number(produto.custo_centavos);
+      let reais = !isNaN(centavos) ? centavos / 100 : 0;
+      custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    let actionButtons = '';
+    if (tipo === 'Simples') {
+      actionButtons = `
+        <button class="btn btn-info btn-sm me-1" onclick="duplicateProduto(${produto.id})" title="Duplicar Produto">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button class="btn btn-warning btn-sm me-1" onclick="editProduto(${produto.id})">Editar</button>
+      `;
+    } else {
+      actionButtons = `
+        <button class="btn btn-info btn-sm me-1" onclick="verComponentes(${produto.id})" title="Ver Componentes">
+          <i class="fas fa-list"></i>
+        </button>
+        <button class="btn btn-warning btn-sm me-1" onclick="editProdutoComposto(${produto.id})">Editar</button>
+      `;
+    }
+    actionButtons += `<button class="btn btn-danger btn-sm" onclick="deleteProduto(${produto.id})">Excluir</button>`;
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="text-center">${produto.id}</td>
+        <td>${produto.descricao}</td>
+        <td class="text-center"><span class="${tipoClass}">${tipo}</span></td>
+        <td class="text-end">${custo_reais}</td>
+        <td class="text-end">${pesoFormatado}</td>
+        <td class="text-center">${produto.unidade}</td>
+        <td>${produto.referencia || ''}</td>
+        <td class="text-center">${produto.data_revisao || ''}</td>
+        <td class="text-center">
+          ${actionButtons}
+        </td>
+      </tr>
+    `;
+  });
+}
+function openFormProduto(id=null, isDuplicate=false) {
+    document.getElementById('produtoForm').reset();
+    document.getElementById('produtoId').value = '';
+    document.getElementById('isDuplicate').value = isDuplicate ? 'true' : 'false';
+    document.getElementById('modalTitleProduto').innerText = 'Adicionar Produto';
+    
+    // Ocultar ou mostrar alert de duplicação
+    const duplicateAlert = document.getElementById('duplicateAlert');
+    if (isDuplicate) {
+        duplicateAlert.classList.remove('d-none');
+        document.getElementById('modalTitleProduto').innerText = 'Duplicar Produto';
+    } else {
+        duplicateAlert.classList.add('d-none');
+    }
+    
+    if (id) {
+        fetch(apiProdutos + id + '/')
+            .then(res => res.json())
+            .then(produto => {
+                if (!isDuplicate) {
+                    document.getElementById('produtoId').value = produto.id;
+                    document.getElementById('modalTitleProduto').innerText = 'Editar Produto';
+                } else {
+                    // Para duplicação, limpar o ID para criar novo produto
+                    document.getElementById('produtoId').value = '';
+                    // Adicionar prefixo na descrição para indicar cópia
+                    document.getElementById('descricao').value = 'CÓPIA - ' + produto.descricao;
+                }
+                
+                if (isDuplicate) {
+                    document.getElementById('descricao').value = 'CÓPIA - ' + produto.descricao;
+                } else {
+                    document.getElementById('descricao').value = produto.descricao;
+                }
+                
+                document.getElementById('custo_centavos').value = produto.custo_centavos;
+                document.getElementById('peso_und').value = produto.peso_und;
+                document.getElementById('unidade').value = produto.unidade;
+                document.getElementById('referencia').value = produto.referencia || '';
+                
+                // Para duplicação, não preencher data de revisão (será gerada nova)
+                if (!isDuplicate) {
+                    document.getElementById('data_revisao').value = produto.data_revisao || '';
+                }
+            });
+    }
+    produtoModal.show();
+}
+function closeFormProduto() {
+    produtoModal.hide();
+}
+function submitFormProduto() {
+    const id = document.getElementById('produtoId').value;
+    const isDuplicate = document.getElementById('isDuplicate').value === 'true';
+    const descricao = document.getElementById('descricao').value;
+    
+    // Converte valor monetário para centavos
+    let custo_valor = document.getElementById('custo_centavos').value.replace('.', '').replace(',', '.');
+    let custo_centavos = Math.round(parseFloat(custo_valor) * 100);
+    const peso_und = document.getElementById('peso_und').value;
+    const unidade = document.getElementById('unidade').value;
+    const referencia = document.getElementById('referencia').value;
+    
+    // Gera data/hora atual no formato ISO para o campo data_revisao
+    const now = new Date();
+    const data_revisao = now.toISOString();
+    
+    // Se é duplicação, sempre criar novo (POST), mesmo que tenha ID
+    const method = (id && !isDuplicate) ? 'PUT' : 'POST';
+    const url = (id && !isDuplicate) ? apiProdutos + id + '/' : apiProdutos;
+    
+    // Função para obter CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({descricao, custo_centavos, peso_und, unidade, referencia, data_revisao})
+    })
+    .then(res => {
+        if (res.ok) {
+            closeFormProduto();
+            fetchProdutos();
+            if (isDuplicate) {
+                // Mostrar mensagem de sucesso para duplicação
+                alert('Produto duplicado com sucesso!');
+            }
+        } else {
+            res.json().then(data => alert('Erro: ' + JSON.stringify(data)));
+        }
+    });
+}
+
+function duplicateProduto(id) {
+    openFormProduto(id, true);
+}
+
+// Funções para modal de seleção de produto base
+function openCreateFromExisting() {
+    populateSelectProductModal();
+    selectProductModal.show();
+}
+
+function closeSelectProductModal() {
+    selectProductModal.hide();
+    document.getElementById('searchProduct').value = '';
+}
+
+function populateSelectProductModal() {
+    fetch(apiProdutos)
+        .then(res => res.json())
+        .then(data => {
+            allProducts = data; // Armazenar produtos para filtro
+            displayProducts(data);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar produtos:', error);
+            alert('Erro ao carregar produtos. Tente novamente.');
+        });
+}
+
+function displayProducts(produtos) {
+    const tbody = document.getElementById('selectProductTableBody');
+    tbody.innerHTML = '';
+    
+    if (produtos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado</td></tr>';
+        return;
+    }
+    
+    produtos.forEach(produto => {
+        let centavos = Number(produto.custo_centavos);
+        let reais = !isNaN(centavos) ? centavos / 100 : 0;
+        let custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${produto.id}</td>
+                <td>${produto.descricao}</td>
+                <td>${custo_reais}</td>
+                <td>${produto.unidade}</td>
+                <td>${produto.referencia || '-'}</td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="selectProductAsBase(${produto.id})" title="Usar como Base">
+                        <i class="fas fa-check"></i> Usar como Base
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function filterProducts() {
+    const searchTerm = document.getElementById('searchProduct').value.toLowerCase();
+    const filteredProducts = allProducts.filter(produto => 
+        produto.descricao.toLowerCase().includes(searchTerm) ||
+        (produto.referencia && produto.referencia.toLowerCase().includes(searchTerm)) ||
+        produto.id.toString().includes(searchTerm)
+    );
+    displayProducts(filteredProducts);
+}
+
+function selectProductAsBase(id) {
+    closeSelectProductModal();
+    openFormProduto(id, true);
+}
+
+// Funções para filtros
+function aplicarFiltros() {
+    const filtroDescricao = document.getElementById('filtroDescricao').value.toLowerCase();
+    const filtroTipo = document.getElementById('filtroTipo').value;
+    const filtroReferencia = document.getElementById('filtroReferencia').value;
+    
+    let produtosFiltrados = allProductsOriginal.filter(produto => {
+        const matchDescricao = !filtroDescricao || produto.descricao.toLowerCase().includes(filtroDescricao);
+        
+        let matchTipo = true;
+        if (filtroTipo) {
+            if (filtroTipo === 'Resina') {
+                matchTipo = produto.descricao.toLowerCase().includes('resina');
+            } else {
+                matchTipo = produto.tipo === filtroTipo;
+            }
+        }
+        
+        const matchReferencia = !filtroReferencia || produto.referencia === filtroReferencia;
+        
+        return matchDescricao && matchTipo && matchReferencia;
+    });
+    
+    console.log(`Filtros aplicados: Descrição="${filtroDescricao}", Tipo="${filtroTipo}", Referência="${filtroReferencia}"`);
+    console.log(`Produtos filtrados: ${produtosFiltrados.length} de ${allProductsOriginal.length}`);
+    
+    displayProductsInTable(produtosFiltrados);
+}
+
+function limparFiltros() {
+    document.getElementById('filtroDescricao').value = '';
+    document.getElementById('filtroTipo').value = '';
+    document.getElementById('filtroReferencia').value = '';
+    displayProductsInTable(allProductsOriginal);
+}
+
+// Funções para produto composto
+function openFormProdutoComposto() {
+    componentesTemp = [];
+    document.getElementById('produtoCompostoForm').reset();
+    document.getElementById('produtoCompostoId').value = '';
+    carregarProdutosParaSelect();
+    atualizarTabelaComponentes();
+    produtoCompostoModal.show();
+}
+
+function closeProdutoCompostoModal() {
+  produtoCompostoModal.hide();
+  fetchProdutos();
+}
+
+function carregarProdutosParaSelect() {
+    const select = document.getElementById('componenteProduto');
+    select.innerHTML = '<option value="">Selecione um produto...</option>';
+    
+    allProductsOriginal
+        .filter(produto => produto.tipo === 'Simples') // Apenas produtos simples como componentes
+        .forEach(produto => {
+            const option = document.createElement('option');
+            option.value = produto.id;
+            option.textContent = `${produto.descricao} - R$ ${(produto.custo_centavos / 100).toFixed(2)}`;
+            select.appendChild(option);
+        });
+}
+
+function adicionarComponente() {
+    const produtoId = document.getElementById('componenteProduto').value;
+    const quantidade = parseFloat(document.getElementById('componenteQuantidade').value);
+    
+    if (!produtoId || !quantidade || quantidade <= 0) {
+        alert('Selecione um produto e informe uma quantidade válida!');
+        return;
+    }
+    
+    // Verificar se o produto já foi adicionado
+    if (componentesTemp.find(c => c.produto_id == produtoId)) {
+        alert('Este produto já foi adicionado aos componentes!');
+        return;
+    }
+    
+    const produto = allProductsOriginal.find(p => p.id == produtoId);
+    if (!produto) {
+        alert('Produto não encontrado!');
+        return;
+    }
+    
+    const componente = {
+        produto_id: produtoId,
+        produto_descricao: produto.descricao,
+        quantidade: quantidade,
+        custo_unitario: produto.custo_centavos / 100,
+        custo_total: (produto.custo_centavos / 100) * quantidade
+    };
+    
+    componentesTemp.push(componente);
+    atualizarTabelaComponentes();
+    
+    // Limpar campos
+    document.getElementById('componenteProduto').value = '';
+    document.getElementById('componenteQuantidade').value = '';
+}
+
+function removerComponente(index) {
+    componentesTemp.splice(index, 1);
+    atualizarTabelaComponentes();
+}
+
+function atualizarTabelaComponentes() {
+    const tbody = document.getElementById('componentesTableBody');
+    const noComponentsRow = document.getElementById('noComponentsRow');
+    
+    if (componentesTemp.length === 0) {
+        tbody.innerHTML = '<tr id="noComponentsRow"><td colspan="5" class="text-center text-muted">Nenhum componente adicionado</td></tr>';
+        document.getElementById('custoTotalComposto').textContent = 'R$ 0,00';
+        return;
+    }
+    
+    let html = '';
+    let custoTotal = 0;
+    
+    componentesTemp.forEach((comp, index) => {
+        custoTotal += comp.custo_total;
+        html += `
+            <tr>
+                <td>${comp.produto_descricao}</td>
+                <td>${comp.quantidade.toFixed(2)}</td>
+                <td>R$ ${comp.custo_unitario.toFixed(2)}</td>
+                <td>R$ ${comp.custo_total.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="removerComponente(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('custoTotalComposto').textContent = `R$ ${custoTotal.toFixed(2)}`;
+}
+
+function salvarProdutoComposto() {
+    const descricao = document.getElementById('descricaoComposto').value;
+    const referencia = document.getElementById('referenciaComposto').value;
+    
+    if (!descricao.trim()) {
+        alert('Informe a descrição do produto composto!');
+        return;
+    }
+    
+    if (componentesTemp.length === 0) {
+        alert('Adicione pelo menos um componente ao produto!');
+        return;
+    }
+    
+  // Calcular custo total em centavos
+  const custoTotal = componentesTemp.reduce((total, comp) => total + comp.custo_total, 0);
+  const custoCentavos = Math.round(custoTotal * 100);
+
+  // Gerar data de revisão no formato ISO
+  const now = new Date();
+  const data_revisao = now.toISOString();
+
+  const produtoId = document.getElementById('produtoCompostoId').value;
+  const produtoData = {
+    descricao: descricao,
+    custo_centavos: custoCentavos,
+    peso_und: 0, // Peso pode ser calculado se necessário
+    unidade: 'UN', // Padrão para produtos compostos
+    referencia: referencia || '',
+    data_revisao: data_revisao,
+    tipo_produto: 'composto'
+  };
+
+  let method = 'POST';
+  let url = apiProdutos;
+  if (produtoId) {
+    method = 'PUT';
+    url = apiProdutos + produtoId + '/';
+  }
+
+  fetch(url, {
+    method: method,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(produtoData)
+  })
+  .then(res => res.json())
+  .then(produto => {
+    if (produto.id) {
+      // Excluir componentes antigos se for edição
+      let compDeletePromise = Promise.resolve();
+      if (produtoId) {
+        compDeletePromise = fetch(apiComponentes + '?produto_principal=' + produtoId)
+          .then(res => res.json())
+          .then(componentesAntigos => {
+            return Promise.all(componentesAntigos.map(comp =>
+              fetch(apiComponentes + '/' + comp.id + '/', {method: 'DELETE'})
+            ));
+          });
+      }
+      compDeletePromise.then(() => {
+        // Salvar componentes novos
+        const componentesPromises = componentesTemp.map(comp => {
+          return fetch(apiComponentes, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              produto_principal: produto.id,
+              produto_componente: comp.produto_id,
+              quantidade: comp.quantidade
+            })
+          });
+        });
+        Promise.all(componentesPromises)
+          .then(() => {
+            closeProdutoCompostoModal();
+            fetchProdutos();
+            alert(produtoId ? 'Produto composto editado com sucesso!' : 'Produto composto criado com sucesso!');
+          });
+      });
+    } else {
+      alert('Erro ao criar/editar produto: ' + JSON.stringify(produto));
+    }
+  })
+  .catch(error => {
+    console.error('Erro ao salvar produto:', error);
+    alert('Erro ao salvar produto!');
+  });
+}
+function editProduto(id) {
+    openFormProduto(id);
+}
+function deleteProduto(id) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        fetch(apiProdutos + id + '/', {method: 'DELETE'})
+            .then(res => {
+                if (res.ok) fetchProdutos();
+                else alert('Erro ao excluir!');
+            });
+    }
+}
+
+// Função para ver componentes de um produto composto
+function verComponentes(produtoId) {
+    fetch(`${apiComponentes}?produto_pai=${produtoId}`)
+        .then(res => res.json())
+        .then(componentes => {
+            if (componentes.length === 0) {
+                alert('Este produto não possui componentes cadastrados.');
+                return;
+            }
+            
+            let detalhes = 'Componentes do produto:\n\n';
+            let custoTotal = 0;
+            
+            componentes.forEach(comp => {
+                const produto = allProductsOriginal.find(p => p.id === comp.produto_componente);
+                if (produto) {
+                    const custoUnitario = produto.custo_centavos / 100;
+                    const custoItem = custoUnitario * comp.quantidade;
+                    custoTotal += custoItem;
+                    
+                    detalhes += `• ${produto.descricao}\n`;
+                    detalhes += `  Quantidade: ${comp.quantidade}\n`;
+                    detalhes += `  Custo unitário: R$ ${custoUnitario.toFixed(2)}\n`;
+                    detalhes += `  Custo total: R$ ${custoItem.toFixed(2)}\n\n`;
+                }
+            });
+            
+            detalhes += `Custo total do produto: R$ ${custoTotal.toFixed(2)}`;
+            alert(detalhes);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar componentes:', error);
+            alert('Erro ao carregar componentes do produto.');
+        });
+}
+
+// Função para editar produto composto (simplificada)
+function editProdutoComposto(id) {
+  // Buscar dados do produto composto
+  fetch(apiProdutos + id + '/')
+    .then(res => res.json())
+    .then(produto => {
+      // Abrir modal e preencher dados
+      document.getElementById('produtoCompostoForm').reset();
+      document.getElementById('produtoCompostoId').value = produto.id;
+      document.getElementById('descricaoComposto').value = produto.descricao;
+      document.getElementById('referenciaComposto').value = produto.referencia || '';
+      document.getElementById('modalTitleProdutoComposto').innerText = 'Editar Produto Composto';
+      // Buscar componentes
+      fetch(apiComponentes + '?produto_principal=' + produto.id)
+        .then(res => res.json())
+        .then(componentes => {
+          componentesTemp = [];
+          componentes.forEach(comp => {
+            const produtoComp = allProductsOriginal.find(p => p.id == comp.produto_componente);
+            if (produtoComp) {
+              componentesTemp.push({
+                produto_id: produtoComp.id,
+                produto_descricao: produtoComp.descricao,
+                quantidade: parseFloat(comp.quantidade),
+                custo_unitario: produtoComp.custo_centavos / 100,
+                custo_total: (produtoComp.custo_centavos / 100) * parseFloat(comp.quantidade)
+              });
+            }
+          });
+          carregarProdutosParaSelect();
+          atualizarTabelaComponentes();
+          produtoCompostoModal.show();
+        });
+    });
+}
+
+function carregarInterfaceNovoPerfil() {
+    console.log('=== CARREGANDO INTERFACE NOVO PERFIL ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'perfil_customizado', tipo: 'perfil' };
+    ultimoCalculo = null;
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Novo Perfil</h6>
+        <small class="text-muted">Categoria: PRODUTO_FINAL</small>
+    `;
+    
+    // Criar APENAS os 11 campos solicitados
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="perfil_nome" class="form-label">Nome perfil *</label>
+            <input type="text" class="form-control param-input" id="perfil_nome" name="nome_perfil" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_roving" class="form-label">Roving 4400 KG *</label>
+            <input type="number" step="0.001" class="form-control param-input" id="perfil_roving" name="roving_4400_kg" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_manta" class="form-label">Manta 300 KG *</label>
+            <input type="number" step="0.001" class="form-control param-input" id="perfil_manta" name="manta_300_kg" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_veu" class="form-label">Véu KG *</label>
+            <input type="number" step="0.001" class="form-control param-input" id="perfil_veu" name="veu_kg" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_peso_metro" class="form-label">Peso/m kg *</label>
+            <input type="number" step="0.001" class="form-control param-input" id="perfil_peso_metro" name="peso_metro_kg" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_n_matrizes" class="form-label">N matrizes *</label>
+            <input type="number" class="form-control param-input" id="perfil_n_matrizes" name="n_matrizes" required min="1">
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_n_maquinas" class="form-label">N máquinas *</label>
+            <input type="number" class="form-control param-input" id="perfil_n_maquinas" name="n_maquinas" required min="1">
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_metros_h" class="form-label">Metro produzidos/h *</label>
+            <input type="number" step="0.1" class="form-control param-input" id="perfil_metros_h" name="metros_produzidos_h" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_perda" class="form-label">% de perda *</label>
+            <input type="number" step="0.1" class="form-control param-input" id="perfil_perda" name="percentual_perda" required min="0" max="100">
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="perfil_pintura" name="tem_pintura" onchange="toggleAreaPintura()">
+                <label for="perfil_pintura" class="form-check-label">Pintura?</label>
+            </div>
+        </div>
+        
+        <div class="mb-3" id="perfil_area_pintura_container" style="display: none;">
+            <label for="perfil_area_pintura" class="form-label">Área pintura (m²) *</label>
+            <input type="number" step="0.01" class="form-control param-input" id="perfil_area_pintura" name="area_pintura_m2">
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-primary" onclick="calcularProdutoParametrizado()" id="calcularBtn">
+                <i class="fas fa-calculator"></i> Calcular
+            </button>
+        </div>
+    `;
+    
+    console.log('Interface Novo Perfil carregada com 11 campos');
+}
+
+function toggleAreaPintura() {
+    const checkbox = document.getElementById('perfil_pintura');
+    const container = document.getElementById('perfil_area_pintura_container');
+    const input = document.getElementById('perfil_area_pintura');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+        input.required = true;
+    } else {
+        container.style.display = 'none';
+        input.required = false;
+        input.value = '';
+    }
+    
+    // Recalcular se já tiver dados
+    calcularPerfilParametrizado();
+}
+
+function calcularNovoPerfil() {
+    console.log('=== CALCULANDO NOVO PERFIL ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'perfil_nome', 'perfil_roving', 'perfil_manta', 'perfil_veu', 
+        'perfil_peso_metro', 'perfil_n_matrizes', 'perfil_n_maquinas', 
+        'perfil_metros_h', 'perfil_perda'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'perfil_nome') {
+            dados[elemento.name] = valor;
+        } else {
+            dados[elemento.name] = parseFloat(valor) || 0;
+        }
+    });
+    
+    // Verificar pintura
+    const temPintura = document.getElementById('perfil_pintura').checked;
+    dados.tem_pintura = temPintura;
+    
+    if (temPintura) {
+        const areaPintura = document.getElementById('perfil_area_pintura').value;
+        if (!areaPintura || parseFloat(areaPintura) <= 0) {
+            alert('Área de pintura deve ser preenchida quando pintura está marcada!');
+            return;
+        }
+        dados.area_pintura_m2 = parseFloat(areaPintura);
+    } else {
+        dados.area_pintura_m2 = 0;
+    }
+    
+    if (!todosCamposPreenchidos) {
+        alert('Preencha todos os campos obrigatórios!');
+        return;
+    }
+    
+    console.log('Dados coletados:', dados);
+    
+    // Buscar preços da base de dados MP_Produtos antes de calcular
+    console.log('🔍 Buscando preços da base de dados...');
+    
+    fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            console.log('✅ Produtos carregados da base:', produtos.length);
+            
+            // Criar mapeamento de produtos por nome/descrição
+            const precosProdutos = {};
+            
+            produtos.forEach(produto => {
+                const desc = produto.descricao.toLowerCase();
+                const precoReais = produto.custo_centavos / 100;
+                
+                // Mapear produtos específicos
+                if (desc.includes('roving') && desc.includes('4400')) {
+                    precosProdutos['roving'] = precoReais;
+                } else if (desc.includes('manta') && desc.includes('300')) {
+                    precosProdutos['manta'] = precoReais;
+                } else if (desc.includes('véu') || desc.includes('veu')) {
+                    precosProdutos['veu'] = precoReais;
+                } else if (desc.includes('resina') && (desc.includes('pet') || desc.includes('poliéster'))) {
+                    precosProdutos['resina'] = precoReais;
+                } else if (desc.includes('monômero') || desc.includes('estireno')) {
+                    precosProdutos['monomero'] = precoReais;
+                } else if (desc.includes('anti') && desc.includes('uv')) {
+                    precosProdutos['antiUV'] = precoReais;
+                } else if (desc.includes('anti') && desc.includes('ox')) {
+                    precosProdutos['antiOX'] = precoReais;
+                } else if (desc.includes('bpo')) {
+                    precosProdutos['bpo'] = precoReais;
+                } else if (desc.includes('tbpb')) {
+                    precosProdutos['tbpb'] = precoReais;
+                } else if (desc.includes('desmoldante')) {
+                    precosProdutos['desmoldante'] = precoReais;
+                } else if (desc.includes('antichama')) {
+                    precosProdutos['antichama'] = precoReais;
+                } else if (desc.includes('carga') && desc.includes('mineral')) {
+                    precosProdutos['cargaMineral'] = precoReais;
+                } else if (desc.includes('pigmento')) {
+                    precosProdutos['pigmento'] = precoReais;
+                } else if (desc.includes('pintura')) {
+                    precosProdutos['pintura'] = precoReais;
+                }
+            });
+            
+            console.log('💰 Preços mapeados:', precosProdutos);
+            
+            // Definir preços padrão caso não encontre na base
+            const precosDefault = {
+                roving: 8.50,
+                manta: 12.00,
+                veu: 25.00,
+                resina: 12.96,
+                monomero: 8.00,
+                antiUV: 45.00,
+                antiOX: 35.00,
+                bpo: 28.00,
+                tbpb: 42.00,
+                desmoldante: 22.00,
+                antichama: 18.50,
+                cargaMineral: 3.20,
+                pigmento: 15.80,
+                pintura: 15.00
+            };
+            
+            // Usar preço da base ou padrão se não encontrar
+            const precos = {};
+            Object.keys(precosDefault).forEach(key => {
+                precos[key] = precosProdutos[key] || precosDefault[key];
+                if (!precosProdutos[key]) {
+                    console.warn(`⚠️ Preço não encontrado na base para ${key}, usando padrão: R$ ${precosDefault[key]}`);
+                }
+            });
+            
+            // CÁLCULO CORRETO DOS COMPONENTES DA RESINA
+            // Peso da resina base = peso do metro - (roving + manta + véu)
+            const pesoResinaBase = dados.peso_metro_kg - (dados.roving_4400_kg + dados.manta_300_kg + dados.veu_kg);
+            
+            console.log('Cálculo da resina:');
+            console.log(`Peso do metro: ${dados.peso_metro_kg} kg`);
+            console.log(`Peso fibras (roving + manta + véu): ${dados.roving_4400_kg + dados.manta_300_kg + dados.veu_kg} kg`);
+            console.log(`Peso resina base: ${pesoResinaBase} kg`);
+            
+            // Fatores de multiplicação conforme especificado
+            const fatores = {
+                resina: 0.6897,           // 68.97%
+                monomero: 0.0213,         // 2.13%
+                antiUV: 0.0028,           // 0.28%
+                antiOX: 0.0011,           // 0.11%
+                bpo: 0.0071,              // 0.71%
+                tbpb: 0.0043,             // 0.43%
+                desmoldante: 0.0071,      // 0.71%
+                antichama: 0.1777,        // 17.77%
+                cargaMineral: 0.0711,     // 7.11%
+                pigmento: 0.0178          // 1.78%
+            };
+            
+            // Calcular componentes da resina usando preços da base
+            const componentes = [
+                {
+                    nome: 'Roving 4400 KG',
+                    produto_nome: 'Roving 4400 tex',
+                    quantidade: dados.roving_4400_kg,
+                    custo_unitario: precos.roving,
+                    custo_total: dados.roving_4400_kg * precos.roving
+                },
+                {
+                    nome: 'Manta 300 KG',
+                    produto_nome: 'Manta 300 g/m²',
+                    quantidade: dados.manta_300_kg,
+                    custo_unitario: precos.manta,
+                    custo_total: dados.manta_300_kg * precos.manta
+                },
+                {
+                    nome: 'Véu KG',
+                    produto_nome: 'Véu de Superfície',
+                    quantidade: dados.veu_kg,
+                    custo_unitario: precos.veu,
+                    custo_total: dados.veu_kg * precos.veu
+                },
+                {
+                    nome: 'Resina PET',
+                    produto_nome: 'Resina Poliéster',
+                    quantidade: pesoResinaBase * fatores.resina,
+                    custo_unitario: precos.resina,
+                    custo_total: (pesoResinaBase * fatores.resina) * precos.resina
+                },
+                {
+                    nome: 'Monômero de estireno',
+                    produto_nome: 'Estireno',
+                    quantidade: pesoResinaBase * fatores.monomero,
+                    custo_unitario: precos.monomero,
+                    custo_total: (pesoResinaBase * fatores.monomero) * precos.monomero
+                },
+                {
+                    nome: 'Anti UV',
+                    produto_nome: 'Aditivo Anti UV',
+                    quantidade: pesoResinaBase * fatores.antiUV,
+                    custo_unitario: precos.antiUV,
+                    custo_total: (pesoResinaBase * fatores.antiUV) * precos.antiUV
+                },
+                {
+                    nome: 'Anti OX',
+                    produto_nome: 'Aditivo Anti Oxidante',
+                    quantidade: pesoResinaBase * fatores.antiOX,
+                    custo_unitario: precos.antiOX,
+                    custo_total: (pesoResinaBase * fatores.antiOX) * precos.antiOX
+                },
+                {
+                    nome: 'BPO',
+                    produto_nome: 'Peróxido de Benzoíla',
+                    quantidade: pesoResinaBase * fatores.bpo,
+                    custo_unitario: precos.bpo,
+                    custo_total: (pesoResinaBase * fatores.bpo) * precos.bpo
+                },
+                {
+                    nome: 'TBPB',
+                    produto_nome: 'Terc-Butil Perbenzoato',
+                    quantidade: pesoResinaBase * fatores.tbpb,
+                    custo_unitario: precos.tbpb,
+                    custo_total: (pesoResinaBase * fatores.tbpb) * precos.tbpb
+                },
+                {
+                    nome: 'Desmoldante',
+                    produto_nome: 'Desmoldante Industrial',
+                    quantidade: pesoResinaBase * fatores.desmoldante,
+                    custo_unitario: precos.desmoldante,
+                    custo_total: (pesoResinaBase * fatores.desmoldante) * precos.desmoldante
+                },
+                {
+                    nome: 'Antichama',
+                    produto_nome: 'Aditivo Antichama',
+                    quantidade: pesoResinaBase * fatores.antichama,
+                    custo_unitario: precos.antichama,
+                    custo_total: (pesoResinaBase * fatores.antichama) * precos.antichama
+                },
+                {
+                    nome: 'Carga mineral',
+                    produto_nome: 'Carbonato de Cálcio',
+                    quantidade: pesoResinaBase * fatores.cargaMineral,
+                    custo_unitario: precos.cargaMineral,
+                    custo_total: (pesoResinaBase * fatores.cargaMineral) * precos.cargaMineral
+                },
+                {
+                    nome: 'Pigmento',
+                    produto_nome: 'Pigmento Colorante',
+                    quantidade: pesoResinaBase * fatores.pigmento,
+                    custo_unitario: precos.pigmento,
+                    custo_total: (pesoResinaBase * fatores.pigmento) * precos.pigmento
+                }
+            ];
+            
+            // Adicionar pintura se necessário
+            if (temPintura && dados.area_pintura_m2 > 0) {
+                componentes.push({
+                    nome: 'Área pintura (m²)',
+                    produto_nome: 'Pintura Industrial',
+                    quantidade: dados.area_pintura_m2,
+                    custo_unitario: precos.pintura,
+                    custo_total: dados.area_pintura_m2 * precos.pintura
+                });
+            }
+            
+            // ADICIONAR MÃO DE OBRA - NOVA FÓRMULA
+            // ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * 0,5)
+            if (dados.metros_produzidos_h > 0 && dados.n_matrizes > 0) {
+                const mo_pultrusao = 9976258; // Valor da tabela main_maoobra ID=1 em centavos
+                const velocidade = dados.metros_produzidos_h;
+                const matrizes = dados.n_matrizes;
+                const maquinas = dados.n_maquinas;
+                
+                // Aplicar nova fórmula
+                const numerador = (mo_pultrusao / 3) * maquinas;
+                const denominador = velocidade * matrizes * 24 * 21 * 0.5;
+                const custo_raw = numerador / denominador;
+                const custo_mao_obra_centavos = Math.max(1, Math.floor(custo_raw));
+                const custo_mao_obra_reais = custo_mao_obra_centavos / 100;
+                
+                console.log('=== CÁLCULO MÃO DE OBRA (NOVA FÓRMULA) ===');
+                console.log(`Parâmetros: velocidade=${velocidade}, matrizes=${matrizes}, máquinas=${maquinas}`);
+                console.log(`Numerador: (${mo_pultrusao} / 3) * ${maquinas} = ${numerador.toFixed(2)}`);
+                console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * 0.5 = ${denominador}`);
+                console.log(`Resultado: ${numerador.toFixed(2)} / ${denominador} = ${custo_raw.toFixed(8)}`);
+                console.log(`Custo final: ${custo_mao_obra_centavos} centavos = R$ ${custo_mao_obra_reais.toFixed(2)}`);
+                
+                componentes.push({
+                    nome: 'Mão de Obra - Pultrusão',
+                    produto_nome: 'Mão de Obra Industrial',
+                    quantidade: 1.0,
+                    custo_unitario: custo_mao_obra_reais,
+                    custo_total: custo_mao_obra_reais
+                });
+            }
+            
+            // Calcular custo total com 3% de perda nas matérias-primas
+            // Separar matérias-primas de mão de obra
+            const custoMateriasPrimas = componentes
+                .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
+                .reduce((total, comp) => total + comp.custo_total, 0);
+            
+            const custoMaoObra = componentes
+                .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
+                .reduce((total, comp) => total + comp.custo_total, 0);
+            
+            // Aplicar 3% de perda nas matérias-primas
+            const custoMateriasComPerda = custoMateriasPrimas * 1.03; // 3% de perda
+            const custoTotal = custoMateriasComPerda + custoMaoObra;
+            
+            console.log('=== APLICAÇÃO DE 3% DE PERDA ===');
+            console.log(`Custo matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
+            console.log(`Custo matérias-primas com 3% perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
+            console.log(`Custo mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
+            console.log(`Custo total final: R$ ${custoTotal.toFixed(2)}`);
+            
+            // Criar resultado
+            ultimoCalculo = {
+                success: true,
+                custo_total: Math.round(custoTotal * 100), // em centavos
+                peso_total: dados.peso_metro_kg,
+                peso_resina_base: pesoResinaBase,
+                peso_fibras: dados.roving_4400_kg + dados.manta_300_kg + dados.veu_kg,
+                nome_produto: dados.nome_perfil,
+                componentes: componentes,
+                dados_originais: dados, // Para poder recalcular
+                fatores_originais: { // Para exibir na tabela
+                    'Resina PET': fatores.resina * 100,
+                    'Monômero de estireno': fatores.monomero * 100,
+                    'Anti UV': fatores.antiUV * 100,
+                    'Anti OX': fatores.antiOX * 100,
+                    'BPO': fatores.bpo * 100,
+                    'TBPB': fatores.tbpb * 100,
+                    'Desmoldante': fatores.desmoldante * 100,
+                    'Antichama': fatores.antichama * 100,
+                    'Carga mineral': fatores.cargaMineral * 100,
+                    'Pigmento': fatores.pigmento * 100
+                }
+            };
+            
+            // Mostrar resultado na interface padrão
+            document.getElementById('nomeProdutoCalculado').textContent = dados.nome_perfil;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (preços atualizados + 3% perda)`;
+            document.getElementById('pesoTotalCalculado').textContent = `${dados.peso_metro_kg} kg`;
+            document.getElementById('resultadoCalculado').style.display = 'block';
+            
+            // Preencher tabela de componentes (usar função existente)
+            preencherTabelaComponentes(ultimoCalculo);
+            
+            console.log('✅ Cálculo de Novo Perfil concluído com preços da base:', ultimoCalculo);
+        })
+        .catch(error => {
+            console.error('❌ Erro ao buscar preços da base:', error);
+            alert('Erro ao carregar preços da base de dados. Usando valores padrão.');
+            
+            // Em caso de erro, usar valores padrão e continuar cálculo
+            calcularNovoPerfilComPrecosDefault(dados, temPintura);
+        });
+}
+
+// Função auxiliar para calcular com preços padrão em caso de erro no MP
+function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
+    console.log('⚠️ Usando preços padrão devido a erro na base de dados');
+    
+    // CONTINUAR COM LÓGICA PADRÃO (código existente)
+    const pesoResinaBase = dados.peso_metro_kg - (dados.roving_4400_kg + dados.manta_300_kg + dados.veu_kg);
+    
+    const fatores = {
+        resina: 0.6897, monomero: 0.0213, antiUV: 0.0028, antiOX: 0.0011,
+        bpo: 0.0071, tbpb: 0.0043, desmoldante: 0.0071, antichama: 0.1777,
+        cargaMineral: 0.0711, pigmento: 0.0178
+    };
+    
+    const componentes = [
+        { nome: 'Roving 4400 KG', produto_nome: 'Roving 4400 tex', quantidade: dados.roving_4400_kg, custo_unitario: 8.50, custo_total: dados.roving_4400_kg * 8.50 },
+        { nome: 'Manta 300 KG', produto_nome: 'Manta 300 g/m²', quantidade: dados.manta_300_kg, custo_unitario: 12.00, custo_total: dados.manta_300_kg * 12.00 },
+        { nome: 'Véu KG', produto_nome: 'Véu de Superfície', quantidade: dados.veu_kg, custo_unitario: 25.00, custo_total: dados.veu_kg * 25.00 },
+        { nome: 'Resina PET', produto_nome: 'Resina Poliéster', quantidade: pesoResinaBase * fatores.resina, custo_unitario: 12.96, custo_total: (pesoResinaBase * fatores.resina) * 12.96 },
+        { nome: 'Monômero de estireno', produto_nome: 'Estireno', quantidade: pesoResinaBase * fatores.monomero, custo_unitario: 8.00, custo_total: (pesoResinaBase * fatores.monomero) * 8.00 },
+        { nome: 'Anti UV', produto_nome: 'Aditivo Anti UV', quantidade: pesoResinaBase * fatores.antiUV, custo_unitario: 45.00, custo_total: (pesoResinaBase * fatores.antiUV) * 45.00 },
+        { nome: 'Anti OX', produto_nome: 'Aditivo Anti Oxidante', quantidade: pesoResinaBase * fatores.antiOX, custo_unitario: 35.00, custo_total: (pesoResinaBase * fatores.antiOX) * 35.00 },
+        { nome: 'BPO', produto_nome: 'Peróxido de Benzoíla', quantidade: pesoResinaBase * fatores.bpo, custo_unitario: 28.00, custo_total: (pesoResinaBase * fatores.bpo) * 28.00 },
+        { nome: 'TBPB', produto_nome: 'Terc-Butil Perbenzoato', quantidade: pesoResinaBase * fatores.tbpb, custo_unitario: 42.00, custo_total: (pesoResinaBase * fatores.tbpb) * 42.00 },
+        { nome: 'Desmoldante', produto_nome: 'Desmoldante Industrial', quantidade: pesoResinaBase * fatores.desmoldante, custo_unitario: 22.00, custo_total: (pesoResinaBase * fatores.desmoldante) * 22.00 },
+        { nome: 'Antichama', produto_nome: 'Aditivo Antichama', quantidade: pesoResinaBase * fatores.antichama, custo_unitario: 18.50, custo_total: (pesoResinaBase * fatores.antichama) * 18.50 },
+        { nome: 'Carga mineral', produto_nome: 'Carbonato de Cálcio', quantidade: pesoResinaBase * fatores.cargaMineral, custo_unitario: 3.20, custo_total: (pesoResinaBase * fatores.cargaMineral) * 3.20 },
+        { nome: 'Pigmento', produto_nome: 'Pigmento Colorante', quantidade: pesoResinaBase * fatores.pigmento, custo_unitario: 15.80, custo_total: (pesoResinaBase * fatores.pigmento) * 15.80 }
+    ];
+    
+    if (temPintura && dados.area_pintura_m2 > 0) {
+        componentes.push({
+            nome: 'Área pintura (m²)', produto_nome: 'Pintura Industrial',
+            quantidade: dados.area_pintura_m2, custo_unitario: 15.86,
+            custo_total: dados.area_pintura_m2 * 15.86
+        });
+    }
+    
+    // Mão de obra
+    if (dados.metros_produzidos_h > 0 && dados.n_matrizes > 0) {
+        const mo_pultrusao = 9976258, numerador = (mo_pultrusao / 3) * dados.n_maquinas;
+        const denominador = dados.metros_produzidos_h * dados.n_matrizes * 24 * 21 * 0.5;
+        const custo_mao_obra_reais = Math.max(0.01, numerador / denominador / 100);
+        
+        componentes.push({
+            nome: 'Mão de Obra - Pultrusão', produto_nome: 'Mão de Obra Industrial',
+            quantidade: 1.0, custo_unitario: custo_mao_obra_reais, custo_total: custo_mao_obra_reais
+        });
+    }
+    
+    // Calcular custo total com 3% de perda nas matérias-primas
+    const custoMateriasPrimas = componentes
+        .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    const custoMaoObra = componentes
+        .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    // Aplicar 3% de perda nas matérias-primas
+    const custoMateriasComPerda = custoMateriasPrimas * 1.03;
+    const custoTotal = custoMateriasComPerda + custoMaoObra;
+    
+    console.log('⚠️ CÁLCULO COM PREÇOS PADRÃO + 3% PERDA');
+    console.log(`Matérias-primas: R$ ${custoMateriasPrimas.toFixed(2)} → R$ ${custoMateriasComPerda.toFixed(2)} (+3%)`);
+    console.log(`Total final: R$ ${custoTotal.toFixed(2)}`);
+    
+    ultimoCalculo = {
+        success: true, custo_total: Math.round(custoTotal * 100),
+        peso_total: dados.peso_metro_kg, nome_produto: dados.nome_perfil,
+        componentes: componentes, dados_originais: dados,
+        fatores_originais: {
+            'Resina PET': fatores.resina * 100, 'Monômero de estireno': fatores.monomero * 100,
+            'Anti UV': fatores.antiUV * 100, 'Anti OX': fatores.antiOX * 100,
+            'BPO': fatores.bpo * 100, 'TBPB': fatores.tbpb * 100,
+            'Desmoldante': fatores.desmoldante * 100, 'Antichama': fatores.antichama * 100,
+            'Carga mineral': fatores.cargaMineral * 100, 'Pigmento': fatores.pigmento * 100
+        }
+    };
+    
+    document.getElementById('nomeProdutoCalculado').textContent = dados.nome_perfil;
+    document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (valores padrão + 3% perda)`;
+    document.getElementById('pesoTotalCalculado').textContent = `${dados.peso_metro_kg} kg`;
+    document.getElementById('resultadoCalculado').style.display = 'block';
+    
+    preencherTabelaComponentes(ultimoCalculo);
+    console.log('⚠️ Cálculo concluído com preços padrão:', ultimoCalculo);
+}
+
+// Função auxiliar para preencher tabela de componentes
+function preencherTabelaComponentes(calculo) {
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '';
+    
+    console.log('=== PREENCHENDO TABELA DE COMPONENTES ===');
+    
+    calculo.componentes.forEach((comp, index) => {
+        const row = tbody.insertRow();
+        const isComponenteResina = ['Resina PET', 'Monômero de estireno', 'Anti UV', 'Anti OX', 'BPO', 'TBPB', 'Desmoldante', 'Antichama', 'Carga mineral', 'Pigmento'].includes(comp.nome);
+        
+        let fatorCol = '', acaoCol = '';
+        if (isComponenteResina) {
+            const fatorAtual = calculo.fatores_originais[comp.nome] || 0;
+            fatorCol = `<input type="number" step="0.01" class="form-control form-control-sm fator-input" value="${fatorAtual.toFixed(2)}" data-component-index="${index}" style="width: 80px;" min="0" max="100">`;
+            acaoCol = `<button class="btn btn-sm btn-success" onclick="recalcularComponente(${index})" title="Recalcular"><i class="fas fa-calculator"></i></button>`;
+        } else {
+            fatorCol = '<span class="text-muted">-</span>';
+            acaoCol = '<span class="text-muted">-</span>';
+        }
+        
+        row.innerHTML = `
+            <td>${comp.nome || 'N/A'}</td>
+            <td>${comp.produto_nome || 'N/A'}</td>
+            <td>${fatorCol}</td>
+            <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
+            <td>R$ ${comp.custo_unitario ? comp.custo_unitario.toFixed(2) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total.toFixed(2)}</span></td>
+            <td>${acaoCol}</td>`;
+    });
+    
+    const totalRow = tbody.insertRow();
+    const custoTotalGeral = calculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    totalRow.innerHTML = `
+        <td colspan="5"><strong>TOTAL GERAL</strong></td>
+        <td><strong><span id="custo-total-geral">R$ ${custoTotalGeral.toFixed(2)}</span></strong></td>
+        <td>
+            <button class="btn btn-sm btn-warning" onclick="recalcularTodosComponentes()" title="Recalcular Todos">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </td>
+    `;
+    
+    console.log('Tabela de componentes preenchida com sucesso!');
+    document.getElementById('salvarProdutoBtn').disabled = false;
+}
+
+function gerarReferenciaPerfil(nomePerfil) {
+    // Gerar referência baseada no nome do perfil
+    // Formato: PER-XXXX onde XXXX são 4 dígitos baseados no nome
+    
+    let referencia = 'PER-';
+    
+    // Remover caracteres especiais e espaços
+    const nomeSimplificado = nomePerfil
+        .replace(/[^a-zA-Z0-9]/g, '')  // Remove caracteres especiais
+        .toUpperCase()                  // Converte para maiúsculo
+        .substring(0, 10);              // Pega apenas os primeiros 10 caracteres
+    
+    // Se tem números no nome, usar eles
+    const numeros = nomePerfil.match(/\d+/g);
+    if (numeros && numeros.length > 0) {
+        // Usar os números encontrados no nome
+        const numerosCombinados = numeros.join('');
+        referencia += numerosCombinados.substring(0, 4).padStart(4, '0');
+    } else {
+        // Gerar código baseado nas letras (hash simples)
+        let hash = 0;
+        for (let i = 0; i < nomeSimplificado.length; i++) {
+            const char = nomeSimplificado.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Converte para 32-bit
+        }
+        
+        // Usar valor absoluto e pegar 4 dígitos
+        const codigo = Math.abs(hash).toString().substring(0, 4).padStart(4, '0');
+        referencia += codigo;
+    }
+    
+    // Adicionar timestamp para garantir unicidade
+    const agora = new Date();
+    const timestamp = (agora.getHours() * 60 + agora.getMinutes()).toString().padStart(4, '0');
+    
+    return referencia + '-' + timestamp.substring(0, 2);
+}
+
+function salvarPerfilParametrizado() {
+    console.log('=== SALVANDO PERFIL PARAMETRIZADO ===');
+    
+    // Verificar se o cálculo foi feito
+    if (!ultimoCalculo) {
+        alert('Realize o cálculo primeiro!');
+        return;
+    }
+    
+    // Coletar dados do formulário
+    const dadosPerfil = {};
+    const allInputs = document.querySelectorAll('.param-input');
+    
+    allInputs.forEach(input => {
+        if (input.type === 'checkbox') {
+            dadosPerfil[input.name] = input.checked;
+        } else if (input.name === 'nome_perfil') {
+            dadosPerfil[input.name] = input.value.trim();
+        } else {
+            dadosPerfil[input.name] = parseFloat(input.value) || 0;
+        }
+    });
+    
+    // Validação básica
+    if (!dadosPerfil.nome_perfil) {
+        alert('Nome do perfil é obrigatório!');
+        return;
+    }
+    
+    if (dadosPerfil.tem_pintura && dadosPerfil.area_pintura_m2 <= 0) {
+        alert('Área de pintura deve ser maior que zero quando pintura está marcada!');
+        return;
+    }
+    
+    console.log('Dados do perfil:', dadosPerfil);
+    
+    // Criar produto na base de dados
+    const produtoData = {
+        descricao: dadosPerfil.nome_perfil,
+        custo_centavos: ultimoCalculo.custo_total,
+        peso_und: dadosPerfil.peso_metro_kg.toFixed(3),
+        unidade: 'M', // Metro linear
+        referencia: gerarReferenciaPerfil(dadosPerfil.nome_perfil),
+        tipo: 'Perfil',
+        categoria: 'Perfis',
+        subcategoria: 'Pultrusão',
+        data_revisao: new Date().toISOString(),
+        // Dados específicos do perfil
+        dados_perfil: JSON.stringify(dadosPerfil)
+    };
+    
+    console.log('Dados do produto:', produtoData);
+    
+    // Função para obter CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Salvar produto
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('Perfil salvo:', produto);
+        alert(`Perfil "${dadosPerfil.nome_perfil}" criado com sucesso!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
+        
+        // Fechar modal
+        closeProdutoParametrizadoModal();
+        
+        // Atualizar lista de produtos
+        fetchProdutos();
+    })
+    .catch(error => {
+        console.error('Erro ao salvar perfil:', error);
+        alert('Erro ao salvar perfil: ' + error.message);
+    });
+}
+
+// Funções para produtos parametrizáveis
+function openFormProdutoParametrizado() {
+    console.log('=== ABRINDO MODAL PRODUTO PARAMETRIZADO ===');
+    
+    // Limpar estado global
+    templateAtual = null;
+    ultimoCalculo = null;
+    
+    console.log('Estado limpo - templateAtual:', templateAtual, 'ultimoCalculo:', ultimoCalculo);
+    
+    // Resetar formulário
+    document.getElementById('templateSelect').value = '';
+    document.getElementById('templateDescription').innerHTML = '';
+    document.getElementById('parametrosContainer').innerHTML = '<p class="text-muted">Selecione um template primeiro</p>';
+    
+    // Reset da seção de resultado
+    const resultadoContainer = document.getElementById('resultadoContainer');
+    resultadoContainer.querySelector('p').textContent = 'Configure os parâmetros para ver o resultado';
+    document.getElementById('resultadoCalculado').style.display = 'none';
+    
+    // Limpar campo de nome se existir
+    const nomeInput = document.getElementById('nomeProdutoInput');
+    if (nomeInput) {
+        nomeInput.value = '';
+    }
+    
+    // Verificar se botão calcular existe antes de desabilitá-lo
+    const calcularBtn = document.getElementById('calcularBtn');
+    if (calcularBtn) {
+        calcularBtn.disabled = true;
+    }
+    
+    // Limpar tabela de componentes
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum cálculo realizado</td></tr>';
+    
+    // Desabilitar botão salvar
+    document.getElementById('salvarProdutoBtn').disabled = true;
+    
+    console.log('Interface resetada - carregando templates...');
+    
+    carregarTemplates();
+    produtoParametrizadoModal.show();
+    
+    console.log('Modal aberto com sucesso');
+}
+
+function closeProdutoParametrizadoModal() {
+    produtoParametrizadoModal.hide();
+}
+
+function carregarTemplates() {
+    fetch(apiTemplates)
+        .then(res => res.json())
+        .then(templates => {
+            // Popular o cache
+            templatesCache = templates;
+            
+            const select = document.getElementById('templateSelect');
+            select.innerHTML = '<option value="">Escolha um template...</option>';
+            
+            // Adicionar opção "Novo Perfil" primeiro
+            const novoPerfilOption = document.createElement('option');
+            novoPerfilOption.value = 'perfil_customizado';
+            novoPerfilOption.textContent = 'Novo Perfil';
+            select.appendChild(novoPerfilOption);
+            
+            templates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.id;
+                
+                // Correção: usar produto_base.descricao em vez de template.nome
+                if (template.produto_base && template.produto_base.descricao) {
+                    option.textContent = `${template.produto_base.descricao} (${template.produto_base.categoria || 'Geral'})`;
+                } else {
+                    option.textContent = `Template ID: ${template.id} (Sem produto base)`;
+                }
+                
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar templates:', error);
+            alert('Erro ao carregar templates de produtos.');
+        });
+}
+
+function carregarTemplate() {
+    const templateId = document.getElementById('templateSelect').value;
+    
+    console.log('=== CARREGANDO TEMPLATE ===');
+    console.log('Template ID:', templateId);
+    
+    if (!templateId) {
+        console.log('Nenhum template selecionado - limpando interface');
+        
+        // Limpar completamente a interface
+        document.getElementById('templateDescription').innerHTML = '';
+        document.getElementById('parametrosContainer').innerHTML = '<p class="text-muted">Selecione um template primeiro</p>';
+        document.getElementById('resultadoContainer').querySelector('p').textContent = 'Configure os parâmetros para ver o resultado';
+        document.getElementById('resultadoCalculado').style.display = 'none';
+        
+        // Verificar se botões existem antes de desabilitá-los
+        const calcularBtn = document.getElementById('calcularBtn');
+        if (calcularBtn) {
+            calcularBtn.disabled = true;
+        }
+        document.getElementById('salvarProdutoBtn').disabled = true;
+        
+        // Limpar tabela de componentes
+        const tbody = document.getElementById('componentesCalculadosTable');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum cálculo realizado</td></tr>';
+        
+        // Resetar variável global
+        templateAtual = null;
+        ultimoCalculo = null;
+        
+        return;
+    }
+    
+    // Verificar se é "Novo Perfil"
+    if (templateId === 'perfil_customizado') {
+        console.log('Carregando interface de Novo Perfil');
+        carregarInterfaceNovoPerfil();
+        return;
+    }
+    
+    // Usar o template já carregado no cache
+    const template = templatesCache.find(t => t.id == templateId);
+    if (!template) {
+        console.error('Template não encontrado no cache:', templateId);
+        alert('Erro: Template não encontrado. Tente recarregar a página.');
+        return;
+    }
+    
+    console.log('Template encontrado:', template);
+    templateAtual = template;
+    
+    // Limpar estado anterior
+    ultimoCalculo = null;
+    document.getElementById('resultadoCalculado').style.display = 'none';
+    
+    // Verificar se botões existem antes de desabilitá-los
+    const calcularBtn = document.getElementById('calcularBtn');
+    if (calcularBtn) {
+        calcularBtn.disabled = true;
+    }
+    document.getElementById('salvarProdutoBtn').disabled = true;
+    
+    // Limpar tabela de componentes
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Configure os parâmetros e clique em Calcular</td></tr>';
+    
+    // Mostrar descrição
+    const descricao = template.produto_base ? template.produto_base.descricao : 'Sem descrição';
+    const categoria = template.produto_base ? template.produto_base.categoria : 'Sem categoria';
+    
+    document.getElementById('templateDescription').innerHTML = `
+        <strong>${descricao}</strong><br>
+        <small class="text-muted">Categoria: ${categoria}</small>
+    `;
+    
+    // Reset da seção de resultado
+    document.getElementById('resultadoContainer').querySelector('p').textContent = 'Configure os parâmetros para ver o resultado';
+    
+    // Limpar campo de nome se existir
+    const nomeInput = document.getElementById('nomeProdutoInput');
+    if (nomeInput) {
+        nomeInput.value = '';
+    }
+    
+    console.log('Criando campos de parâmetros...');
+    
+    // Criar campos de parâmetros usando a nova estrutura
+    criarCamposParametrosNovo(template);
+}
+
+function criarCamposParametrosNovo(template) {
+    const container = document.getElementById('parametrosContainer');
+    container.innerHTML = '';
+    
+    // Verificar se tem parâmetros obrigatórios ou opcionais
+    const temObrigatorios = template.parametros_obrigatorios && template.parametros_obrigatorios.length > 0;
+    const temOpcionais = template.parametros_opcionais && Object.keys(template.parametros_opcionais).length > 0;
+    
+    if (!temObrigatorios && !temOpcionais) {
+        container.innerHTML = '<p class="text-muted">Este template não possui parâmetros configurados</p>';
+        // Não precisa desabilitar calcularBtn aqui pois ele ainda não foi criado
+        return;
+    }
+    
+    // Parâmetros obrigatórios
+    if (temObrigatorios) {
+        const obrigatoriosDiv = document.createElement('div');
+        obrigatoriosDiv.innerHTML = '<h6 class="text-danger">Parâmetros Obrigatórios:</h6>';
+        
+        template.parametros_obrigatorios.forEach(param => {
+            const div = document.createElement('div');
+            div.className = 'mb-3';
+            div.innerHTML = `
+                <label for="param_${param}" class="form-label">${param.charAt(0).toUpperCase() + param.slice(1)}:</label>
+                <input type="number" class="form-control param-input" id="param_${param}" name="${param}" 
+                       value="0" step="0.001" required oninput="verificarParametros()">
+            `;
+            obrigatoriosDiv.appendChild(div);
+        });
+        
+        container.appendChild(obrigatoriosDiv);
+    }
+    
+    // Parâmetros opcionais
+    if (temOpcionais) {
+        const opcionaisDiv = document.createElement('div');
+        opcionaisDiv.innerHTML = '<h6 class="text-info mt-3">Parâmetros Opcionais:</h6>';
+        
+        Object.entries(template.parametros_opcionais).forEach(([param, defaultValue]) => {
+            const div = document.createElement('div');
+            div.className = 'mb-3';
+            
+            let inputHTML = '';
+            if (param === 'tipo_resina') {
+                // Criar dropdown para seleção de resina
+                inputHTML = `
+                    <label for="param_${param}" class="form-label">Tipo de Resina:</label>
+                    <select class="form-control param-input" id="param_${param}" name="${param}" oninput="verificarParametros()">
+                        <option value="1269" ${defaultValue === '1269' ? 'selected' : ''}>Resina Poliéster - R$ 12,96</option>
+                        <option value="1268" ${defaultValue === '1268' ? 'selected' : ''}>Resina Isoftálica - R$ 18,34</option>
+                        <option value="1270" ${defaultValue === '1270' ? 'selected' : ''}>Resina Éster Vinílica - R$ 35,97</option>
+                    </select>
+                `;
+            } else if (param === 'velocidade_m_h') {
+                // Campo específico para velocidade
+                inputHTML = `
+                    <label for="param_${param}" class="form-label">Velocidade (m/h):</label>
+                    <input type="number" class="form-control param-input" id="param_${param}" name="${param}" 
+                           value="${defaultValue}" step="0.1" min="0.1" oninput="verificarParametros()">
+                    <div class="form-text">Velocidade de produção em metros por hora</div>
+                `;
+            } else if (param === 'num_matrizes') {
+                // Campo específico para número de matrizes
+                inputHTML = `
+                    <label for="param_${param}" class="form-label">N° de Matrizes:</label>
+                    <input type="number" class="form-control param-input" id="param_${param}" name="${param}" 
+                           value="${defaultValue}" step="1" min="1" oninput="verificarParametros()">
+                    <div class="form-text">Quantidade de matrizes utilizadas</div>
+                `;
+            } else if (param === 'num_maquinas_utilizadas') {
+                // Campo específico para número de máquinas utilizadas
+                inputHTML = `
+                    <label for="param_${param}" class="form-label">N° de Máquinas Utilizadas:</label>
+                    <input type="number" class="form-control param-input" id="param_${param}" name="${param}" 
+                           value="${defaultValue}" step="1" min="1" max="3" oninput="verificarParametros()">
+                    <div class="form-text">Máquinas utilizadas (máx. 3)</div>
+                `;
+            } else {
+                // Campo normal para outros parâmetros
+                inputHTML = `
+                    <label for="param_${param}" class="form-label">${param.charAt(0).toUpperCase() + param.slice(1)}:</label>
+                    <input type="text" class="form-control param-input" id="param_${param}" name="${param}" value="${defaultValue}" oninput="verificarParametros()">
+                `;
+            }
+            
+            div.innerHTML = inputHTML;
+            opcionaisDiv.appendChild(div);
+        });
+        
+        container.appendChild(opcionaisDiv);
+    }
+    
+    // Adicionar botão de calcular na seção de parâmetros
+    const calcularDiv = document.createElement('div');
+    calcularDiv.className = 'mt-3 text-center';
+    calcularDiv.innerHTML = `
+        <button type="button" class="btn btn-primary" onclick="calcularProdutoParametrizado()" id="calcularBtn" disabled>
+            <i class="fas fa-calculator"></i> Calcular Produto
+        </button>
+    `;
+    container.appendChild(calcularDiv);
+    
+    // Verificar se pode habilitar o botão
+    verificarParametros();
+}
+
+function verificarParametros() {
+    const calcularBtn = document.getElementById('calcularBtn');
+    if (!calcularBtn) {
+        console.log('Botão calcular não encontrado');
+        return;
+    }
+    
+    console.log('=== VERIFICANDO PARÂMETROS ===');
+    
+    // Verificar se tem template selecionado
+    const templateId = document.getElementById('templateSelect').value;
+    if (!templateId) {
+        console.log('Nenhum template selecionado');
+        calcularBtn.disabled = true;
+        return;
+    }
+    
+    const templateAtual = templatesCache.find(t => t.id == templateId);
+    if (!templateAtual) {
+        console.log('Template não encontrado no cache:', templateId);
+        calcularBtn.disabled = true;
+        return;
+    }
+    
+    console.log('Template:', templateAtual);
+    
+    let todosPreenchidos = true;
+    
+    // Verificar parâmetros obrigatórios
+    if (templateAtual.parametros_obrigatorios && templateAtual.parametros_obrigatorios.length > 0) {
+        console.log('Verificando parâmetros obrigatórios:', templateAtual.parametros_obrigatorios);
+        
+        templateAtual.parametros_obrigatorios.forEach(param => {
+            const input = document.getElementById(`param_${param}`);
+            if (!input) {
+                console.log(`Input não encontrado para parâmetro: ${param}`);
+                todosPreenchidos = false;
+            } else if (!input.value || input.value.trim() === '') {
+                console.log(`Parâmetro obrigatório vazio: ${param}`);
+                todosPreenchidos = false;
+            } else {
+                console.log(`Parâmetro OK: ${param} = ${input.value}`);
+            }
+        });
+    }
+    
+    console.log('Todos preenchidos:', todosPreenchidos);
+    calcularBtn.disabled = !todosPreenchidos;
+    
+    if (todosPreenchidos) {
+        console.log('✅ Botão calcular habilitado');
+    } else {
+        console.log('❌ Botão calcular desabilitado');
+    }
+}
+
+function calcularProdutoParametrizado() {
+    const templateId = document.getElementById('templateSelect').value;
+    
+    // Verificar se é "Novo Perfil"
+    if (templateId === 'perfil_customizado') {
+        console.log('=== CALCULANDO NOVO PERFIL ===');
+        calcularNovoPerfil();
+        return;
+    }
+    
+    const template = templatesCache.find(t => t.id == templateId);
+    
+    if (!template) {
+        alert('Template não encontrado!');
+        return;
+    }
+    
+    // Limpar resultado anterior
+    document.getElementById('resultadoCalculado').style.display = 'none';
+    document.getElementById('salvarProdutoBtn').disabled = true;
+    
+    // Limpar tabela de componentes
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Calculando...</td></tr>';
+    
+    // Coletar parâmetros
+    const parametros = {};
+    const allInputs = document.querySelectorAll('.param-input');
+    
+    console.log('=== CÁLCULO PRODUTO PARAMETRIZADO ===');
+    console.log('Template ID:', templateId);
+    console.log('Template:', template);
+    console.log('Inputs encontrados:', allInputs.length);
+    
+    allInputs.forEach((input, index) => {
+        console.log(`Input ${index + 1}: name="${input.name}", value="${input.value}"`);
+        parametros[input.name] = input.value;
+    });
+    
+    console.log('Parâmetros coletados:', parametros);
+    
+    // Mostrar o nome do produto
+    document.getElementById('nomeProdutoCalculado').textContent = template.produto_base.descricao;
+    
+    // Função para obter CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    const requestBody = {
+        template_id: templateId,
+        parametros: parametros
+    };
+    
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    
+    // Fazer chamada para API de cálculo
+    fetch('/api/calcular-produto-parametrizado/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('=== RESPOSTA DA API ===');
+        console.log('Data completa:', data);
+        console.log('Success:', data.success);
+        console.log('Componentes:', data.componentes);
+        console.log('Número de componentes:', data.componentes ? data.componentes.length : 'undefined');
+        
+        if (data.success) {
+            // Armazenar resultado para usar no salvamento
+            ultimoCalculo = data;
+            
+            // Mostrar resultado
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(data.custo_total / 100).toFixed(2)}`;
+            document.getElementById('pesoTotalCalculado').textContent = `${data.peso_total} kg`;
+            document.getElementById('resultadoCalculado').style.display = 'block';
+            
+            // Preencher nome automaticamente baseado no template
+            const nomeInput = document.getElementById('nomeProdutoInput');
+            if (nomeInput && !nomeInput.value) {
+                nomeInput.value = template.produto_base.descricao;
+            }
+            
+            // Mostrar componentes calculados
+            mostrarComponentesCalculados(data.componentes);
+            
+            // Habilitar botão salvar
+            document.getElementById('salvarProdutoBtn').disabled = false;
+        } else {
+            console.error('Erro no cálculo:', data.error);
+            alert('Erro no cálculo: ' + (data.error || 'Erro desconhecido'));
+            
+            // Limpar tabela em caso de erro
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro no cálculo</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular:', error);
+        alert('Erro ao calcular produto. Verifique o console para mais detalhes.');
+        
+        // Limpar tabela em caso de erro
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro na comunicação</td></tr>';
+    });
+}
+
+function mostrarComponentesCalculados(componentes) {
+    console.log('=== MOSTRAR COMPONENTES ===');
+    console.log('Componentes recebidos:', componentes);
+    console.log('Tipo:', typeof componentes);
+    console.log('É array?', Array.isArray(componentes));
+    console.log('Quantidade:', componentes ? componentes.length : 'undefined');
+    
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '';
+    
+    if (!componentes || componentes.length === 0) {
+        console.log('Nenhum componente - mostrando mensagem vazia');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum componente calculado</td></tr>';
+        return;
+    }
+    
+    console.log('Adicionando', componentes.length, 'componentes à tabela');
+    componentes.forEach((comp, index) => {
+        console.log(`Componente ${index + 1}:`, comp);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${comp.nome}</td>
+            <td>${comp.produto || 'N/A'}</td>
+            <td>${parseFloat(comp.quantidade).toFixed(3)}</td>
+            <td>R$ ${(comp.custo_unitario / 100).toFixed(2)}</td>
+            <td>R$ ${(comp.custo_total / 100).toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    console.log('Tabela atualizada com', tbody.children.length, 'linhas');
+}
+
+function criarCamposParametros(parametros) {
+    const container = document.getElementById('parametrosContainer');
+    container.innerHTML = '';
+    
+    if (!parametros || parametros.length === 0) {
+        container.innerHTML = '<p class="text-muted">Este template não possui parâmetros configurados</p>';
+        return;
+    }
+    
+    parametros.forEach(param => {
+        const div = document.createElement('div');
+        div.className = 'mb-3';
+        
+        let inputHTML = '';
+        
+        if (param.tipo === 'decimal' || param.tipo === 'inteiro') {
+            const step = param.tipo === 'decimal' ? '0.01' : '1';
+            inputHTML = `
+                <input type="number" class="form-control" 
+                       id="param_${param.nome}" 
+                       step="${step}" 
+                       value="${param.valor_padrao || ''}" 
+                       placeholder="Digite o valor"
+                       onchange="calcularProduto()"
+                       ${param.obrigatorio ? 'required' : ''}>
+            `;
+        } else if (param.tipo === 'selecao') {
+            // Campo de seleção com opções pré-definidas
+            let opcoes = '';
+            try {
+                const opcoesData = typeof param.opcoes_selecao === 'string' 
+                    ? JSON.parse(param.opcoes_selecao) 
+                    : param.opcoes_selecao || [];
+                
+                opcoesData.forEach(opcao => {
+                    const selected = opcao.id.toString() === param.valor_padrao ? 'selected' : '';
+                    opcoes += `<option value="${opcao.id}" ${selected}>${opcao.descricao} - R$ ${opcao.preco.toFixed(2)}</option>`;
+                });
+            } catch (e) {
+                console.error('Erro ao processar opções de seleção:', e);
+                opcoes = '<option value="">Erro ao carregar opções</option>';
+            }
+            
+            inputHTML = `
+                <select class="form-select" 
+                        id="param_${param.nome}" 
+                        onchange="calcularProduto()"
+                        ${param.obrigatorio ? 'required' : ''}>
+                    <option value="">Selecione...</option>
+                    ${opcoes}
+                </select>
+            `;
+        } else if (param.tipo === 'produto') {
+            // Carregar produtos do banco para seleção
+            inputHTML = `
+                <select class="form-select" 
+                        id="param_${param.nome}" 
+                        onchange="calcularProduto()"
+                        ${param.obrigatorio ? 'required' : ''}>
+                    <option value="">Carregando produtos...</option>
+                </select>
+            `;
+            
+            // Carregar produtos após criar o elemento
+            setTimeout(() => carregarProdutosParaParametro(param.nome), 100);
+        }
+        
+        div.innerHTML = `
+            <label for="param_${param.nome}" class="form-label">
+                ${param.label} ${param.obrigatorio ? '*' : ''}
+            </label>
+            ${inputHTML}
+            ${param.ajuda ? `<div class="form-text">${param.ajuda}</div>` : ''}
+        `;
+        
+        container.appendChild(div);
+    });
+    
+    // Botão para calcular
+    const btnDiv = document.createElement('div');
+    btnDiv.innerHTML = `
+        <button type="button" class="btn btn-primary w-100" onclick="calcularProduto()">
+            <i class="fas fa-calculator"></i> Calcular
+        </button>
+    `;
+    container.appendChild(btnDiv);
+}
+
+function carregarProdutosParaParametro(nomeParametro) {
+    const select = document.getElementById(`param_${nomeParametro}`);
+    if (!select) return;
+    
+    // Filtrar apenas produtos que podem ser usados como perfis/materiais
+    const produtosFiltrados = allProductsOriginal.filter(produto => 
+        produto.tipo === 'Simples' && 
+        (produto.unidade === 'M' || produto.unidade === 'KG' || produto.unidade === 'UN')
+    );
+    
+    select.innerHTML = '<option value="">Selecione um produto...</option>';
+    
+    produtosFiltrados.forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto.id;
+        option.textContent = `${produto.descricao} - R$ ${(produto.custo_centavos / 100).toFixed(2)}/${produto.unidade}`;
+        select.appendChild(option);
+    });
+}
+
+function calcularProduto() {
+    if (!templateAtual) return;
+    
+    // Coletar valores dos parâmetros
+    const parametros = {};
+    let todosPreenchidos = true;
+    
+    templateAtual.parametros.forEach(param => {
+        const input = document.getElementById(`param_${param.nome}`);
+        if (input) {
+            const valor = input.value;
+            if (param.obrigatorio && !valor) {
+                todosPreenchidos = false;
+            }
+            parametros[param.nome] = valor;
+        }
+    });
+    
+    if (!todosPreenchidos) {
+        document.getElementById('resultadoContainer').innerHTML = '<p class="text-warning">Preencha todos os parâmetros obrigatórios</p>';
+        return;
+    }
+    
+    // Fazer chamada para calcular
+    fetch(apiCalcular, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            template_id: templateAtual.id,
+            parametros: parametros
+        })
+    })
+    .then(res => res.json())
+    .then(resultado => {
+        if (resultado.erro) {
+            document.getElementById('resultadoContainer').innerHTML = `<p class="text-danger">Erro: ${resultado.erro}</p>`;
+            return;
+        }
+        
+        ultimoCalculo = resultado;
+        exibirResultadoCalculo(resultado);
+        
+        // Habilitar botão salvar
+        document.getElementById('salvarProdutoBtn').disabled = false;
+    })
+    .catch(error => {
+        console.error('Erro no cálculo:', error);
+        document.getElementById('resultadoContainer').innerHTML = '<p class="text-danger">Erro na comunicação com o servidor</p>';
+    });
+}
+
+function exibirResultadoCalculo(resultado) {
+    // Mostrar resumo no painel de resultado
+    document.getElementById('resultadoContainer').innerHTML = `
+        <div class="alert alert-success">
+            <h6><i class="fas fa-check-circle"></i> Cálculo realizado!</h6>
+            <p class="mb-1"><strong>Custo Total:</strong> R$ ${resultado.custo_total.toFixed(2)}</p>
+            ${resultado.area_m2 ? `<p class="mb-1"><strong>Área:</strong> ${resultado.area_m2.toFixed(2)} m²</p>` : ''}
+            ${resultado.custo_por_m2 ? `<p class="mb-1"><strong>Custo por m²:</strong> R$ ${resultado.custo_por_m2.toFixed(2)}</p>` : ''}
+            <p class="mb-2"><small>${resultado.componentes.length} componente(s) calculado(s)</small></p>
+        </div>
+        
+        <div class="mt-3">
+            <label for="nomeProdutoParametrizado" class="form-label"><strong>Nome do Produto *</strong></label>
+            <input type="text" class="form-control" id="nomeProdutoParametrizado" 
+                   placeholder="Ex: Grade 2000x1000mm" required>
+            <div class="form-text">Digite um nome descritivo para este produto</div>
+        </div>
+        
+        <div class="mt-3">
+            <label for="descricaoProdutoParametrizado" class="form-label">Descrição Adicional</label>
+            <textarea class="form-control" id="descricaoProdutoParametrizado" rows="2" 
+                      placeholder="Descrição detalhada do produto (opcional)"></textarea>
+            <div class="form-text">Informações adicionais sobre o produto</div>
+        </div>
+    `;
+    
+    // Mostrar tabela de componentes
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '';
+    
+    resultado.componentes.forEach(comp => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${comp.nome}</td>
+                <td>${comp.produto}</td>
+                <td>${comp.quantidade.toFixed(3)} ${comp.unidade || ''}</td>
+                <td>R$ ${comp.custo_unitario.toFixed(2)}</td>
+                <td>R$ ${comp.custo_total.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+}
+
+function salvarProdutoParametrizado() {
+    const templateId = document.getElementById('templateSelect').value;
+    
+    // Verificar se é um perfil
+    if (templateId === 'perfil_customizado') {
+        return salvarPerfilParametrizado();
+    }
+    
+    const template = templatesCache.find(t => t.id == templateId);
+    
+    if (!template) {
+        alert('Selecione um template primeiro!');
+        return;
+    }
+    
+    // Verificar se o cálculo foi feito
+    const resultadoDiv = document.getElementById('resultadoCalculado');
+    if (resultadoDiv.style.display === 'none') {
+        alert('Realize o cálculo primeiro!');
+        return;
+    }
+    
+    // Verificar se nome foi preenchido
+    const nomeInput = document.getElementById('nomeProdutoInput');
+    if (!nomeInput || !nomeInput.value.trim()) {
+        alert('Por favor, digite um nome para o produto!');
+        nomeInput?.focus();
+        return;
+    }
+    
+    // Coletar parâmetros
+    const parametros = {};
+    const allInputs = document.querySelectorAll('.param-input');
+    allInputs.forEach(input => {
+        parametros[input.name] = input.value;
+    });
+    
+    // Usar o nome digitado pelo usuário
+    const descricaoFinal = nomeInput.value.trim();
+    
+    // Criar referência única
+    const agora = new Date();
+    const timestamp = agora.getTime();
+    const referencia = `PARAM-${template.id}-${timestamp}`;
+    
+    // Obter custo e peso do resultado calculado
+    const custoTexto = document.getElementById('custoTotalCalculado').textContent;
+    const custoReais = parseFloat(custoTexto.replace('R$ ', '').replace(',', '.'));
+    const custoCentavos = Math.round(custoReais * 100);
+    
+    const pesoTexto = document.getElementById('pesoTotalCalculado').textContent;
+    const peso = parseFloat(pesoTexto.replace(' kg', ''));
+    
+    // Função para obter CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    // Dados do produto
+    const produtoData = {
+        descricao: descricaoFinal,
+        custo_centavos: custoCentavos,
+        peso_und: peso.toFixed(3),
+        unidade: template.produto_base.unidade,
+        referencia: referencia,
+        tipo_produto: 'composto',  // Mudança: salvar como composto
+        categoria: template.produto_base.categoria,
+        subcategoria: 'Parametrizado'
+    };
+    
+    console.log('Salvando produto:', produtoData);
+    
+    // Salvar produto
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        console.log('🔄 Resposta do servidor para produto principal:', response.status);
+        if (!response.ok) {
+            console.error('❌ Erro ao salvar produto principal:', response.status);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('✅ Produto principal salvo com sucesso:', produto);
+        console.log('   ID do produto:', produto.id, 'Tipo:', typeof produto.id);
+        
+        // Agora salvar todos os componentes calculados
+        return salvarComponentesParametrizados(produto.id, csrftoken);
+    })
+    .then(produto => {
+        console.log('Produto e componentes salvos com sucesso');
+        alert(`Produto "${produto.descricao}" salvo com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}\nComponentes: ${produto.num_componentes || 'N/A'}`);
+        
+        // Fechar modal
+        closeProdutoParametrizadoModal();
+        
+        // Recarregar lista de produtos
+        fetchProdutos();
+    })
+    .catch(error => {
+        console.error('Erro ao salvar produto:', error);
+        alert('Erro ao salvar produto: ' + error.message);
+    });
+}
+
+async function salvarComponentesParametrizados(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES PARAMETRIZADOS ===');
+    console.log('Produto ID:', produtoId, 'Tipo:', typeof produtoId);
+    
+    // Validar produto ID
+    if (!produtoId || produtoId === 'undefined' || produtoId === 'null') {
+        console.error('❌ Produto ID inválido:', produtoId);
+        throw new Error('Produto ID inválido');
+    }
+    
+    // Obter dados do último cálculo
+    if (!ultimoCalculo || !ultimoCalculo.componentes) {
+        throw new Error('Dados do cálculo não encontrados');
+    }
+    
+    const componentes = ultimoCalculo.componentes;
+    console.log('Componentes a salvar:', componentes.length);
+    
+    // Mapeamento dos componentes para IDs na tabela MP_Produtos
+    const componentesMapeamento = {
+        'Roving 4400': 1237,
+        'Manta 300': 1238,
+        'Véu': 1239,
+        'Resina Poliéster': 1269,
+        'Resina Isoftálica': 1268,
+        'Resina Éster Vinílica': 1270,
+        'Monômero de estireno': 1266,
+        'Anti UV': 1243,
+        'Anti OX': 1244,
+        'BPO': 1245,
+        'TBPB': 1246,
+        'Desmoldante': 1247,
+        'Antichama': 1248,
+        'Carga mineral': 1249,
+        'Pigmento': 1250,
+        // Mapeamento especial para mão de obra
+        'Mão de Obra - Pultrusão': null  // Será definido dinamicamente
+    };
+    
+    let componentesSalvos = 0;
+    let produtoFinal = null;
+    
+    // Primeiro, limpar componentes existentes deste produto para evitar conflitos
+    console.log('🧹 Limpando componentes existentes do produto...');
+    try {
+        const componentesExistentesResponse = await fetch(`/api/componentes/?produto_principal=${produtoId}`);
+        const componentesExistentes = await componentesExistentesResponse.json();
+        
+        console.log(`   Encontrados ${componentesExistentes.length} componentes existentes`);
+        
+        for (const comp of componentesExistentes) {
+            await fetch(`/api/componentes/${comp.id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            });
+        }
+        
+        console.log('✅ Componentes existentes removidos');
+    } catch (error) {
+        console.warn('⚠️ Erro ao limpar componentes existentes:', error);
+    }
+    
+    // Primeiro, buscar todos os produtos para fazer mapeamento dinâmico
+    const produtosResponse = await fetch('/api/produtos/');
+    const todosProdutos = await produtosResponse.json();
+    
+    // Verificar se existe produto para mão de obra, senão criar
+    let maoObraProductId = null;
+    const maoObraProduto = todosProdutos.find(p => 
+        p.descricao && p.descricao.toLowerCase().includes('mão de obra') && 
+        p.descricao.toLowerCase().includes('pultrusão')
+    );
+    
+    if (maoObraProduto) {
+        maoObraProductId = maoObraProduto.id;
+        console.log(`✅ Produto mão de obra encontrado: ID ${maoObraProductId} - ${maoObraProduto.descricao}`);
+    } else {
+        // Criar produto para mão de obra se não existir
+        console.log('🔧 Criando produto para mão de obra...');
+        try {
+            const maoObraData = {
+                descricao: 'Mão de Obra - Pultrusão',
+                custo_centavos: 1, // Custo simbólico, o valor real vem do cálculo
+                peso_und: '0.000',
+                unidade: 'H',
+                referencia: 'MAO-OBRA-PULT',
+                tipo_produto: 'simples',
+                categoria: 'Mão de Obra',
+                subcategoria: 'Pultrusão'
+            };
+            
+            const createResponse = await fetch('/api/produtos/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(maoObraData)
+            });
+            
+            if (createResponse.ok) {
+                const novoProdutoMaoObra = await createResponse.json();
+                maoObraProductId = novoProdutoMaoObra.id;
+                console.log(`✅ Produto mão de obra criado: ID ${maoObraProductId}`);
+                
+                // Atualizar lista de produtos
+                todosProdutos.push(novoProdutoMaoObra);
+            } else {
+                console.error('❌ Erro ao criar produto de mão de obra');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao criar produto de mão de obra:', error);
+        }
+    }
+    
+    // Atualizar mapeamento com ID da mão de obra
+    if (maoObraProductId) {
+        componentesMapeamento['Mão de Obra - Pultrusão'] = maoObraProductId;
+    }
+    
+    // Criar mapeamento por nome de produto
+    const produtosPorNome = {};
+    
+    // Primeiro, mapear por nome exato
+    todosProdutos.forEach(produto => {
+        produtosPorNome[produto.descricao] = produto.id;
+    });
+    
+    // Depois, criar mapeamentos específicos por palavras-chave (sem sobrescrever)
+    todosProdutos.forEach(produto => {
+        const desc = produto.descricao.toLowerCase();
+        
+        // Mapeamento específico - apenas se ainda não foi mapeado
+        if (desc.includes('roving') && !produtosPorNome['Roving 4400']) {
+            produtosPorNome['Roving 4400'] = produto.id;
+        }
+        if (desc.includes('manta') && desc.includes('300') && !produtosPorNome['Manta 300']) {
+            produtosPorNome['Manta 300'] = produto.id;
+        }
+        if ((desc.includes('véu') || desc.includes('veu')) && !produtosPorNome['Véu']) {
+            produtosPorNome['Véu'] = produto.id;
+        }
+        if (desc.includes('resina') && desc.includes('poliéster') && !produtosPorNome['Resina Poliéster']) {
+            produtosPorNome['Resina Poliéster'] = produto.id;
+        }
+        if (desc.includes('resina') && desc.includes('isoftálica') && !produtosPorNome['Resina Isoftálica']) {
+            produtosPorNome['Resina Isoftálica'] = produto.id;
+        }
+        if (desc.includes('resina') && desc.includes('éster') && !produtosPorNome['Resina Éster Vinílica']) {
+            produtosPorNome['Resina Éster Vinílica'] = produto.id;
+        }
+        if ((desc.includes('monômero') || desc.includes('estireno')) && !produtosPorNome['Monômero de estireno']) {
+            produtosPorNome['Monômero de estireno'] = produto.id;
+        }
+        if (desc.includes('anti') && desc.includes('uv') && !produtosPorNome['Anti UV']) {
+            produtosPorNome['Anti UV'] = produto.id;
+        }
+        if (desc.includes('anti') && desc.includes('ox') && !produtosPorNome['Anti OX']) {
+            produtosPorNome['Anti OX'] = produto.id;
+        }
+        if (desc.includes('bpo') && !produtosPorNome['BPO']) {
+            produtosPorNome['BPO'] = produto.id;
+        }
+        if (desc.includes('tbpb') && !produtosPorNome['TBPB']) {
+            produtosPorNome['TBPB'] = produto.id;
+        }
+        if (desc.includes('desmoldante') && !produtosPorNome['Desmoldante']) {
+            produtosPorNome['Desmoldante'] = produto.id;
+        }
+        if (desc.includes('antichama') && !produtosPorNome['Antichama']) {
+            produtosPorNome['Antichama'] = produto.id;
+        }
+        if (desc.includes('carga') && desc.includes('mineral') && !produtosPorNome['Carga mineral']) {
+            produtosPorNome['Carga mineral'] = produto.id;
+        }
+        if (desc.includes('pigmento') && !produtosPorNome['Pigmento']) {
+            produtosPorNome['Pigmento'] = produto.id;
+        }
+    });
+    
+    console.log('Mapeamento de produtos por nome:', produtosPorNome);
+    console.log('Total de produtos encontrados:', todosProdutos.length);
+    console.log('Componentes a mapear:', componentes.map(c => c.nome));
+    
+    // Verificar mapeamentos específicos
+    console.log('=== VERIFICAÇÃO DE MAPEAMENTOS ===');
+    componentes.forEach(comp => {
+        const id = produtosPorNome[comp.nome];
+        console.log(`${comp.nome} -> ID: ${id}`);
+    });
+    
+    // Salvar cada componente individualmente
+    for (const componente of componentes) {
+        try {
+            let produtoComponenteId = null;
+            
+            // Verificar se é componente de mão de obra
+            if (componente.nome === 'Mão de Obra - Pultrusão') {
+                produtoComponenteId = componentesMapeamento['Mão de Obra - Pultrusão'];
+                console.log(`🔧 Processando mão de obra: ID ${produtoComponenteId}`);
+                
+                // CORREÇÃO: Atualizar o custo do produto de mão de obra com o valor calculado
+                if (produtoComponenteId && componente.custo_total > 0) {
+                    console.log(`🔄 Atualizando custo do produto mão de obra...`);
+                    const updateData = {
+                        custo_centavos: componente.custo_total
+                    };
+                    
+                    try {
+                        const updateResponse = await fetch(`/api/produtos/${produtoComponenteId}/`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken
+                            },
+                            body: JSON.stringify(updateData)
+                        });
+                        
+                        if (updateResponse.ok) {
+                            console.log(`✅ Custo do produto mão de obra atualizado para ${componente.custo_total} centavos`);
+                        } else {
+                            console.warn(`⚠️ Erro ao atualizar custo do produto mão de obra`);
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Erro ao atualizar produto mão de obra:`, error);
+                    }
+                }
+            } else {
+                // Encontrar ID do produto componente usando mapeamento dinâmico
+                produtoComponenteId = produtosPorNome[componente.nome];
+                console.log(`🔍 Buscando componente: "${componente.nome}"`);
+                console.log(`   - Mapeamento dinâmico: ${produtoComponenteId}`);
+                
+                // Se não encontrar, tentar mapeamento fixo
+                if (!produtoComponenteId) {
+                    produtoComponenteId = componentesMapeamento[componente.nome];
+                    console.log(`   - Mapeamento fixo: ${produtoComponenteId}`);
+                }
+            }
+            
+            // Se ainda não encontrar, tentar busca aproximada ou pular
+            if (!produtoComponenteId) {
+                console.warn(`❌ Componente não encontrado: ${componente.nome}`);
+                console.log('Produtos disponíveis:', Object.keys(produtosPorNome));
+                
+                // Para mão de obra, não pular - mostrar erro específico
+                if (componente.nome === 'Mão de Obra - Pultrusão') {
+                    console.error('❌ ERRO CRÍTICO: Não foi possível mapear mão de obra!');
+                }
+                continue;
+            }
+            
+            console.log(`✅ Componente "${componente.nome}" mapeado para ID: ${produtoComponenteId}`);
+            
+            const componenteData = {
+                produto_principal: produtoId,
+                produto_componente: produtoComponenteId,
+                quantidade: Math.round(parseFloat(componente.quantidade) * 1000) / 1000, // Arredondar para 3 casas decimais
+                observacao: componente.nome === 'Mão de Obra - Pultrusão' 
+                    ? `Mão de obra parametrizada: ${componente.produto}` 
+                    : `Componente parametrizado calculado automaticamente`
+            };
+            
+            console.log(`💾 Salvando componente: ${componente.nome} (ID: ${produtoComponenteId}) - Quantidade: ${componenteData.quantidade}`);
+            
+            const response = await fetch('/api/componentes/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(componenteData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ Erro ao salvar componente ${componente.nome}:`, response.status);
+                console.error(`   Detalhes do erro:`, errorText);
+                
+                // Tentar parsear como JSON para ver erro estruturado
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    console.error(`   Erro estruturado:`, errorJson);
+                } catch (e) {
+                    console.error(`   Erro como texto:`, errorText);
+                }
+                continue;
+            }
+            
+            const componenteSalvo = await response.json();
+            console.log(`✅ Componente salvo: ${componente.nome} ${componente.nome === 'Mão de Obra - Pultrusão' ? '(MÃO DE OBRA)' : ''}`);
+            componentesSalvos++;
+            
+        } catch (error) {
+            console.error(`❌ Erro ao processar componente ${componente.nome}:`, error);
+        }
+    }
+    
+    console.log(`=== SALVAMENTO CONCLUÍDO ===`);
+    console.log(`Componentes salvos: ${componentesSalvos}/${componentes.length}`);
+    
+    // Buscar o produto atualizado para retornar
+    const produtoResponse = await fetch(`/api/produtos/${produtoId}/`);
+    produtoFinal = await produtoResponse.json();
+    produtoFinal.num_componentes = componentesSalvos;
+    
+    return produtoFinal;
+}
+
+// Função para recalcular um componente específico baseado no novo fator
+function recalcularComponente(componenteIndex) {
+    if (!ultimoCalculo || !ultimoCalculo.componentes[componenteIndex]) {
+        alert('Erro: Componente não encontrado!');
+        return;
+    }
+    
+    const fatorInput = document.querySelector(`input[data-component-index="${componenteIndex}"]`);
+    const novoFator = parseFloat(fatorInput.value);
+    
+    if (isNaN(novoFator) || novoFator < 0 || novoFator > 100) {
+        alert('Fator deve ser um número entre 0 e 100!');
+        return;
+    }
+    
+    const componente = ultimoCalculo.componentes[componenteIndex];
+    const pesoResinaBase = ultimoCalculo.peso_resina_base;
+    
+    // Recalcular quantidade baseada no novo fator
+    const novaQuantidade = pesoResinaBase * (novoFator / 100);
+    const novoCustoTotal = novaQuantidade * componente.custo_unitario;
+    
+    // Atualizar o componente
+    componente.quantidade = novaQuantidade;
+    componente.custo_total = novoCustoTotal;
+    
+    // Atualizar a exibição na tabela
+    const row = document.querySelector(`input[data-component-index="${componenteIndex}"]`).closest('tr');
+    row.querySelector('.quantidade-display').textContent = novaQuantidade.toFixed(4);
+    row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(2)}`;
+    
+    // Recalcular total geral
+    atualizarTotalGeral();
+    
+    console.log(`Componente ${componente.nome} recalculado: Fator: ${novoFator}%, Qtd: ${novaQuantidade.toFixed(4)}, Custo: R$ ${novoCustoTotal.toFixed(2)}`);
+}
+
+// Função para recalcular todos os componentes
+function recalcularTodosComponentes() {
+    if (!ultimoCalculo || !ultimoCalculo.componentes) {
+        alert('Erro: Nenhum cálculo encontrado!');
+        return;
+    }
+    
+    console.log('=== RECALCULANDO TODOS OS COMPONENTES ===');
+    
+    const fatoresInputs = document.querySelectorAll('.fator-input');
+    
+    fatoresInputs.forEach(input => {
+        const componenteIndex = parseInt(input.getAttribute('data-component-index'));
+        const novoFator = parseFloat(input.value);
+        
+        if (!isNaN(novoFator) && novoFator >= 0 && novoFator <= 100) {
+            const componente = ultimoCalculo.componentes[componenteIndex];
+            const pesoResinaBase = ultimoCalculo.peso_resina_base;
+            
+            // Recalcular
+            const novaQuantidade = pesoResinaBase * (novoFator / 100);
+            const novoCustoTotal = novaQuantidade * componente.custo_unitario;
+            
+            // Atualizar componente
+            componente.quantidade = novaQuantidade;
+            componente.custo_total = novoCustoTotal;
+            
+            // Atualizar exibição
+            const row = input.closest('tr');
+            row.querySelector('.quantidade-display').textContent = novaQuantidade.toFixed(4);
+            row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(2)}`;
+            
+            console.log(`Recalculado ${componente.nome}: ${novoFator}% = ${novaQuantidade.toFixed(4)} kg = R$ ${novoCustoTotal.toFixed(2)}`);
+        }
+    });
+    
+    // Atualizar total geral
+    atualizarTotalGeral();
+    
+    alert('Todos os componentes foram recalculados com sucesso!');
+}
+
+// Função para atualizar o total geral
+function atualizarTotalGeral() {
+    if (!ultimoCalculo || !ultimoCalculo.componentes) return;
+    
+    const custoTotalGeral = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    
+    // Atualizar exibição na tabela
+    const totalElement = document.getElementById('custo-total-geral');
+    if (totalElement) {
+        totalElement.textContent = `R$ ${custoTotalGeral.toFixed(2)}`;
+    }
+    
+    // Atualizar no resumo também
+    ultimoCalculo.custo_total = Math.round(custoTotalGeral * 100);
+    document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(2)}`;
+    
+    console.log(`Total geral atualizado: R$ ${custoTotalGeral.toFixed(2)}`);
+}
+
+
+window.onload = function() {
+    fetchProdutos();
+};
+</script>
+</body>
+</html>

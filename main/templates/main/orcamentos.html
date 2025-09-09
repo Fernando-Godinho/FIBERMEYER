@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Orçamentos - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+        .orcamento-status {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+  <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+    <h4 class="mb-4">FIBERMEYER</h4>
+    <ul class="nav nav-pills flex-column mb-auto">
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+          <span>Parâmetros</span>
+          <span class="ms-auto caret-indicator" style="transition: transform 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-down" viewBox="0 0 16 16">
+              <path d="M3.204 5h9.592L8 10.481 3.204 5z"/>
+            </svg>
+          </span>
+        </a>
+        <div class="collapse ms-3" id="parametrosSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+            <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+            <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+          </ul>
+        </div>
+      </li>
+      <li><a href="/" class="nav-link">Dashboard</a></li>
+      <li><a href="/orcamento/" class="nav-link active">Orçamentos</a></li>
+      <li><a href="/about/" class="nav-link">Sobre</a></li>
+      <li><a href="/admin/" class="nav-link">Administração</a></li>
+    </ul>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+        var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+        var caret = parametrosLink.querySelector('.caret-indicator');
+        parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+          caret.style.transform = 'rotate(180deg)';
+        });
+        parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+          caret.style.transform = 'rotate(0deg)';
+        });
+      });
+    </script>
+  </nav>
+  <div class="container-fluid p-4">
+    <h1 class="mb-4">Orçamentos</h1>
+    <div class="d-flex justify-content-end mb-3">
+      <a href="/orcamento_form/" class="btn btn-primary">Novo Orçamento</a>
+    </div>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Cliente</th>
+          <th>UF</th>
+          <th>Contato</th>
+          <th>Revisão</th>
+          <th>Valor Total</th>
+          <th>Desconto Total</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for orcamento in orcamentos %}
+        <tr>
+          <td>{{ orcamento.id }}</td>
+          <td>{{ orcamento.cliente }}</td>
+          <td>{{ orcamento.uf }}</td>
+          <td>{{ orcamento.contato }}</td>
+          <td>{{ orcamento.revisao }}</td>
+          <td>R$ {{ orcamento.total_liquido|floatformat:2 }}</td>
+          <td>R$ {{ orcamento.desconto_total|floatformat:2 }}</td>
+          <td><span class="badge bg-warning">{{ orcamento.status }}</span></td>
+          <td>
+            <a href="/orcamento/{{ orcamento.id }}/" class="btn btn-info btn-sm">Ver</a>
+            <form method="post" action="" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="orcamento_id" value="{{ orcamento.id }}">
+              <button type="submit" name="delete_orcamento" value="1" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este orçamento?');">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

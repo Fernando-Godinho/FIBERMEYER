@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Clientes - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        .table th {
+            font-size: 0.9rem;      
+            font-weight: bold;
+            background: #f8f9fa;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table td {
+            font-size: 0.8rem;
+        }
+    
+        .table tbody tr:hover {
+            background: #e9ecef;
+            /* Larguras fixas para cada coluna */
+        }
+        /* Larguras fixas para colunas da tabela */
+        #produtos-table th:nth-child(1), #produtos-table td:nth-child(1) { width: 50px; }
+        #produtos-table th:nth-child(2), #produtos-table td:nth-child(2) { width: 220px; }
+        #produtos-table th:nth-child(3), #produtos-table td:nth-child(3) { width: 50px; }
+        #produtos-table th:nth-child(4), #produtos-table td:nth-child(4) { width: 70px; }
+        #produtos-table th:nth-child(5), #produtos-table td:nth-child(5) { width: 50px; }
+        #produtos-table th:nth-child(6), #produtos-table td:nth-child(6) { width: 50px; }
+        #produtos-table th:nth-child(7), #produtos-table td:nth-child(7) { width: 90px; }
+        #produtos-table th:nth-child(8), #produtos-table td:nth-child(8) { width: 180px; }
+        
+        .table td.text-end {
+            text-align: right;
+        }
+        .table td.text-center {
+            text-align: center;
+        }
+        .btn {
+            font-size: 0.95rem;
+            padding: 0.35rem 0.8rem;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+        @media (max-width: 900px) {
+            .container-fluid {
+                padding: 0.5rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .table th, .table td {
+                font-size: 0.95rem;
+                padding: 0.4rem 0.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+  <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+        <h4 class="mb-4">FIBERMEYER</h4>
+        <ul class="nav nav-pills flex-column mb-auto">
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+              <span>Parâmetros</span>
+              <span class="ms-auto caret-indicator" style="transition: transform 0.2s;"></span>
+            </a>
+            <div class="collapse ms-3" id="parametrosSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+            <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+            <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+          </ul>
+            </div>
+          </li>
+          <li><a href="/" class="nav-link active">Dashboard</a></li>
+          <li><a href="/orcamento/" class="nav-link">Orçamentos</a></li>
+          <li><a href="/about/" class="nav-link">Sobre</a></li>
+          <li><a href="/admin/" class="nav-link">Administração</a></li>
+        </ul>
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+            var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+            var caret = parametrosLink.querySelector('.caret-indicator');
+            parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+              caret.style.transform = 'rotate(180deg)';
+            });
+            parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+              caret.style.transform = 'rotate(0deg)';
+            });
+          });
+        </script>
+  </nav>
+  <div class="container-fluid p-4">
+    <h1>Dashboard</h1>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Resumo de Produtos</h5>
+            <p class="card-text">Widgets e gráficos podem ser adicionados aqui.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Outros Indicadores</h5>
+            <p class="card-text">Indicadores do sistema.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Produto -->
+<div class="modal" tabindex="-1" id="produtoModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleProduto">Adicionar Produto</h5>
+        <button type="button" class="btn-close" onclick="closeFormProduto()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="produtoForm">
+          <input type="hidden" id="produtoId">
+          <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <input type="text" class="form-control" id="descricao" required>
+          </div>
+          <div class="mb-3">
+            <label for="custo_centavos" class="form-label">Custo (R$)</label>
+            <input type="text" class="form-control" id="custo_centavos" required pattern="^\d+(,\d{2})?$" placeholder="Ex: 12,34">
+          </div>
+          <div class="mb-3">
+            <label for="peso_und" class="form-label">Peso UND</label>
+            <input type="number" step="0.000001" class="form-control" id="peso_und" required>
+          </div>
+          <div class="mb-3">
+            <label for="unidade" class="form-label">Unidade</label>
+            <select class="form-select" id="unidade" required>
+              <option value="">Selecione</option>
+              <option value="UN">UN</option>
+              <option value="M">M</option>
+              <option value="M²">M²</option>
+              <option value="CM">CM</option>
+              <option value="KG">KG</option>
+              <option value="L">L</option>
+              <option value="PÇ">PÇ</option>
+              <option value="CX">CX</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="referencia" class="form-label">Referência</label>
+            <select class="form-select" id="referencia">
+              <option value="">Selecione</option>
+              <option value="Votorantim">Votorantim</option>
+              <option value="Gerdau">Gerdau</option>
+              <option value="ArcelorMittal">ArcelorMittal</option>
+              <option value="CSN">CSN</option>
+              <option value="Usiminas">Usiminas</option>
+              <option value="Belgo">Belgo</option>
+              <option value="Aperam">Aperam</option>
+              <option value="Nippon">Nippon</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeFormProduto()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="submitFormProduto()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const apiProdutos = '/api/produtos/';
+let produtoModal = null;
+if(document.getElementById('produtoModal')) produtoModal = new bootstrap.Modal(document.getElementById('produtoModal'));
+
+// PRODUTOS CRUD
+function fetchProdutos() {
+    fetch(apiProdutos)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#produtos-table tbody');
+            tbody.innerHTML = '';
+            data.forEach(produto => {
+                // Converte centavos para reais e formata
+                let centavos = Number(produto.custo_centavos);
+                let reais = !isNaN(centavos) ? centavos / 100 : 0;
+                let custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                // Limita peso_und a 2 casas decimais
+                let pesoFormatado = Number(produto.peso_und).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center">${produto.id}</td>
+                        <td>${produto.descricao}</td>
+                        <td class="text-end">${custo_reais}</td>
+                        <td class="text-end">${pesoFormatado}</td>
+                        <td class="text-center">${produto.unidade}</td>
+                        <td>${produto.referencia || ''}</td>
+                        <td class="text-center">${produto.data_revisao || ''}</td>
+                        <td class="text-center">
+                            <button class="btn btn-warning btn-sm me-1" onclick="editProduto(${produto.id})">Editar</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduto(${produto.id})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+}
+function openFormProduto(id=null) {
+    document.getElementById('produtoForm').reset();
+    document.getElementById('produtoId').value = '';
+    document.getElementById('modalTitleProduto').innerText = 'Adicionar Produto';
+    if (id) {
+        fetch(apiProdutos + id + '/')
+            .then(res => res.json())
+            .then(produto => {
+                document.getElementById('produtoId').value = produto.id;
+                document.getElementById('descricao').value = produto.descricao;
+                document.getElementById('custo_centavos').value = produto.custo_centavos;
+                document.getElementById('peso_und').value = produto.peso_und;
+                document.getElementById('unidade').value = produto.unidade;
+                document.getElementById('referencia').value = produto.referencia || '';
+                document.getElementById('data_revisao').value = produto.data_revisao || '';
+                document.getElementById('modalTitleProduto').innerText = 'Editar Produto';
+            });
+    }
+    produtoModal.show();
+}
+function closeFormProduto() {
+    produtoModal.hide();
+}
+function submitFormProduto() {
+    const id = document.getElementById('produtoId').value;
+    const descricao = document.getElementById('descricao').value;
+    // Converte valor monetário para centavos
+    let custo_valor = document.getElementById('custo_centavos').value.replace('.', '').replace(',', '.');
+    let custo_centavos = Math.round(parseFloat(custo_valor) * 100);
+    const peso_und = document.getElementById('peso_und').value;
+    const unidade = document.getElementById('unidade').value;
+    const referencia = document.getElementById('referencia').value;
+    // Gera data/hora atual no formato DD/MM/YYYY HH:mm:ss para o campo data_revisao
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    const data_revisao = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? apiProdutos + id + '/' : apiProdutos;
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({descricao, custo_centavos, peso_und, unidade, referencia, data_revisao})
+    })
+    .then(res => {
+        if (res.ok) {
+            closeFormProduto();
+            fetchProdutos();
+        } else {
+            res.json().then(data => alert('Erro: ' + JSON.stringify(data)));
+        }
+    });
+}
+function editProduto(id) {
+    openFormProduto(id);
+}
+function deleteProduto(id) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        fetch(apiProdutos + id + '/', {method: 'DELETE'})
+            .then(res => {
+                if (res.ok) fetchProdutos();
+                else alert('Erro ao excluir!');
+            });
+    }
+}
+
+window.onload = function() {
+    fetchProdutos();
+};
+</script>
+</body>
+</html>

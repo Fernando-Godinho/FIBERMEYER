@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Produtos Compostos - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+        .componente-row {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+  <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+          <h4 class="mb-4">FIBERMEYER</h4>
+          <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+                <span>Parâmetros</span>
+                <span class="ms-auto caret-indicator" style="transition: transform 0.2s;"></span>
+              </a>
+              <div class="collapse ms-3" id="parametrosSubmenu">
+                <ul class="nav flex-column">
+                  <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+                  <!-- <li class="nav-item"><a class="nav-link active" href="/produtos-compostos/">Produtos Compostos</a></li> -->
+                  <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+                </ul>
+              </div>
+            </li>
+            <li><a href="/" class="nav-link">Dashboard</a></li>
+            <li><a href="/orcamento/" class="nav-link">Orçamentos</a></li>
+            <li><a href="/about/" class="nav-link">Sobre</a></li>
+            <li><a href="/admin/" class="nav-link">Administração</a></li>
+          </ul>
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+              var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+              var caret = parametrosLink.querySelector('.caret-indicator');
+              // Expandir automaticamente se estivermos na seção
+              parametrosSubmenu.classList.add('show');
+              caret.style.transform = 'rotate(180deg)';
+              
+              parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+                caret.style.transform = 'rotate(180deg)';
+              });
+              parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+                caret.style.transform = 'rotate(0deg)';
+              });
+            });
+          </script>
+  </nav>
+  <div class="container-fluid p-4">
+    <h1>Produtos Compostos</h1>
+    <p class="text-muted mb-3">Crie produtos compostos usando outros produtos como componentes. Ex: Kit tubo + cola + parafusos</p>
+    
+    <div class="mb-3">
+      <button class="btn btn-primary me-2" onclick="openFormProdutoComposto()">
+        <i class="fas fa-plus"></i> Criar Produto Composto
+      </button>
+    </div>
+
+    <table class="table table-bordered" id="produtos-compostos-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Custo Total</th>
+                <th>Peso Total</th>
+                <th>Componentes</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Produto Composto -->
+<div class="modal" tabindex="-1" id="produtoCompostoModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleProdutoComposto">Criar Produto Composto</h5>
+        <button type="button" class="btn-close" onclick="closeFormProdutoComposto()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="produtoCompostoForm">
+          <input type="hidden" id="produtoCompostoId">
+          
+          <div class="row">
+            <div class="col-md-8">
+              <label for="descricaoComposto" class="form-label">Descrição do Produto Composto</label>
+              <input type="text" class="form-control" id="descricaoComposto" required placeholder="Ex: Kit Tubo Estrutural Completo">
+            </div>
+            <div class="col-md-4">
+              <label for="unidadeComposto" class="form-label">Unidade</label>
+              <select class="form-select" id="unidadeComposto" required>
+                <option value="">Selecione</option>
+                <option value="UN">UN</option>
+                <option value="KIT">KIT</option>
+                <option value="CJ">CJ</option>
+                <option value="PÇ">PÇ</option>
+                <option value="M">M</option>
+                <option value="M²">M²</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <label for="referenciaComposto" class="form-label">Referência</label>
+              <input type="text" class="form-control" id="referenciaComposto" placeholder="Referência do produto">
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <h6>Componentes do Produto</h6>
+          
+          <div id="componentesContainer">
+            <!-- Componentes serão adicionados aqui dinamicamente -->
+          </div>
+          
+          <button type="button" class="btn btn-success btn-sm mb-3" onclick="addComponente()">
+            <i class="fas fa-plus"></i> Adicionar Componente
+          </button>
+
+          <!-- Resumo de custos -->
+          <div class="alert alert-info mt-3">
+            <div class="row">
+              <div class="col-md-6">
+                <strong>Custo Total: R$ <span id="custoTotalDisplay">0,00</span></strong>
+              </div>
+              <div class="col-md-6">
+                <strong>Peso Total: <span id="pesoTotalDisplay">0,000</span> kg</strong>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeFormProdutoComposto()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="submitFormProdutoComposto()">Salvar Produto Composto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const apiProdutos = '/api/produtos/';
+let produtoCompostoModal = null;
+let allProductsSimples = []; // Cache de produtos simples
+let componenteCounter = 0;
+
+if(document.getElementById('produtoCompostoModal')) {
+    produtoCompostoModal = new bootstrap.Modal(document.getElementById('produtoCompostoModal'));
+}
+
+// Carregar produtos compostos e simples
+function fetchProdutosCompostos() {
+    fetch(apiProdutos)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#produtos-compostos-table tbody');
+            tbody.innerHTML = '';
+            data.forEach(produto => {
+                let centavos = Number(produto.custo_centavos);
+                let reais = !isNaN(centavos) ? centavos / 100 : 0;
+                let custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                let pesoFormatado = Number(produto.peso_und).toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3});
+                
+                let tipo = produto.is_composto ? 'Composto' : 'Simples';
+                let tipoClass = produto.is_composto ? 'badge bg-success' : 'badge bg-primary';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center">${produto.id}</td>
+                        <td>${produto.descricao}</td>
+                        <td class="text-center"><span class="${tipoClass}">${tipo}</span></td>
+                        <td class="text-end">${custo_reais}</td>
+                        <td class="text-end">${pesoFormatado} kg</td>
+                        <td class="text-center">${produto.is_composto ? '<i class="fas fa-list text-info" title="Ver componentes"></i>' : '-'}</td>
+                        <td class="text-center">
+                            ${produto.is_composto ? 
+                                `<button class="btn btn-warning btn-sm me-1" onclick="editProdutoComposto(${produto.id})">Editar Engenharia</button>` :
+                                `<button class="btn btn-info btn-sm me-1" onclick="createCompostoFromSimple(${produto.id})" title="Criar Composto">
+                                    <i class="fas fa-clone"></i>
+                                </button>`
+                            }
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduto(${produto.id})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+}
+
+function fetchProdutosSimples() {
+    fetch(apiProdutos)
+        .then(res => res.json())
+        .then(data => {
+            allProductsSimples = data.filter(p => !p.is_composto);
+        });
+}
+
+function openFormProdutoComposto(id=null) {
+    document.getElementById('produtoCompostoForm').reset();
+    document.getElementById('produtoCompostoId').value = '';
+    document.getElementById('componentesContainer').innerHTML = '';
+    document.getElementById('modalTitleProdutoComposto').innerText = 'Criar Produto Composto';
+    componenteCounter = 0;
+    
+    // Adicionar primeiro componente
+    addComponente();
+    
+    produtoCompostoModal.show();
+}
+
+function closeFormProdutoComposto() {
+    produtoCompostoModal.hide();
+}
+
+function addComponente() {
+    componenteCounter++;
+    const container = document.getElementById('componentesContainer');
+    
+    let optionsHtml = '<option value="">Selecione um produto</option>';
+    allProductsSimples.forEach(produto => {
+        let custo = (produto.custo_centavos / 100).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        optionsHtml += `<option value="${produto.id}" data-custo="${produto.custo_centavos}" data-peso="${produto.peso_und}" data-unidade="${produto.unidade}">
+            ${produto.descricao} - R$ ${custo} (${produto.unidade})
+        </option>`;
+    });
+    
+    const componenteHtml = `
+        <div class="componente-row" id="componente-${componenteCounter}">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Produto Componente</label>
+                    <select class="form-select componente-produto" onchange="updateTotals()" required>
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantidade</label>
+                    <input type="number" step="0.001" class="form-control componente-quantidade" value="1" min="0.001" onchange="updateTotals()" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Observação</label>
+                    <input type="text" class="form-control componente-observacao" placeholder="Opcional">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm d-block" onclick="removeComponente(${componenteCounter})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', componenteHtml);
+    updateTotals();
+}
+
+function removeComponente(id) {
+    const elemento = document.getElementById(`componente-${id}`);
+    if (elemento) {
+        elemento.remove();
+        updateTotals();
+    }
+}
+
+function updateTotals() {
+    let custoTotal = 0;
+    let pesoTotal = 0;
+    
+    document.querySelectorAll('.componente-row').forEach(row => {
+        const select = row.querySelector('.componente-produto');
+        const quantidade = parseFloat(row.querySelector('.componente-quantidade').value) || 0;
+        
+        if (select.value && quantidade > 0) {
+            const option = select.selectedOptions[0];
+            const custo = parseFloat(option.dataset.custo) || 0;
+            const peso = parseFloat(option.dataset.peso) || 0;
+            
+            custoTotal += (custo / 100) * quantidade;
+            pesoTotal += peso * quantidade;
+        }
+    });
+    
+    document.getElementById('custoTotalDisplay').textContent = custoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('pesoTotalDisplay').textContent = pesoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3});
+}
+
+function submitFormProdutoComposto() {
+    const descricao = document.getElementById('descricaoComposto').value;
+    const unidade = document.getElementById('unidadeComposto').value;
+    const referencia = document.getElementById('referenciaComposto').value;
+    // Coletar componentes
+    const componentes = [];
+    document.querySelectorAll('.componente-row').forEach(row => {
+        const produtoId = row.querySelector('.componente-produto').value;
+        const quantidade = row.querySelector('.componente-quantidade').value;
+        const observacao = row.querySelector('.componente-observacao').value;
+        if (produtoId && quantidade > 0) {
+            componentes.push({
+                produto_id: produtoId,
+                quantidade: quantidade,
+                observacao: observacao
+            });
+        }
+    });
+    if (componentes.length === 0) {
+        alert('Adicione pelo menos um componente!');
+        return;
+    }
+    // Calcular totais
+    let custoTotal = 0;
+    let pesoTotal = 0;
+    componentes.forEach(comp => {
+        const produto = allProductsSimples.find(p => p.id == comp.produto_id);
+        if (produto) {
+            custoTotal += (produto.custo_centavos / 100) * parseFloat(comp.quantidade);
+            pesoTotal += parseFloat(produto.peso_und) * parseFloat(comp.quantidade);
+        }
+    });
+    // Gerar data de revisão
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    const data_revisao = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    // Criar ou editar produto composto
+    const produtoId = document.getElementById('produtoCompostoId').value;
+    const produtoData = {
+        descricao: descricao,
+        custo_centavos: Math.round(custoTotal * 100),
+        peso_und: pesoTotal,
+        unidade: unidade,
+        referencia: referencia,
+        data_revisao: data_revisao,
+        is_composto: true
+    };
+    let method = 'POST';
+    let url = apiProdutos;
+    if (produtoId) {
+        method = 'PUT';
+        url = apiProdutos + produtoId + '/';
+    }
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(produtoData)
+    })
+    .then(res => res.json())
+    .then(produto => {
+        // Excluir componentes antigos se for edição
+        let compDeletePromise = Promise.resolve();
+        if (produtoId) {
+            compDeletePromise = fetch('/api/componentes/?produto_principal=' + produtoId)
+                .then(res => res.json())
+                .then(componentesAntigos => {
+                    return Promise.all(componentesAntigos.map(comp =>
+                        fetch('/api/componentes/' + comp.id + '/', {method: 'DELETE'})
+                    ));
+                });
+        }
+        compDeletePromise.then(() => {
+            // Criar componentes novos
+            const componentePromises = componentes.map(comp => {
+                return fetch('/api/componentes/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        produto_principal: produto.id,
+                        produto_componente: comp.produto_id,
+                        quantidade: comp.quantidade,
+                        observacao: comp.observacao
+                    })
+                });
+            });
+            Promise.all(componentePromises)
+                .then(() => {
+                    closeFormProdutoComposto();
+                    fetchProdutosCompostos();
+                    alert(produtoId ? 'Produto composto editado com sucesso!' : 'Produto composto criado com sucesso!');
+                });
+        });
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar produto composto!');
+    });
+}
+
+function createCompostoFromSimple(id) {
+    alert('Esta função será implementada para criar um produto composto baseado em um produto simples');
+}
+
+function editProdutoComposto(id) {
+    // Buscar dados do produto composto
+    fetch(apiProdutos + id + '/')
+        .then(res => res.json())
+        .then(produto => {
+            document.getElementById('produtoCompostoForm').reset();
+            document.getElementById('produtoCompostoId').value = produto.id;
+            document.getElementById('descricaoComposto').value = produto.descricao;
+            document.getElementById('unidadeComposto').value = produto.unidade;
+            document.getElementById('referenciaComposto').value = produto.referencia || '';
+            document.getElementById('modalTitleProdutoComposto').innerText = 'Editar Produto Composto';
+            // Buscar componentes
+            fetch('/api/componentes/?produto_principal=' + produto.id)
+                .then(res => res.json())
+                .then(componentes => {
+                    const container = document.getElementById('componentesContainer');
+                    container.innerHTML = '';
+                    componenteCounter = 0;
+                    componentes.forEach(comp => {
+                        componenteCounter++;
+                        let optionsHtml = '<option value="">Selecione um produto</option>';
+                        allProductsSimples.forEach(produtoSimples => {
+                            let custo = (produtoSimples.custo_centavos / 100).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            optionsHtml += `<option value="${produtoSimples.id}" data-custo="${produtoSimples.custo_centavos}" data-peso="${produtoSimples.peso_und}" data-unidade="${produtoSimples.unidade}" ${produtoSimples.id == comp.produto_componente ? 'selected' : ''}>
+                                ${produtoSimples.descricao} - R$ ${custo} (${produtoSimples.unidade})
+                            </option>`;
+                        });
+                        const componenteHtml = `
+                            <div class="componente-row" id="componente-${componenteCounter}">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Produto Componente</label>
+                                        <select class="form-select componente-produto" onchange="updateTotals()" required>
+                                            ${optionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Quantidade</label>
+                                        <input type="number" step="0.001" class="form-control componente-quantidade" value="${comp.quantidade}" min="0.001" onchange="updateTotals()" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Observação</label>
+                                        <input type="text" class="form-control componente-observacao" value="${comp.observacao || ''}" placeholder="Opcional">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="button" class="btn btn-danger btn-sm d-block" onclick="removeComponente(${componenteCounter})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('beforeend', componenteHtml);
+                    });
+                    updateTotals();
+                    produtoCompostoModal.show();
+                });
+        });
+}
+
+function deleteProduto(id) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        fetch(apiProdutos + id + '/', {method: 'DELETE'})
+            .then(res => {
+                if (res.ok) {
+                    fetchProdutosCompostos();
+                } else {
+                    alert('Erro ao excluir!');
+                }
+            });
+    }
+}
+
+window.onload = function() {
+    fetchProdutosSimples().then(() => {
+        fetchProdutosCompostos();
+    });
+};
+</script>
+</body>
+</html>

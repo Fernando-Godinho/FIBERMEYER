@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Impostos ICMS - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .state-card {
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+        }
+        .tax-table th {
+            background: #343a40;
+            color: white;
+            font-size: 0.9rem;
+        }
+        .tax-table td {
+            font-size: 0.85rem;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+  <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+    <h4 class="mb-4">FIBERMEYER</h4>
+    <ul class="nav nav-pills flex-column mb-auto">
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="true" aria-controls="parametrosSubmenu">
+          <span>Parâmetros</span>
+          <span class="ms-auto caret-indicator" style="transition: transform 0.2s; transform: rotate(180deg);"></span>
+        </a>
+        <div class="collapse show ms-3" id="parametrosSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+            <li class="nav-item"><a class="nav-link active" href="/impostos/">Impostos</a></li>
+            <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+          </ul>
+        </div>
+      </li>
+      <li><a href="/" class="nav-link">Dashboard</a></li>
+      <li><a href="/orcamento/" class="nav-link">Orçamentos</a></li>
+      <li><a href="/about/" class="nav-link">Sobre</a></li>
+      <li><a href="/admin/" class="nav-link">Administração</a></li>
+    </ul>
+  </nav>
+  
+  <div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1><i class="fas fa-calculator text-primary"></i> Sistema de Impostos ICMS</h1>
+      <div>
+        <button class="btn btn-success me-2" onclick="openMassUpdateModal()">
+          <i class="fas fa-edit"></i> Atualização em Massa
+        </button>
+        <button class="btn btn-primary" onclick="openImpostoModal()">
+          <i class="fas fa-plus"></i> Adicionar Imposto
+        </button>
+      </div>
+    </div>
+
+    <!-- Estatísticas Gerais -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="stats-card text-center">
+          <h3>{{ total_impostos }}</h3>
+          <p class="mb-0">Total de Impostos</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stats-card text-center">
+          <h3>{{ impostos_icms }}</h3>
+          <p class="mb-0">Impostos ICMS</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stats-card text-center">
+          <h3>{{ impostos_difal }}</h3>
+          <p class="mb-0">DIFAL Estados</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stats-card text-center">
+          <h3>27</h3>
+          <p class="mb-0">Estados Cobertos</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informações Destacadas -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card state-card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-arrow-up text-danger"></i> Maior ICMS Interno</h5>
+            {% if maior_icms %}
+            <p class="card-text">
+              <strong>{{ maior_icms.nome }}</strong><br>
+              <span class="text-danger h5">{{ maior_icms.aliquota }}%</span>
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card state-card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-arrow-down text-success"></i> Menor ICMS Interno</h5>
+            {% if menor_icms %}
+            <p class="card-text">
+              <strong>{{ menor_icms.nome }}</strong><br>
+              <span class="text-success h5">{{ menor_icms.aliquota }}%</span>
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela Detalhada dos Estados -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-table"></i> Tabela ICMS por Estado - Brasil 2024</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped tax-table" id="estados-table">
+            <thead>
+              <tr>
+                <th rowspan="2">ESTADO</th>
+                <th rowspan="2">ALÍQUOTA INTERNO (%)</th>
+                <th colspan="4">ALÍQUOTA CONTRIBUINTE</th>
+                <th colspan="2">NÃO CONTRIBUINTE</th>
+                <th rowspan="2">DIFAL (%)</th>
+              </tr>
+              <tr>
+                <th>INDUSTRIALIZAÇÃO</th>
+                <th>USO/CONSUMO</th>
+                <th>REVENDA</th>
+                <th>% na NF</th>
+                <th>% cálculo</th>
+                <th>% na NF</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dados serão carregados via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela de Todos os Impostos -->
+    <div class="card">
+      <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-list"></i> Todos os Impostos Cadastrados</h5>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control" id="searchImpostos" placeholder="Buscar impostos..." style="width: 200px;">
+            <select class="form-select" id="filterEstado" style="width: 150px;">
+              <option value="">Todos os Estados</option>
+            </select>
+            <select class="form-select" id="filterTipo" style="width: 150px;">
+              <option value="">Todos os Tipos</option>
+              <option value="ICMS">ICMS</option>
+              <option value="DIFAL">DIFAL</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <table class="table table-bordered" id="impostos-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Descrição</th>
+              <th>Alíquota (%)</th>
+              <th>Ativo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Atualização em Massa -->
+<div class="modal" tabindex="-1" id="massUpdateModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Atualização em Massa de Impostos</h5>
+        <button type="button" class="btn-close" onclick="closeMassUpdateModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Filtro por Estado:</label>
+            <select class="form-select" id="massUpdateEstado">
+              <option value="">Todos os Estados</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Filtro por Tipo:</label>
+            <select class="form-select" id="massUpdateTipo">
+              <option value="">Todos os Tipos</option>
+              <option value="Interno">ICMS Interno</option>
+              <option value="Interestadual">ICMS Interestadual</option>
+              <option value="DIFAL">DIFAL</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Tipo de Atualização:</label>
+            <select class="form-select" id="updateType">
+              <option value="replace">Substituir Valor</option>
+              <option value="increase">Aumentar %</option>
+              <option value="decrease">Diminuir %</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Valor:</label>
+            <input type="number" step="0.01" class="form-control" id="updateValue" placeholder="Ex: 18.00 ou 5">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-info w-100" onclick="previewMassUpdate()">
+              <i class="fas fa-eye"></i> Visualizar
+            </button>
+          </div>
+        </div>
+        
+        <div id="massUpdatePreview" class="border rounded p-3 bg-light" style="display: none;">
+          <h6>Prévia das Alterações:</h6>
+          <div id="previewList"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeMassUpdateModal()">Cancelar</button>
+        <button type="button" class="btn btn-success" id="confirmMassUpdate" onclick="executeMassUpdate()" disabled>
+          <i class="fas fa-save"></i> Aplicar Alterações
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Imposto -->
+<div class="modal" tabindex="-1" id="impostoModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleImposto">Adicionar Imposto</h5>
+        <button type="button" class="btn-close" onclick="closeImpostoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="impostoForm">
+          <input type="hidden" id="impostoId">
+          <div class="mb-3">
+            <label for="nomeImposto" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="nomeImposto" required>
+          </div>
+          <div class="mb-3">
+            <label for="descricaoImposto" class="form-label">Descrição</label>
+            <textarea class="form-control" id="descricaoImposto"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="aliquotaImposto" class="form-label">Alíquota (%)</label>
+            <input type="number" step="0.01" class="form-control" id="aliquotaImposto" required>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="ativoImposto" checked>
+            <label class="form-check-label" for="ativoImposto">Ativo</label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeImpostoModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="submitImpostoForm()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Imposto -->
+<div class="modal" tabindex="-1" id="impostoModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleImposto">Adicionar Imposto</h5>
+        <button type="button" class="btn-close" onclick="closeImpostoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="impostoForm">
+          <input type="hidden" id="impostoId">
+          <div class="mb-3">
+            <label for="nomeImposto" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="nomeImposto" required>
+          </div>
+          <div class="mb-3">
+            <label for="descricaoImposto" class="form-label">Descrição</label>
+            <textarea class="form-control" id="descricaoImposto"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="aliquotaImposto" class="form-label">Alíquota (%)</label>
+            <input type="number" step="0.01" class="form-control" id="aliquotaImposto" required>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="ativoImposto" checked>
+            <label class="form-check-label" for="ativoImposto">Ativo</label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeImpostoModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="submitImpostoForm()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const apiImpostos = '/api/impostos/';
+let impostoModal = null;
+let massUpdateModal = null;
+let allImpostos = [];
+let filteredImpostos = [];
+
+if(document.getElementById('impostoModal')) impostoModal = new bootstrap.Modal(document.getElementById('impostoModal'));
+if(document.getElementById('massUpdateModal')) massUpdateModal = new bootstrap.Modal(document.getElementById('massUpdateModal'));
+
+// Dados da tabela ICMS por estado
+const estadosICMS = [
+  {estado: 'AC', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
+  {estado: 'AL', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'AM', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'AP', interno: 18.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 18.6, nao_contrib_nf: 7.0, difal: 11},
+  {estado: 'BA', interno: 20.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.2, nao_contrib_nf: 7.0, difal: 14},
+  {estado: 'CE', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'DF', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'ES', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
+  {estado: 'GO', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
+  {estado: 'MA', interno: 22.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 22.7, nao_contrib_nf: 7.0, difal: 15},
+  {estado: 'MT', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
+  {estado: 'MS', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
+  {estado: 'MG', interno: 18.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 18.6, nao_contrib_nf: 12.0, difal: 6},
+  {estado: 'PA', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'PB', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'PR', interno: 19.5, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 20.1, nao_contrib_nf: 12.0, difal: 8},
+  {estado: 'PE', interno: 20.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.2, nao_contrib_nf: 7.0, difal: 14},
+  {estado: 'PI', interno: 21.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.7, nao_contrib_nf: 7.0, difal: 14},
+  {estado: 'RN', interno: 18.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 18.6, nao_contrib_nf: 7.0, difal: 11},
+  {estado: 'RS', interno: 17.0, industrializacao: 12.0, uso: 17.6, revenda: 12.0, nao_contrib_calc: 17.6, nao_contrib_nf: 17.0, difal: 5},
+  {estado: 'RJ', interno: 20.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 20.7, nao_contrib_nf: 12.0, difal: 8},
+  {estado: 'RO', interno: 19.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.1, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'RR', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
+  {estado: 'SC', interno: 17.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 17.6, nao_contrib_nf: 12.0, difal: 5},
+  {estado: 'SP', interno: 18.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 18.6, nao_contrib_nf: 12.0, difal: 6},
+  {estado: 'SE', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
+  {estado: 'TO', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13}
+];
+
+function loadEstadosTable() {
+  const tbody = document.querySelector('#estados-table tbody');
+  tbody.innerHTML = '';
+  
+  estadosICMS.forEach(estado => {
+    const row = `
+      <tr>
+        <td class="fw-bold">${estado.estado}</td>
+        <td class="text-center">${estado.interno.toFixed(1)}%</td>
+        <td class="text-center">${estado.industrializacao.toFixed(1)}%</td>
+        <td class="text-center">${estado.uso.toFixed(1)}%</td>
+        <td class="text-center">${estado.revenda.toFixed(1)}%</td>
+        <td class="text-center">${estado.nao_contrib_nf.toFixed(1)}%</td>
+        <td class="text-center">${estado.nao_contrib_calc.toFixed(1)}%</td>
+        <td class="text-center">${estado.difal}%</td>
+      </tr>
+    `;
+    tbody.innerHTML += row;
+  });
+}
+
+function populateEstadoFilters() {
+  const estados = [...new Set(estadosICMS.map(e => e.estado))].sort();
+  const selects = ['#filterEstado', '#massUpdateEstado'];
+  
+  selects.forEach(selectId => {
+    const select = document.querySelector(selectId);
+    estados.forEach(estado => {
+      const option = document.createElement('option');
+      option.value = estado;
+      option.textContent = estado;
+      select.appendChild(option);
+    });
+  });
+}
+
+function fetchImpostos() {
+  fetch(apiImpostos)
+    .then(res => res.json())
+    .then(data => {
+      allImpostos = data;
+      filteredImpostos = data;
+      displayImpostosInTable(data);
+    });
+}
+
+function displayImpostosInTable(impostos) {
+  const tbody = document.querySelector('#impostos-table tbody');
+  tbody.innerHTML = '';
+  impostos.forEach(imposto => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${imposto.id}</td>
+        <td>${imposto.nome}</td>
+        <td>${imposto.descricao || ''}</td>
+        <td class="text-end">
+          <span class="editable-aliquota" data-id="${imposto.id}" onclick="editAliquotaInline(${imposto.id}, this)">
+            ${parseFloat(imposto.aliquota).toFixed(2)}%
+          </span>
+        </td>
+        <td class="text-center">${imposto.ativo ? '<span class="badge bg-success">Sim</span>' : '<span class="badge bg-danger">Não</span>'}</td>
+        <td class="text-center">
+          <button class="btn btn-warning btn-sm me-1" onclick="editImposto(${imposto.id})">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteImposto(${imposto.id})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function editAliquotaInline(id, element) {
+  const currentValue = parseFloat(element.textContent.replace('%', ''));
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = '0.01';
+  input.value = currentValue;
+  input.className = 'form-control form-control-sm';
+  input.style.width = '80px';
+  
+  input.onblur = () => saveAliquotaInline(id, input.value, element);
+  input.onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      saveAliquotaInline(id, input.value, element);
+    }
+  };
+  
+  element.innerHTML = '';
+  element.appendChild(input);
+  input.focus();
+}
+
+function saveAliquotaInline(id, newValue, element) {
+  const value = parseFloat(newValue);
+  if (isNaN(value) || value < 0 || value > 100) {
+    alert('Valor inválido! Deve ser entre 0 e 100.');
+    fetchImpostos(); // Recarrega para desfazer
+    return;
+  }
+  
+  fetch(apiImpostos + id + '/', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({aliquota: value})
+  })
+  .then(res => {
+    if (res.ok) {
+      element.innerHTML = `${value.toFixed(2)}%`;
+      element.onclick = () => editAliquotaInline(id, element);
+      // Atualizar o array local
+      const imposto = allImpostos.find(i => i.id === id);
+      if (imposto) imposto.aliquota = value;
+    } else {
+      alert('Erro ao salvar!');
+      fetchImpostos(); // Recarrega em caso de erro
+    }
+  });
+}
+
+// Funções de filtro
+function applyFilters() {
+  const search = document.getElementById('searchImpostos').value.toLowerCase();
+  const estado = document.getElementById('filterEstado').value;
+  const tipo = document.getElementById('filterTipo').value;
+  
+  filteredImpostos = allImpostos.filter(imposto => {
+    const matchSearch = imposto.nome.toLowerCase().includes(search) || 
+                       (imposto.descricao && imposto.descricao.toLowerCase().includes(search));
+    const matchEstado = !estado || imposto.nome.includes(estado);
+    const matchTipo = !tipo || imposto.nome.includes(tipo);
+    
+    return matchSearch && matchEstado && matchTipo;
+  });
+  
+  displayImpostosInTable(filteredImpostos);
+}
+
+// Event listeners para filtros
+document.getElementById('searchImpostos').addEventListener('input', applyFilters);
+document.getElementById('filterEstado').addEventListener('change', applyFilters);
+document.getElementById('filterTipo').addEventListener('change', applyFilters);
+
+// Funções do modal de atualização em massa
+function openMassUpdateModal() {
+  massUpdateModal.show();
+}
+
+function closeMassUpdateModal() {
+  massUpdateModal.hide();
+  document.getElementById('massUpdatePreview').style.display = 'none';
+  document.getElementById('confirmMassUpdate').disabled = true;
+}
+
+function previewMassUpdate() {
+  const estado = document.getElementById('massUpdateEstado').value;
+  const tipo = document.getElementById('massUpdateTipo').value;
+  const updateType = document.getElementById('updateType').value;
+  const value = parseFloat(document.getElementById('updateValue').value);
+  
+  if (isNaN(value)) {
+    alert('Por favor, insira um valor válido!');
+    return;
+  }
+  
+  // Filtrar impostos baseado nos critérios
+  const targetImpostos = allImpostos.filter(imposto => {
+    const matchEstado = !estado || imposto.nome.includes(estado);
+    const matchTipo = !tipo || imposto.nome.includes(tipo);
+    return matchEstado && matchTipo;
+  });
+  
+  // Calcular novos valores
+  const updates = targetImpostos.map(imposto => {
+    let newValue;
+    const currentValue = parseFloat(imposto.aliquota);
+    
+    switch(updateType) {
+      case 'replace':
+        newValue = value;
+        break;
+      case 'increase':
+        newValue = currentValue * (1 + value / 100);
+        break;
+      case 'decrease':
+        newValue = currentValue * (1 - value / 100);
+        break;
+    }
+    
+    return {
+      ...imposto,
+      newAliquota: Math.round(newValue * 100) / 100,
+      oldAliquota: currentValue
+    };
+  });
+  
+  // Exibir prévia
+  const previewDiv = document.getElementById('previewList');
+  previewDiv.innerHTML = updates.map(update => 
+    `<div class="row mb-1">
+      <div class="col-6">${update.nome}</div>
+      <div class="col-3 text-end">${update.oldAliquota}%</div>
+      <div class="col-3 text-end text-primary"><strong>${update.newAliquota}%</strong></div>
+    </div>`
+  ).join('');
+  
+  document.getElementById('massUpdatePreview').style.display = 'block';
+  document.getElementById('confirmMassUpdate').disabled = false;
+  
+  // Armazenar updates para execução
+  window.pendingUpdates = updates;
+}
+
+function executeMassUpdate() {
+  if (!window.pendingUpdates || window.pendingUpdates.length === 0) {
+    alert('Nenhuma atualização pendente!');
+    return;
+  }
+  
+  const updates = window.pendingUpdates.map(update => 
+    fetch(apiImpostos + update.id + '/', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({aliquota: update.newAliquota})
+    })
+  );
+  
+  Promise.all(updates)
+    .then(responses => {
+      const successCount = responses.filter(r => r.ok).length;
+      alert(`${successCount} impostos atualizados com sucesso!`);
+      closeMassUpdateModal();
+      fetchImpostos();
+    })
+    .catch(err => {
+      alert('Erro durante a atualização em massa!');
+      console.error(err);
+    });
+}
+
+function openImpostoModal(id=null) {
+  document.getElementById('impostoForm').reset();
+  document.getElementById('impostoId').value = '';
+  document.getElementById('modalTitleImposto').innerText = 'Adicionar Imposto';
+  if (id) {
+    fetch(apiImpostos + id + '/')
+      .then(res => res.json())
+      .then(imposto => {
+        document.getElementById('impostoId').value = imposto.id;
+        document.getElementById('nomeImposto').value = imposto.nome;
+        document.getElementById('descricaoImposto').value = imposto.descricao || '';
+        document.getElementById('aliquotaImposto').value = imposto.aliquota;
+        document.getElementById('ativoImposto').checked = imposto.ativo;
+        document.getElementById('modalTitleImposto').innerText = 'Editar Imposto';
+      });
+  }
+  impostoModal.show();
+}
+
+function closeImpostoModal() {
+  impostoModal.hide();
+}
+
+function submitImpostoForm() {
+  const id = document.getElementById('impostoId').value;
+  const nome = document.getElementById('nomeImposto').value;
+  const descricao = document.getElementById('descricaoImposto').value;
+  const aliquota = document.getElementById('aliquotaImposto').value;
+  const ativo = document.getElementById('ativoImposto').checked;
+  
+  if (!nome.trim() || !aliquota) {
+    alert('Preencha os campos obrigatórios!');
+    return;
+  }
+  
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? apiImpostos + id + '/' : apiImpostos;
+  
+  fetch(url, {
+    method: method,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({nome, descricao, aliquota, ativo})
+  })
+  .then(res => {
+    if (res.ok) {
+      closeImpostoModal();
+      fetchImpostos();
+    } else {
+      res.json().then(data => alert('Erro: ' + JSON.stringify(data)));
+    }
+  });
+}
+
+function editImposto(id) {
+  openImpostoModal(id);
+}
+
+function deleteImposto(id) {
+  if (confirm('Tem certeza que deseja excluir este imposto?')) {
+    fetch(apiImpostos + id + '/', {method: 'DELETE'})
+      .then(res => {
+        if (res.ok) fetchImpostos();
+        else alert('Erro ao excluir!');
+      });
+  }
+}
+
+// Menu collapse functionality
+document.addEventListener('DOMContentLoaded', function() {
+  var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+  var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+  var caret = parametrosLink.querySelector('.caret-indicator');
+  
+  parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+    caret.style.transform = 'rotate(180deg)';
+  });
+  
+  parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+    caret.style.transform = 'rotate(0deg)';
+  });
+});
+
+window.onload = function() {
+  loadEstadosTable();
+  populateEstadoFilters();
+  fetchImpostos();
+};
+</script>
+</body>
+</html>

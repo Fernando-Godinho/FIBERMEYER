@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Orçamento - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .form-section h5 {
+            color: #007bff;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .required-field::after {
+            content: " *";
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <!-- Sidebar Navigation -->
+    <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+        <h4 class="mb-4">FIBERMEYER</h4>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+                    <span>Parâmetros</span>
+                    <span class="ms-auto caret-indicator" style="transition: transform 0.2s;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-down" viewBox="0 0 16 16">
+                            <path d="M3.204 5h9.592L8 10.481 3.204 5z"/>
+                        </svg>
+                    </span>
+                </a>
+                <div class="collapse ms-3" id="parametrosSubmenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/mao_de_obra/">Mão de Obra</a></li>
+                    </ul>
+                </div>
+            </li>
+            <li><a href="/" class="nav-link">Dashboard</a></li>
+            <li><a href="/orcamento/" class="nav-link active">Orçamentos</a></li>
+            <li><a href="/about/" class="nav-link">Sobre</a></li>
+            <li><a href="/admin/" class="nav-link">Administração</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid p-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">
+                                <i class="fas fa-file-invoice me-2"></i>Novo Orçamento
+                            </h4>
+                            <small>Sistema FIBERMEYER</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="orcamentoForm">
+                            {% csrf_token %}
+                            
+                            <!-- Seção: Informações Básicas -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-info-circle me-2"></i>Informações Básicas</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label required-field">{{ form.numero_orcamento.label }}</label>
+                                        {{ form.numero_orcamento }}
+                                        {% if form.numero_orcamento.help_text %}
+                                            <div class="form-text">{{ form.numero_orcamento.help_text }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ form.revisao.label }}</label>
+                                        {{ form.revisao }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label required-field">{{ form.validade.label }}</label>
+                                        {{ form.validade }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção: Dados do Cliente -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-user-tie me-2"></i>Dados do Cliente</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <label class="form-label required-field">{{ form.cliente.label }}</label>
+                                        {{ form.cliente }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ form.uf.label }}</label>
+                                        {{ form.uf }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ form.contato.label }}</label>
+                                        {{ form.contato }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ form.telefone.label }}</label>
+                                        {{ form.telefone }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ form.email.label }}</label>
+                                        {{ form.email }}
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label">{{ form.cnpj_faturamento.label }}</label>
+                                        {{ form.cnpj_faturamento }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção: Condições Comerciais -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-handshake me-2"></i>Condições Comerciais</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.frete.label }}</label>
+                                        {{ form.frete }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.instalacao.label }}</label>
+                                        {{ form.instalacao }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.venda_destinada.label }}</label>
+                                        {{ form.venda_destinada }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.cliente_contrib_icms.label }}</label>
+                                        {{ form.cliente_contrib_icms }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção: Especificações Técnicas -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-cogs me-2"></i>Especificações Técnicas</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.tipo_resina.label }}</label>
+                                        {{ form.tipo_resina }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.tipo_inox.label }}</label>
+                                        {{ form.tipo_inox }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção: Impostos e Comissão -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-calculator me-2"></i>Impostos e Comissão</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.icms.label }}</label>
+                                        <div class="input-group">
+                                            {{ form.icms }}
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="form-text text-muted">ICMS será calculado automaticamente baseado na UF e tipo de cliente</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">{{ form.comissao.label }}</label>
+                                        <div class="input-group">
+                                            {{ form.comissao }}
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção: Observações -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-sticky-note me-2"></i>Observações</h5>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label class="form-label">{{ form.observacoes.label }}</label>
+                                        {{ form.observacoes }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botões de Ação -->
+                            <div class="d-flex justify-content-end gap-3 mt-4">
+                                <a href="/orcamento/" class="btn btn-outline-secondary px-4">
+                                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                                </a>
+                                <button type="button" class="btn btn-outline-primary px-4" onclick="previewForm()">
+                                    <i class="fas fa-eye me-2"></i>Prévia
+                                </button>
+                                <button type="submit" class="btn btn-save px-4">
+                                    <i class="fas fa-save me-2"></i>Salvar Orçamento
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Prévia -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>Prévia do Orçamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <!-- Conteúdo da prévia será carregado aqui -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="submitFormFromPreview()">
+                    <i class="fas fa-save me-2"></i>Confirmar e Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Cache para impostos
+let impostosCache = {};
+
+// Carregar impostos do sistema
+async function carregarImpostos() {
+    try {
+        const response = await fetch('/api/impostos/');
+        const impostos = await response.json();
+        
+        console.log('=== ANÁLISE DOS IMPOSTOS ===');
+        console.log('Total de impostos encontrados:', impostos.length);
+        
+        // Mostrar alguns exemplos para análise
+        impostos.slice(0, 10).forEach(imposto => {
+            console.log(`Nome: "${imposto.nome}" | Alíquota: ${imposto.aliquota}%`);
+        });
+        
+        // Organizar impostos por estado - melhorando a lógica de parsing
+        impostos.forEach(imposto => {
+            // Tentar diferentes padrões de nomenclatura
+            let match = null;
+            let estado = null;
+            let tipo = null;
+            
+            // Padrão 1: "BA - ICMS Interno" (novo padrão de teste)
+            match = imposto.nome.match(/^(\w{2})\s*[-–]\s*ICMS\s*(Interno|Interestadual|Consumo)/i);
+            if (match) {
+                estado = match[1];
+                tipo = match[2].toLowerCase();
+                
+                if (!impostosCache[estado]) {
+                    impostosCache[estado] = {};
+                }
+                
+                if (tipo === 'interno') {
+                    impostosCache[estado].interno = imposto.aliquota;
+                } else if (tipo === 'interestadual') {
+                    impostosCache[estado].interestadual = imposto.aliquota;
+                } else if (tipo === 'consumo') {
+                    impostosCache[estado].consumo = imposto.aliquota;
+                }
+                
+                console.log(`✅ Mapeado (Padrão 1): ${estado} - ${tipo} = ${imposto.aliquota}%`);
+                return;
+            }
+            
+            // Padrão 2: "SP - ICMS Interno" ou "SP-ICMS Interno" (antigo padrão)
+            match = imposto.nome.match(/^(\w{2})\s*[-–]\s*ICMS\s*(Interno|Interestadual|DIFAL)/i);
+            if (match) {
+                estado = match[1];
+                tipo = match[2].toLowerCase();
+                
+                if (!impostosCache[estado]) {
+                    impostosCache[estado] = {};
+                }
+                
+                if (tipo === 'interno') {
+                    impostosCache[estado].interno = imposto.aliquota;
+                } else if (tipo === 'interestadual') {
+                    impostosCache[estado].interestadual = imposto.aliquota;
+                } else if (tipo === 'difal') {
+                    impostosCache[estado].difal = imposto.aliquota;
+                }
+                
+                console.log(`✅ Mapeado (Padrão 2): ${estado} - ${tipo} = ${imposto.aliquota}%`);
+                return;
+            }
+            
+            // Padrão 3: "ICMS SP Interno" ou "ICMS-SP-Interno"
+            match = imposto.nome.match(/ICMS[-\s]*(\w{2})[-\s]*(Interno|Interestadual|DIFAL)/i);
+            if (match) {
+                estado = match[1];
+                tipo = match[2].toLowerCase();
+                
+                if (!impostosCache[estado]) {
+                    impostosCache[estado] = {};
+                }
+                
+                if (tipo === 'interno') {
+                    impostosCache[estado].interno = imposto.aliquota;
+                } else if (tipo === 'interestadual') {
+                    impostosCache[estado].interestadual = imposto.aliquota;
+                } else if (tipo === 'difal') {
+                    impostosCache[estado].difal = imposto.aliquota;
+                }
+                
+                console.log(`✅ Mapeado (Padrão 3): ${estado} - ${tipo} = ${imposto.aliquota}%`);
+                return;
+            }
+            
+            // Se não conseguiu mapear, log para debug
+            console.log(`❌ Não mapeado: "${imposto.nome}"`);
+        });
+        
+        console.log('=== CACHE FINAL DE IMPOSTOS ===');
+        console.log(impostosCache);
+    } catch (error) {
+        console.error('Erro ao carregar impostos:', error);
+    }
+}
+
+// Auto-cálculo do ICMS baseado na UF e tipo de cliente
+document.addEventListener('DOMContentLoaded', function() {
+    const ufField = document.querySelector('[name="uf"]');
+    const clienteContribField = document.querySelector('[name="cliente_contrib_icms"]');
+    const vendaDestinadaField = document.querySelector('[name="venda_destinada"]');
+    const freteField = document.querySelector('[name="frete"]');
+    const instalacaoField = document.querySelector('[name="instalacao"]');
+    const tipoResinaField = document.querySelector('[name="tipo_resina"]');
+    const tipoInoxField = document.querySelector('[name="tipo_inox"]');
+    const icmsField = document.querySelector('[name="icms"]');
+    
+    // Carregar impostos quando a página carrega
+    carregarImpostos();
+    
+    function calcularICMS() {
+        const uf = ufField.value;
+        const contribuinte = clienteContribField.value;
+        const vendaDestinada = vendaDestinadaField.value;
+        
+        console.log(`=== CÁLCULO ICMS ===`);
+        console.log(`UF: ${uf}, Contribuinte: ${contribuinte}, Venda: ${vendaDestinada}`);
+        console.log(`Frete: ${freteField.value}, Instalação: ${instalacaoField.value}`);
+        console.log(`Tipo Resina: ${tipoResinaField.value}, Tipo Inox: ${tipoInoxField.value}`);
+        
+        if (!uf) {
+            icmsField.value = '7.2';
+            console.log('UF não selecionada, usando padrão 7.2%');
+            return;
+        }
+        
+        let aliquota = 0;
+        
+        // Buscar impostos específicos do estado
+        const impostos = impostosCache[uf];
+        console.log(`Impostos encontrados para ${uf}:`, impostos);
+        
+        // Lógica tributária brasileira para ICMS
+        if (vendaDestinada === 'EXPORTACAO') {
+            // Exportação = sempre isento (0%)
+            aliquota = 0;
+            console.log('Exportação: ICMS = 0%');
+        } else if (vendaDestinada === 'REVENDA') {
+            if (contribuinte === 'CONTRIBUINTE') {
+                // Revenda para contribuinte = alíquota reduzida (interno)
+                aliquota = impostos?.interno || (uf === 'BA' ? 7.2 : 7.0);
+                console.log(`Revenda p/ Contribuinte: ICMS = ${aliquota}% (${impostos?.interno ? 'da base' : 'padrão'})`);
+            } else {
+                // Revenda para não contribuinte = substituição tributária (alíquota maior)
+                aliquota = impostos?.interno || (uf === 'BA' ? 12.0 : 12.0);
+                console.log(`Revenda p/ Não Contribuinte: ICMS = ${aliquota}% (${impostos?.interno ? 'da base' : 'padrão'})`);
+            }
+        } else if (vendaDestinada === 'CONSUMO_PROPRIO') {
+            // Consumo próprio = usar alíquota específica de consumo ou alíquota cheia
+            if (contribuinte === 'CONTRIBUINTE') {
+                aliquota = impostos?.consumo || impostos?.interno || (uf === 'BA' ? 18.0 : 18.0);
+                console.log(`Consumo Próprio p/ Contribuinte: ICMS = ${aliquota}% (${impostos?.consumo ? 'consumo da base' : impostos?.interno ? 'interno da base' : 'padrão'})`);
+            } else {
+                // Não contribuinte = pode ter substituição tributária
+                aliquota = impostos?.consumo || impostos?.interno || (uf === 'BA' ? 18.0 : 18.0);
+                console.log(`Consumo Próprio p/ Não Contribuinte: ICMS = ${aliquota}% (${impostos?.consumo ? 'consumo da base' : impostos?.interno ? 'interno da base' : 'padrão'})`);
+            }
+        } else {
+            // Padrão - revenda para contribuinte
+            aliquota = impostos?.interno || 7.2;
+            console.log(`Caso padrão: ICMS = ${aliquota}%`);
+        }
+        
+        icmsField.value = aliquota.toFixed(2);
+        console.log(`ICMS final aplicado: ${aliquota.toFixed(2)}%`);
+        
+        // Feedback visual melhorado
+        icmsField.style.background = '#d4edda';
+        icmsField.style.borderColor = '#28a745';
+        icmsField.style.fontWeight = 'bold';
+        icmsField.style.color = '#155724';
+        
+        // Mostrar notificação visual de recálculo
+        const notification = document.createElement('div');
+        notification.innerHTML = `
+            <div class="alert alert-success alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <strong>ICMS Recalculado!</strong><br>
+                ${uf} - ${vendaDestinada} - ${contribuinte}<br>
+                Nova alíquota: <strong>${aliquota.toFixed(2)}%</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        // Remover notificação após 4 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 4000);
+        
+        setTimeout(() => {
+            icmsField.style.background = '';
+            icmsField.style.borderColor = '';
+            icmsField.style.fontWeight = '';
+            icmsField.style.color = '';
+        }, 3000);
+    }
+    
+    // Event listeners para todos os campos que afetam o cálculo do ICMS
+    ufField.addEventListener('change', calcularICMS);
+    clienteContribField.addEventListener('change', calcularICMS);
+    vendaDestinadaField.addEventListener('change', calcularICMS);
+    freteField.addEventListener('change', calcularICMS);
+    instalacaoField.addEventListener('change', calcularICMS);
+    tipoResinaField.addEventListener('change', calcularICMS);
+    tipoInoxField.addEventListener('change', calcularICMS);
+    
+    // Calcular ICMS inicial após um pequeno delay para garantir que os impostos foram carregados
+    setTimeout(calcularICMS, 500);
+});
+
+function previewForm() {
+    const form = document.getElementById('orcamentoForm');
+    const formData = new FormData(form);
+    
+    let previewHtml = '<div class="row">';
+    
+    // Informações Básicas
+    previewHtml += `
+        <div class="col-12 mb-3">
+            <h6 class="text-primary border-bottom pb-2">Informações Básicas</h6>
+            <div class="row">
+                <div class="col-md-4"><strong>Orçamento nº:</strong> ${formData.get('numero_orcamento') || 'PADRÃO'}</div>
+                <div class="col-md-4"><strong>Revisão:</strong> ${formData.get('revisao') || '1'}</div>
+                <div class="col-md-4"><strong>Validade:</strong> ${formData.get('validade') || '-'}</div>
+            </div>
+        </div>
+    `;
+    
+    // Dados do Cliente
+    previewHtml += `
+        <div class="col-12 mb-3">
+            <h6 class="text-primary border-bottom pb-2">Dados do Cliente</h6>
+            <div class="row">
+                <div class="col-md-6"><strong>Cliente:</strong> ${formData.get('cliente') || '-'}</div>
+                <div class="col-md-6"><strong>UF:</strong> ${formData.get('uf') || 'BA'}</div>
+                <div class="col-md-4"><strong>Contato:</strong> ${formData.get('contato') || '-'}</div>
+                <div class="col-md-4"><strong>Telefone:</strong> ${formData.get('telefone') || '-'}</div>
+                <div class="col-md-4"><strong>Email:</strong> ${formData.get('email') || '-'}</div>
+                <div class="col-md-12"><strong>CNPJ:</strong> ${formData.get('cnpj_faturamento') || '-'}</div>
+            </div>
+        </div>
+    `;
+    
+    // Condições Comerciais
+    const freteOptions = {
+        'CIF': 'CIF - ENTREGA NAS DEPENDÊNCIAS DO CLIENTE',
+        'FOB': 'FOB'
+    };
+    const instalacaoOptions = {
+        'NAO_INCLUSA': 'NÃO INCLUSA',
+        'INCLUSA': 'INCLUSA'
+    };
+    const vendaOptions = {
+        'REVENDA': 'REVENDA',
+        'CONSUMO_PROPRIO': 'CONSUMO PRÓPRIO',
+        'EXPORTACAO': 'EXPORTAÇÃO'
+    };
+    const contribuinteOptions = {
+        'CONTRIBUINTE': 'CONTRIBUINTE',
+        'NAO_CONTRIBUINTE': 'NÃO CONTRIBUINTE'
+    };
+    
+    previewHtml += `
+        <div class="col-12 mb-3">
+            <h6 class="text-primary border-bottom pb-2">Condições Comerciais</h6>
+            <div class="row">
+                <div class="col-md-6"><strong>Frete:</strong> ${freteOptions[formData.get('frete')] || 'CIF - ENTREGA NAS DEPENDÊNCIAS DO CLIENTE'}</div>
+                <div class="col-md-6"><strong>Instalação:</strong> ${instalacaoOptions[formData.get('instalacao')] || 'NÃO INCLUSA'}</div>
+                <div class="col-md-6"><strong>Venda Destinada:</strong> ${vendaOptions[formData.get('venda_destinada')] || 'REVENDA'}</div>
+                <div class="col-md-6"><strong>Cliente Contribuinte:</strong> ${contribuinteOptions[formData.get('cliente_contrib_icms')] || 'CONTRIBUINTE'}</div>
+            </div>
+        </div>
+    `;
+    
+    // Especificações Técnicas
+    const tipoResinaOptions = {
+        'POLIESTER': 'POLIÉSTER',
+        'ISOFTALICA': 'ISOFTÁLICA',
+        'EPOXI': 'EPÓXI',
+        'VINILESTER': 'VINILÉSTER'
+    };
+    const tipoInoxOptions = {
+        'AISI_304': 'AISI 304',
+        'AISI_316': 'AISI 316',
+        'AISI_316L': 'AISI 316L',
+        'OUTROS': 'OUTROS'
+    };
+    
+    previewHtml += `
+        <div class="col-12 mb-3">
+            <h6 class="text-primary border-bottom pb-2">Especificações Técnicas</h6>
+            <div class="row">
+                <div class="col-md-6"><strong>Tipo de Resina:</strong> ${tipoResinaOptions[formData.get('tipo_resina')] || 'POLIÉSTER'}</div>
+                <div class="col-md-6"><strong>Tipo de Inox:</strong> ${tipoInoxOptions[formData.get('tipo_inox')] || 'AISI 304'}</div>
+            </div>
+        </div>
+    `;
+    
+    // Impostos e Comissão
+    previewHtml += `
+        <div class="col-12 mb-3">
+            <h6 class="text-primary border-bottom pb-2">Impostos e Comissão</h6>
+            <div class="row">
+                <div class="col-md-6"><strong>ICMS:</strong> ${formData.get('icms') || '7.2'}%</div>
+                <div class="col-md-6"><strong>Comissão:</strong> ${formData.get('comissao') || '0.0'}%</div>
+            </div>
+        </div>
+    `;
+    
+    // Observações
+    if (formData.get('observacoes')) {
+        previewHtml += `
+            <div class="col-12 mb-3">
+                <h6 class="text-primary border-bottom pb-2">Observações</h6>
+                <p>${formData.get('observacoes')}</p>
+            </div>
+        `;
+    }
+    
+    previewHtml += '</div>';
+    
+    document.getElementById('previewContent').innerHTML = previewHtml;
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+function submitFormFromPreview() {
+    document.getElementById('orcamentoForm').submit();
+}
+
+// Menu collapse functionality
+document.addEventListener('DOMContentLoaded', function() {
+    var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+    var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+    var caret = parametrosLink.querySelector('.caret-indicator');
+    
+    if (parametrosSubmenu) {
+        parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+            caret.style.transform = 'rotate(180deg)';
+        });
+        
+        parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+            caret.style.transform = 'rotate(0deg)';
+        });
+    }
+});
+</script>
+</body>
+</html>

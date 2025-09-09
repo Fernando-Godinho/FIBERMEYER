@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Mão de Obra - FIBERMEYER</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .card-stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .card-stats:hover {
+            transform: translateY(-5px);
+        }
+        .stats-icon {
+            font-size: 2.5rem;
+            opacity: 0.8;
+        }
+        .valor-cell {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-radius: 4px;
+            padding: 8px;
+        }
+        .valor-cell:hover {
+            background-color: #e3f2fd;
+        }
+        .valor-cell.editing {
+            background-color: #fff3e0;
+        }
+        .btn-mass-update {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        .btn-mass-update:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        .preview-table {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .caret-indicator {
+            transition: transform 0.3s ease;
+        }
+        .search-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+        }
+        .filter-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            margin: 2px;
+            border: none;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <!-- Sidebar Navigation -->
+    <nav class="flex-shrink-0 p-3 bg-light border-end" style="width: 220px; min-height: 100vh;">
+        <h4 class="mb-4">FIBERMEYER</h4>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#parametrosSubmenu" role="button" aria-expanded="false" aria-controls="parametrosSubmenu">
+                    <span>Parâmetros</span>
+                    <span class="ms-auto caret-indicator" style="transition: transform 0.2s;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-down" viewBox="0 0 16 16">
+                            <path d="M3.204 5h9.592L8 10.481 3.204 5z"/>
+                        </svg>
+                    </span>
+                </a>
+                <div class="collapse ms-3" id="parametrosSubmenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="/mp/">Produtos / MP</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/impostos/">Impostos</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/mao_de_obra/">Mão de Obra</a></li>
+                    </ul>
+                </div>
+            </li>
+            <li><a href="/" class="nav-link">Dashboard</a></li>
+            <li><a href="/orcamento/" class="nav-link">Novo Orçamento</a></li>
+            <li><a href="/about/" class="nav-link">Sobre</a></li>
+            <li><a href="/admin/" class="nav-link">Administração</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold text-primary mb-1">
+                        <i class="fas fa-tools me-2"></i>Gestão de Mão de Obra
+                    </h2>
+                    <p class="text-muted mb-0">Gerenciamento completo dos custos de mão de obra</p>
+                </div>
+                <button class="btn btn-mass-update" onclick="openMassUpdateModal()">
+                    <i class="fas fa-edit me-2"></i>Atualização em Massa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-tools stats-icon"></i>
+                    <h3 class="mt-2 mb-1">{{ total_mao_obra }}</h3>
+                    <p class="mb-0">Total de Itens</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle stats-icon"></i>
+                    <h3 class="mt-2 mb-1">{{ mao_obra_ativa }}</h3>
+                    <p class="mb-0">Itens Ativos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-layer-group stats-icon"></i>
+                    <h3 class="mt-2 mb-1">{{ total_categorias }}</h3>
+                    <p class="mb-0">Categorias</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-calculator stats-icon"></i>
+                    <h3 class="mt-2 mb-1">R$ {{ valor_medio|floatformat:2 }}</h3>
+                    <p class="mb-0">Valor Médio</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Stats -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-arrow-up me-2"></i>Maior Valor
+                </div>
+                <div class="card-body">
+                    {% if maior_valor %}
+                        <h5 class="text-success">{{ maior_valor.nome }}</h5>
+                        <p class="mb-1"><strong>Valor:</strong> R$ {{ maior_valor.valor_real|floatformat:2 }}/{{ maior_valor.unidade }}</p>
+                        <p class="mb-0"><strong>Categoria:</strong> {{ maior_valor.categoria|default:"Não informada" }}</p>
+                    {% else %}
+                        <p class="text-muted">Nenhum dado disponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-arrow-down me-2"></i>Menor Valor
+                </div>
+                <div class="card-body">
+                    {% if menor_valor %}
+                        <h5 class="text-info">{{ menor_valor.nome }}</h5>
+                        <p class="mb-1"><strong>Valor:</strong> R$ {{ menor_valor.valor_real|floatformat:2 }}/{{ menor_valor.unidade }}</p>
+                        <p class="mb-0"><strong>Categoria:</strong> {{ menor_valor.categoria|default:"Não informada" }}</p>
+                    {% else %}
+                        <p class="text-muted">Nenhum dado disponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-section">
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-search me-1"></i>Buscar por Nome
+                </label>
+                <input type="text" class="form-control" id="searchNome" placeholder="Digite o nome da mão de obra..." onkeyup="filterMaoObra()">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-layer-group me-1"></i>Filtrar por Categoria
+                </label>
+                <select class="form-select" id="filterCategoria" onchange="filterMaoObra()">
+                    <option value="">Todas as categorias</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria }}">{{ categoria }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-toggle-on me-1"></i>Status
+                </label>
+                <select class="form-select" id="filterStatus" onchange="filterMaoObra()">
+                    <option value="">Todos</option>
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Clique nos valores para editá-los diretamente na tabela
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i>Lista de Mão de Obra
+                </h5>
+                <div>
+                    <button class="btn btn-light btn-sm me-2" onclick="fetchMaoObra()">
+                        <i class="fas fa-sync-alt me-1"></i>Atualizar
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="openMaoObraModal()">
+                        <i class="fas fa-plus me-1"></i>Novo Item
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="maoObraTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="5%">ID</th>
+                            <th width="25%">Nome</th>
+                            <th width="20%">Categoria</th>
+                            <th width="15%">Valor</th>
+                            <th width="10%">Unidade</th>
+                            <th width="10%">Status</th>
+                            <th width="15%">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="maoObraTableBody">
+                        <!-- Dados serão carregados via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar/Editar Mão de Obra -->
+<div class="modal fade" id="maoObraModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitleMaoObra">Adicionar Mão de Obra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="maoObraForm">
+                    <input type="hidden" id="maoObraId" name="id">
+                    
+                    <div class="mb-3">
+                        <label for="nomeMaoObra" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="nomeMaoObra" name="nome" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricaoMaoObra" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricaoMaoObra" name="descricao" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="valorMaoObra" class="form-label">Valor (R$) *</label>
+                                <input type="number" class="form-control" id="valorMaoObra" name="valor_real" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="unidadeMaoObra" class="form-label">Unidade</label>
+                                <select class="form-select" id="unidadeMaoObra" name="unidade">
+                                    <option value="HORA">HORA</option>
+                                    <option value="DIA">DIA</option>
+                                    <option value="MÊS">MÊS</option>
+                                    <option value="M³">M³</option>
+                                    <option value="KG">KG</option>
+                                    <option value="UN">UN</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categoriaMaoObra" class="form-label">Categoria</label>
+                        <input type="text" class="form-control" id="categoriaMaoObra" name="categoria" 
+                               placeholder="Ex: Pultrusão, Processamento/Montagem, Operações">
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="ativoMaoObra" name="ativo" checked>
+                        <label class="form-check-label" for="ativoMaoObra">Ativo</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitMaoObraForm()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atualização em Massa -->
+<div class="modal fade" id="massUpdateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Atualização em Massa de Valores
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tipo de Atualização</label>
+                        <select class="form-select" id="massUpdateType">
+                            <option value="percentage">Percentual (%)</option>
+                            <option value="fixed">Valor Fixo (R$)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Valor</label>
+                        <input type="number" class="form-control" id="massUpdateValue" step="0.01" placeholder="Ex: 10 para 10%">
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Filtrar por Categoria</label>
+                        <select class="form-select" id="massUpdateCategoria">
+                            <option value="">Todas as categorias</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria }}">{{ categoria }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Apenas Ativos</label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="massUpdateOnlyActive" checked>
+                            <label class="form-check-label" for="massUpdateOnlyActive">
+                                Aplicar apenas em itens ativos
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-center mb-3">
+                    <button class="btn btn-outline-primary" onclick="previewMassUpdate()">
+                        <i class="fas fa-eye me-2"></i>Prévia das Alterações
+                    </button>
+                </div>
+                
+                <div id="massUpdatePreview" style="display: none;">
+                    <h6 class="fw-bold mb-3">Prévia das Alterações:</h6>
+                    <div class="preview-table">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Valor Atual</th>
+                                    <th>Novo Valor</th>
+                                    <th>Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody id="massUpdatePreviewBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="applyMassUpdateBtn" onclick="applyMassUpdate()" disabled>
+                    <i class="fas fa-save me-2"></i>Aplicar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const apiMaoObra = '/api/mao-obra/';
+let maoObraModal;
+let massUpdateModal;
+let allMaoObra = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    maoObraModal = new bootstrap.Modal(document.getElementById('maoObraModal'));
+    massUpdateModal = new bootstrap.Modal(document.getElementById('massUpdateModal'));
+    fetchMaoObra();
+});
+
+function fetchMaoObra() {
+    fetch(apiMaoObra)
+        .then(response => response.json())
+        .then(data => {
+            allMaoObra = data;
+            displayMaoObra(data);
+        })
+        .catch(error => {
+            console.error('Erro ao buscar mão de obra:', error);
+            document.getElementById('maoObraTableBody').innerHTML = 
+                '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+        });
+}
+
+function displayMaoObra(maoObraList) {
+    const tbody = document.getElementById('maoObraTableBody');
+    
+    if (maoObraList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum item de mão de obra encontrado</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = maoObraList.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.nome}</td>
+            <td>${item.categoria || '<span class="text-muted">-</span>'}</td>
+            <td>
+                <span class="valor-cell" onclick="editValorInline(${item.id}, ${item.valor_real})" 
+                      title="Clique para editar">
+                    R$ ${item.valor_real.toFixed(2)}
+                </span>
+            </td>
+            <td>${item.unidade}</td>
+            <td>
+                <span class="badge ${item.ativo ? 'bg-success' : 'bg-secondary'}">
+                    ${item.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editMaoObra(${item.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteMaoObra(${item.id})" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterMaoObra() {
+    const searchNome = document.getElementById('searchNome').value.toLowerCase();
+    const filterCategoria = document.getElementById('filterCategoria').value;
+    const filterStatus = document.getElementById('filterStatus').value;
+    
+    let filtered = allMaoObra.filter(item => {
+        const matchNome = item.nome.toLowerCase().includes(searchNome);
+        const matchCategoria = !filterCategoria || item.categoria === filterCategoria;
+        const matchStatus = !filterStatus || item.ativo.toString() === filterStatus;
+        
+        return matchNome && matchCategoria && matchStatus;
+    });
+    
+    displayMaoObra(filtered);
+}
+
+function editValorInline(id, valorAtual) {
+    const novoValor = prompt(`Editar valor da mão de obra:\nValor atual: R$ ${valorAtual.toFixed(2)}\n\nNovo valor (R$):`, valorAtual.toFixed(2));
+    
+    if (novoValor !== null && !isNaN(novoValor) && parseFloat(novoValor) >= 0) {
+        const valorCentavos = Math.round(parseFloat(novoValor) * 100);
+        
+        fetch(apiMaoObra + id + '/', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({valor_centavos: valorCentavos})
+        })
+        .then(res => {
+            if (res.ok) {
+                fetchMaoObra();
+                alert('Valor atualizado com sucesso!');
+            } else {
+                res.json().then(data => alert('Erro: ' + JSON.stringify(data)));
+            }
+        });
+    }
+}
+
+function openMassUpdateModal() {
+    document.getElementById('massUpdateType').value = 'percentage';
+    document.getElementById('massUpdateValue').value = '';
+    document.getElementById('massUpdateCategoria').value = '';
+    document.getElementById('massUpdateOnlyActive').checked = true;
+    document.getElementById('massUpdatePreview').style.display = 'none';
+    document.getElementById('applyMassUpdateBtn').disabled = true;
+    massUpdateModal.show();
+}
+
+function previewMassUpdate() {
+    const type = document.getElementById('massUpdateType').value;
+    const value = parseFloat(document.getElementById('massUpdateValue').value);
+    const categoria = document.getElementById('massUpdateCategoria').value;
+    const onlyActive = document.getElementById('massUpdateOnlyActive').checked;
+    
+    if (isNaN(value)) {
+        alert('Por favor, informe um valor válido!');
+        return;
+    }
+    
+    // Filtrar itens para atualização
+    let itemsToUpdate = allMaoObra.filter(item => {
+        const matchCategoria = !categoria || item.categoria === categoria;
+        const matchStatus = !onlyActive || item.ativo;
+        return matchCategoria && matchStatus;
+    });
+    
+    if (itemsToUpdate.length === 0) {
+        alert('Nenhum item corresponde aos filtros selecionados!');
+        return;
+    }
+    
+    // Calcular novos valores
+    const preview = itemsToUpdate.map(item => {
+        let novoValor;
+        if (type === 'percentage') {
+            novoValor = item.valor_real * (1 + value / 100);
+        } else {
+            novoValor = value;
+        }
+        
+        return {
+            ...item,
+            novo_valor: novoValor,
+            diferenca: novoValor - item.valor_real
+        };
+    });
+    
+    // Mostrar prévia
+    const tbody = document.getElementById('massUpdatePreviewBody');
+    tbody.innerHTML = preview.map(item => `
+        <tr>
+            <td>${item.nome}</td>
+            <td>R$ ${item.valor_real.toFixed(2)}</td>
+            <td>R$ ${item.novo_valor.toFixed(2)}</td>
+            <td class="${item.diferenca >= 0 ? 'text-success' : 'text-danger'}">
+                ${item.diferenca >= 0 ? '+' : ''}R$ ${item.diferenca.toFixed(2)}
+            </td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('massUpdatePreview').style.display = 'block';
+    document.getElementById('applyMassUpdateBtn').disabled = false;
+    
+    // Armazenar dados para aplicação
+    window.massUpdateData = preview;
+}
+
+function applyMassUpdate() {
+    if (!window.massUpdateData || window.massUpdateData.length === 0) {
+        alert('Nenhuma alteração para aplicar!');
+        return;
+    }
+    
+    if (!confirm(`Confirma a atualização de ${window.massUpdateData.length} item(ns) de mão de obra?`)) {
+        return;
+    }
+    
+    const updates = window.massUpdateData.map(item => 
+        fetch(apiMaoObra + item.id + '/', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({valor_centavos: Math.round(item.novo_valor * 100)})
+        })
+    );
+    
+    Promise.all(updates)
+        .then(responses => {
+            const successCount = responses.filter(r => r.ok).length;
+            alert(`${successCount} item(ns) atualizados com sucesso!`);
+            massUpdateModal.hide();
+            fetchMaoObra();
+        })
+        .catch(error => {
+            console.error('Erro na atualização em massa:', error);
+            alert('Erro durante a atualização em massa!');
+        });
+}
+
+function openMaoObraModal(id=null) {
+    document.getElementById('maoObraForm').reset();
+    document.getElementById('maoObraId').value = '';
+    document.getElementById('modalTitleMaoObra').innerText = 'Adicionar Mão de Obra';
+    
+    if (id) {
+        fetch(apiMaoObra + id + '/')
+            .then(res => res.json())
+            .then(item => {
+                document.getElementById('maoObraId').value = item.id;
+                document.getElementById('nomeMaoObra').value = item.nome;
+                document.getElementById('descricaoMaoObra').value = item.descricao || '';
+                document.getElementById('valorMaoObra').value = item.valor_real;
+                document.getElementById('unidadeMaoObra').value = item.unidade;
+                document.getElementById('categoriaMaoObra').value = item.categoria || '';
+                document.getElementById('ativoMaoObra').checked = item.ativo;
+                document.getElementById('modalTitleMaoObra').innerText = 'Editar Mão de Obra';
+            });
+    }
+    maoObraModal.show();
+}
+
+function submitMaoObraForm() {
+    const id = document.getElementById('maoObraId').value;
+    const nome = document.getElementById('nomeMaoObra').value;
+    const descricao = document.getElementById('descricaoMaoObra').value;
+    const valorReal = parseFloat(document.getElementById('valorMaoObra').value);
+    const unidade = document.getElementById('unidadeMaoObra').value;
+    const categoria = document.getElementById('categoriaMaoObra').value;
+    const ativo = document.getElementById('ativoMaoObra').checked;
+    
+    if (!nome.trim() || isNaN(valorReal) || valorReal < 0) {
+        alert('Preencha os campos obrigatórios corretamente!');
+        return;
+    }
+    
+    const valorCentavos = Math.round(valorReal * 100);
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? apiMaoObra + id + '/' : apiMaoObra;
+    
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            nome: nome,
+            descricao: descricao,
+            valor_centavos: valorCentavos,
+            unidade: unidade,
+            categoria: categoria,
+            ativo: ativo
+        })
+    })
+    .then(res => {
+        if (res.ok) {
+            maoObraModal.hide();
+            fetchMaoObra();
+        } else {
+            res.json().then(data => alert('Erro: ' + JSON.stringify(data)));
+        }
+    });
+}
+
+function editMaoObra(id) {
+    openMaoObraModal(id);
+}
+
+function deleteMaoObra(id) {
+    if (confirm('Tem certeza que deseja excluir este item de mão de obra?')) {
+        fetch(apiMaoObra + id + '/', {method: 'DELETE'})
+            .then(res => {
+                if (res.ok) fetchMaoObra();
+                else alert('Erro ao excluir!');
+            });
+    }
+}
+
+// Menu collapse functionality
+document.addEventListener('DOMContentLoaded', function() {
+    var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
+    var parametrosSubmenu = document.getElementById('parametrosSubmenu');
+    var caret = parametrosLink.querySelector('.caret-indicator');
+    
+    parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+        caret.style.transform = 'rotate(180deg)';
+    });
+    
+    parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+        caret.style.transform = 'rotate(0deg)';
+    });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+</body>
+</html>

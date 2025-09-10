@@ -1367,6 +1367,13 @@ function carregarInterfaceNovoPerfilOrcamento() {
         </div>
         
         <div class="mb-3">
+            <label for="perfil_tipo_resina" class="form-label">Tipo de Resina *</label>
+            <select class="form-select param-input" id="perfil_tipo_resina" name="tipo_resina" required>
+                <option value="">Carregando resinas...</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
             <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="perfil_pintura" name="tem_pintura" onchange="toggleAreaPinturaOrcamento()">
                 <label for="perfil_pintura" class="form-check-label">Pintura?</label>
@@ -1385,7 +1392,65 @@ function carregarInterfaceNovoPerfilOrcamento() {
         </div>
     `;
     
-    console.log('Interface Novo Perfil Orçamento carregada com 11 campos');
+    // Carregar tipos de resina disponíveis
+    carregarTiposResinaOrcamento();
+    
+    console.log('Interface Novo Perfil Orçamento carregada com 12 campos (incluindo tipo de resina)');
+}
+
+function carregarTiposResinaOrcamento() {
+    console.log('=== CARREGANDO TIPOS DE RESINA ORÇAMENTO ===');
+    
+    const selectResina = document.getElementById('perfil_tipo_resina');
+    if (!selectResina) {
+        console.warn('Select de resina não encontrado no orçamento');
+        return;
+    }
+    
+    // Buscar tipos de resina via API
+    fetch('/api/tipos-resina/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.resinas) {
+                console.log(`✅ ${data.resinas.length} tipos de resina carregados (orçamento)`);
+                
+                // Limpar opções atuais
+                selectResina.innerHTML = '<option value="">Selecione uma resina...</option>';
+                
+                // Adicionar opções das resinas
+                data.resinas.forEach(resina => {
+                    const option = document.createElement('option');
+                    option.value = resina.id;
+                    option.textContent = `${resina.descricao} - R$ ${resina.custo_reais.toFixed(2)}`;
+                    selectResina.appendChild(option);
+                    
+                    console.log(`   • ${resina.descricao}: R$ ${resina.custo_reais.toFixed(2)}`);
+                });
+                
+                // Selecionar Resina Poliéster como padrão (ID 1269)
+                selectResina.value = '1269';
+                
+            } else {
+                throw new Error(data.error || 'Erro desconhecido');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar tipos de resina (orçamento):', error);
+            
+            // Fallback: adicionar opções básicas
+            selectResina.innerHTML = `
+                <option value="">Erro ao carregar resinas</option>
+                <option value="1269">Resina Poliéster (padrão)</option>
+                <option value="1268">Resina Isoftálica</option>
+                <option value="1270">Resina Éster Vinílica</option>
+            `;
+            selectResina.value = '1269';
+        });
 }
 
 function toggleAreaPinturaOrcamento() {
@@ -1410,7 +1475,7 @@ function calcularNovoPerfilOrcamento() {
     const camposObrigatorios = [
         'perfil_nome', 'perfil_roving', 'perfil_manta', 'perfil_veu', 
         'perfil_peso_metro', 'perfil_n_matrizes', 'perfil_n_maquinas', 
-        'perfil_metros_h', 'perfil_perda'
+        'perfil_metros_h', 'perfil_perda', 'perfil_tipo_resina'
     ];
     
     let todosCamposPreenchidos = true;
@@ -1528,6 +1593,18 @@ function calcularNovoPerfilOrcamento() {
                     console.warn(`⚠️ Preço não encontrado na base para ${key}, usando padrão: R$ ${precosDefault[key]}`);
                 }
             });
+            
+            // BUSCAR PREÇO ESPECÍFICO DA RESINA SELECIONADA
+            const tipoResinaId = dados.tipo_resina;
+            console.log(`🎯 Tipo de resina selecionado (orçamento): ID ${tipoResinaId}`);
+            
+            const resinaSelecionada = produtos.find(p => p.id == tipoResinaId);
+            if (resinaSelecionada) {
+                precos.resina = resinaSelecionada.custo_centavos / 100;
+                console.log(`✅ Preço da resina selecionada (${resinaSelecionada.descricao}): R$ ${precos.resina.toFixed(2)}`);
+            } else {
+                console.warn(`⚠️ Resina ID ${tipoResinaId} não encontrada, usando preço padrão: R$ ${precos.resina}`);
+            }
             
             // CÁLCULO CORRETO DOS COMPONENTES DA RESINA
             // Peso da resina base = peso do metro - (roving + manta + véu)
@@ -1737,12 +1814,12 @@ function calcularNovoPerfilOrcamento() {
 function calcularNovoPerfilOrcamentoComPrecosDefault(dados, temPintura) {
     console.log('⚠️ Usando preços padrão devido a erro na base de dados');
     
-    // Preços padrão
+    // Preços padrão baseados no tipo de resina selecionado
     const precos = {
         roving: 8.50,
         manta: 12.00,
         veu: 25.00,
-        resina: 12.96,
+        resina: 12.96, // Padrão poliéster
         monomero: 8.00,
         antiUV: 45.00,
         antiOX: 35.00,
@@ -1754,6 +1831,22 @@ function calcularNovoPerfilOrcamentoComPrecosDefault(dados, temPintura) {
         pigmento: 15.80,
         pintura: 15.00
     };
+    
+    // Ajustar preço da resina baseado no tipo selecionado
+    const tipoResinaId = dados.tipo_resina;
+    console.log(`🎯 Ajustando preço de resina para ID ${tipoResinaId} (fallback)`);
+    
+    // Preços conhecidos das resinas
+    const precosResinas = {
+        '1269': 12.96,  // Resina Poliéster (padrão)
+        '1268': 18.34,  // Resina Isoftálica
+        '1270': 35.97   // Resina Éster Vinílica
+    };
+    
+    if (precosResinas[tipoResinaId]) {
+        precos.resina = precosResinas[tipoResinaId];
+        console.log(`✅ Preço de resina ajustado para: R$ ${precos.resina.toFixed(2)}`);
+    }
     
     // Peso da resina base
     const pesoResinaBase = dados.peso_metro_kg - (dados.roving_4400_kg + dados.manta_300_kg + dados.veu_kg);

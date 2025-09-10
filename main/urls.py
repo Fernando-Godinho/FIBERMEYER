@@ -24,5 +24,6 @@ urlpatterns = [
     path('calcular-produto/', views.calcular_produto_parametrizado, name='calcular_produto'),
     path('impostos/', views.impostos, name='impostos'),
     path('api/calcular-produto-parametrizado/', views.calcular_produto_parametrizado, name='calcular_produto_parametrizado_api'),
+    path('api/tipos-resina/', views.tipos_resina, name='tipos_resina'),
     path('api/', include(router.urls)),
 ]

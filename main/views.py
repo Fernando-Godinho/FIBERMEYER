@@ -874,3 +874,34 @@ def calcular_produto_parametrizado(request):
             'success': False,
             'error': str(e)
         })
+
+
+@require_http_methods(["GET"])
+def tipos_resina(request):
+    """API para buscar tipos de resina disponíveis no banco"""
+    try:
+        # Buscar produtos que contenham "resina" na descrição
+        resinas = MP_Produtos.objects.filter(
+            descricao__icontains='resina'
+        ).order_by('descricao')
+        
+        resinas_data = []
+        for resina in resinas:
+            resinas_data.append({
+                'id': resina.id,
+                'descricao': resina.descricao,
+                'custo_centavos': resina.custo_centavos,
+                'custo_reais': resina.custo_centavos / 100,
+                'unidade': resina.unidade,
+                'referencia': resina.referencia or ''
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'resinas': resinas_data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

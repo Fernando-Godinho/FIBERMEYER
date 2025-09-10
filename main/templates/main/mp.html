@@ -1428,6 +1428,12 @@ function calcularGrade() {
                 throw new Error('Perfil Chaveta (ID 1332) não encontrado no banco');
             }
             
+            // Encontrar a cola (ID fixo 1183)
+            const cola = produtos.find(p => p.id == 1183);
+            if (!cola) {
+                throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
+            }
+            
             console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
             console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m`);
             console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
@@ -1435,6 +1441,10 @@ function calcularGrade() {
             console.log(`🔧 Chaveta incluída: ${chaveta.descricao}`);
             console.log(`   • Peso: ${chaveta.peso_und} kg/m`);
             console.log(`   • Custo: R$ ${(chaveta.custo_centavos/100).toFixed(2)}/m`);
+            
+            console.log(`🧴 Cola incluída: ${cola.descricao}`);
+            console.log(`   • Peso: ${cola.peso_und} kg/unid`);
+            console.log(`   • Custo: R$ ${(cola.custo_centavos/100).toFixed(2)}/unid`);
             
             // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
             const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
@@ -1448,9 +1458,14 @@ function calcularGrade() {
             const pesoChaveta = quantidadeChaveta * chaveta.peso_und;
             const custoChaveta = quantidadeChaveta * chaveta.custo_centavos;
             
-            // Totais (perfil + chaveta)
-            const pesoTotalKg = pesoPerfilKg + pesoChaveta;
-            const custoTotalCentavos = custoPerfilCentavos + custoChaveta;
+            // Calcular para a cola - FÓRMULA: quantidade fixa 0.06 unid/m²
+            const quantidadeCola = 0.06; // Quantidade fixa
+            const pesoCola = quantidadeCola * cola.peso_und;
+            const custoCola = quantidadeCola * cola.custo_centavos;
+            
+            // Totais (perfil + chaveta + cola)
+            const pesoTotalKg = pesoPerfilKg + pesoChaveta + pesoCola;
+            const custoTotalCentavos = custoPerfilCentavos + custoChaveta + custoCola;
             
             console.log('\n🧮 CÁLCULO DETALHADO:');
             console.log(`Perfil - Fórmula: (${dados.comprimento}/${dados.eixo_i}) * (${dados.vao}/1000)`);
@@ -1459,6 +1474,9 @@ function calcularGrade() {
             console.log(`Chaveta - Fórmula: (${dados.vao}/150) * 2`);
             console.log(`Chaveta - Quantidade: ${quantidadeChaveta.toFixed(4)} m/m²`);
             console.log(`Chaveta - Peso: ${pesoChaveta.toFixed(3)} kg/m² | Custo: R$ ${(custoChaveta/100).toFixed(2)}/m²`);
+            console.log(`Cola - Fórmula: 0.06 unid/m² (quantidade fixa)`);
+            console.log(`Cola - Quantidade: ${quantidadeCola.toFixed(4)} unid/m²`);
+            console.log(`Cola - Peso: ${pesoCola.toFixed(3)} kg/m² | Custo: R$ ${(custoCola/100).toFixed(2)}/m²`);
             console.log(`TOTAL - Peso: ${pesoTotalKg.toFixed(3)} kg/m² | Custo: R$ ${(custoTotalCentavos/100).toFixed(2)}/m²`);
             
             // Criar resultado final
@@ -1484,6 +1502,14 @@ function calcularGrade() {
                         custo_unitario: chaveta.custo_centavos,
                         custo_total: custoChaveta,
                         unidade: 'm'
+                    },
+                    {
+                        nome: cola.descricao,
+                        produto_nome: cola.descricao,
+                        quantidade: quantidadeCola,
+                        custo_unitario: cola.custo_centavos,
+                        custo_total: custoCola,
+                        unidade: 'unid'
                     }
                 ]
             };
@@ -3072,6 +3098,25 @@ function salvarProdutoParametrizado() {
 function salvarGradeParametrizada() {
     console.log('=== SALVANDO GRADE PARAMETRIZADA ===');
     
+    // Função para obter cookie CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Obter token CSRF
+    const csrftoken = getCookie('csrftoken');
+    
     // Verificar se o cálculo foi feito
     if (!ultimoCalculo || !ultimoCalculo.success) {
         alert('Realize o cálculo da grade primeiro!');
@@ -3167,16 +3212,38 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
     
     try {
         for (const componente of ultimoCalculo.componentes) {
+            // Encontrar o ID do produto componente baseado no nome
+            let produtoComponenteId = null;
+            
+            // Para perfis I25, I32, I38
+            if (componente.nome.includes('I25')) {
+                produtoComponenteId = componente.nome.includes('Leve') ? 1331 : 1328;
+            } else if (componente.nome.includes('I32')) {
+                produtoComponenteId = 1329;
+            } else if (componente.nome.includes('I38')) {
+                produtoComponenteId = 1330;
+            } else if (componente.nome.includes('Chaveta')) {
+                produtoComponenteId = 1332; // ID fixo da chaveta
+            } else if (componente.nome.includes('COLA ESTRUTURAL 4500')) {
+                produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
+            }
+            
+            if (!produtoComponenteId) {
+                console.error(`❌ Não foi possível mapear o componente: ${componente.nome}`);
+                throw new Error(`Componente não mapeado: ${componente.nome}`);
+            }
+            
             const componenteData = {
                 produto_principal: produtoId,
-                produto_componente: null, // Será preenchido com base no nome
-                quantidade: parseFloat(componente.quantidade.toFixed(4)),
+                produto_componente: produtoComponenteId,
+                quantidade: Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000, // Garantir max 3 decimais
                 custo_unitario: Math.round(componente.custo_unitario),
                 custo_total: Math.round(componente.custo_total),
                 nome_componente: componente.nome
             };
             
             console.log(`Salvando componente: ${componente.nome}`);
+            console.log('Dados do componente:', componenteData);
             
             const response = await fetch('/api/componentes/', {
                 method: 'POST',
@@ -3187,8 +3254,12 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
                 body: JSON.stringify(componenteData)
             });
             
+            console.log(`Response status: ${response.status} para componente: ${componente.nome}`);
+            
             if (!response.ok) {
-                throw new Error(`Erro ao salvar componente ${componente.nome}`);
+                const errorText = await response.text();
+                console.error(`Erro detalhado para ${componente.nome}:`, errorText);
+                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.status} - ${errorText}`);
             }
             
             const componenteSalvo = await response.json();

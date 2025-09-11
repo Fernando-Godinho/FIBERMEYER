@@ -905,3 +905,32 @@ def tipos_resina(request):
             'success': False,
             'error': str(e)
         })
+
+def mao_obra_lista(request):
+    """API para buscar mão de obra disponível no banco"""
+    try:
+        from .models import MaoObra
+        
+        # Buscar todas as mãos de obra ativas
+        mao_obra_list = MaoObra.objects.filter(ativo=True).order_by('nome')
+        
+        mo_data = []
+        for mo in mao_obra_list:
+            mo_data.append({
+                'id': mo.id,
+                'nome': mo.nome,
+                'descricao': mo.descricao,
+                'valor_centavos': mo.valor_centavos,
+                'valor_real': mo.valor_real,
+                'unidade': mo.unidade
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'mao_obra': mo_data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

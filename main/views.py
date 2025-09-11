@@ -117,6 +117,70 @@ def produtos_compostos(request):
 class MP_ProdutosViewSet(viewsets.ModelViewSet):
     queryset = MP_Produtos.objects.all()
     serializer_class = MP_ProdutosSerializer
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Sobrescrevendo PATCH para forçar recálculo quando necessário"""
+        if request.data.get('force_recalculate'):
+            # Forçar recálculo do produto composto
+            try:
+                produto = self.get_object()
+                if produto.tipo_produto in ['composto', 'parametrizado']:
+                    print(f"🔄 Forçando recálculo do produto: {produto.descricao}")
+                    
+                    # Usar a mesma lógica da ProdutoComponenteViewSet
+                    componentes = ProdutoComponente.objects.filter(produto_principal=produto)
+                    custo_total = 0
+                    peso_total = 0
+                    
+                    print(f"=== RECALCULANDO PRODUTO COMPOSTO: {produto.descricao} ===")
+                    
+                    for comp in componentes:
+                        produto_comp = comp.produto_componente
+                        if produto_comp:
+                            # Verificar se há custos customizados na observação
+                            custo_componente_centavos = produto_comp.custo_centavos
+                            
+                            if comp.observacao:
+                                try:
+                                    import json
+                                    custos_salvos = json.loads(comp.observacao)
+                                    if 'custo_total' in custos_salvos:
+                                        # Usar custo total salvo na observação (já calculado)
+                                        custo_componente_centavos = custos_salvos['custo_total']
+                                        print(f"   • {produto_comp.descricao}: usando custo salvo R$ {custo_componente_centavos/100:.2f}")
+                                    else:
+                                        # Usar custo padrão do produto
+                                        custo_componente_centavos = produto_comp.custo_centavos * float(comp.quantidade)
+                                        print(f"   • {produto_comp.descricao}: usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                                except (json.JSONDecodeError, KeyError):
+                                    # Se erro na observação, usar cálculo padrão
+                                    custo_componente_centavos = produto_comp.custo_centavos * float(comp.quantidade)
+                                    print(f"   • {produto_comp.descricao}: erro na observação, usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                            else:
+                                # Sem observação, usar cálculo padrão
+                                custo_componente_centavos = produto_comp.custo_centavos * float(comp.quantidade)
+                                print(f"   • {produto_comp.descricao}: sem observação, usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                            
+                            custo_total += custo_componente_centavos / 100
+                            peso_total += float(produto_comp.peso_und) * float(comp.quantidade)
+                    
+                    print(f"   💰 Custo total calculado: R$ {custo_total:.2f}")
+                    
+                    produto.custo_centavos = int(round(custo_total * 100))
+                    produto.peso_und = peso_total
+                    produto.save()
+                    
+                    # Retornar produto atualizado
+                    serializer = self.get_serializer(produto)
+                    return Response(serializer.data)
+                else:
+                    return Response({'error': 'Produto não é composto'}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"❌ Erro no recálculo forçado: {e}")
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            # Comportamento normal do PATCH
+            return super().partial_update(request, *args, **kwargs)
 
 # API REST para Orcamento
 class OrcamentoViewSet(viewsets.ModelViewSet):
@@ -192,11 +256,41 @@ class ProdutoComponenteViewSet(viewsets.ModelViewSet):
         componentes = ProdutoComponente.objects.filter(produto_principal=produto_principal)
         custo_total = 0
         peso_total = 0
+        
+        print(f"=== RECALCULANDO PRODUTO COMPOSTO: {produto_principal.descricao} ===")
+        
         for comp in componentes:
             produto = comp.produto_componente
             if produto:
-                custo_total += (produto.custo_centavos / 100) * float(comp.quantidade)
+                # Verificar se há custos customizados na observação
+                custo_componente_centavos = produto.custo_centavos
+                
+                if comp.observacao:
+                    try:
+                        import json
+                        custos_salvos = json.loads(comp.observacao)
+                        if 'custo_total' in custos_salvos:
+                            # Usar custo total salvo na observação (já calculado)
+                            custo_componente_centavos = custos_salvos['custo_total']
+                            print(f"   • {produto.descricao}: usando custo salvo R$ {custo_componente_centavos/100:.2f}")
+                        else:
+                            # Usar custo padrão do produto
+                            custo_componente_centavos = produto.custo_centavos * float(comp.quantidade)
+                            print(f"   • {produto.descricao}: usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                    except (json.JSONDecodeError, KeyError):
+                        # Se erro na observação, usar cálculo padrão
+                        custo_componente_centavos = produto.custo_centavos * float(comp.quantidade)
+                        print(f"   • {produto.descricao}: erro na observação, usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                else:
+                    # Sem observação, usar cálculo padrão
+                    custo_componente_centavos = produto.custo_centavos * float(comp.quantidade)
+                    print(f"   • {produto.descricao}: sem observação, usando custo padrão R$ {custo_componente_centavos/100:.2f}")
+                
+                custo_total += custo_componente_centavos / 100
                 peso_total += float(produto.peso_und) * float(comp.quantidade)
+        
+        print(f"   💰 Custo total calculado: R$ {custo_total:.2f}")
+        
         produto_principal.custo_centavos = int(round(custo_total * 100))
         produto_principal.peso_und = peso_total
         produto_principal.save()

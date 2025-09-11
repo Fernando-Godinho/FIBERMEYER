@@ -534,19 +534,11 @@ function displayProductsInTable(produtos) {
     let pesoFormatado = Number(produto.peso_und).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     if (tipo === 'Composto') {
-      // Calcular custo somando componentes atuais
-      let custoTotal = 0;
-      try {
-        const res = await fetch(`/api/componentes/?produto_principal=${produto.id}`);
-        const componentes = await res.json();
-        componentes.forEach(comp => {
-          const prodComp = allProductsOriginal.find(p => p.id == comp.produto_componente);
-          if (prodComp) {
-            custoTotal += (prodComp.custo_centavos / 100) * comp.quantidade;
-          }
-        });
-      } catch (e) {}
-      custo_reais = 'R$ ' + custoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      // Para produtos compostos, usar o custo salvo no produto principal
+      // (que já foi calculado corretamente baseado nos componentes)
+      let centavos = Number(produto.custo_centavos);
+      let reais = !isNaN(centavos) ? centavos / 100 : 0;
+      custo_reais = 'R$ ' + reais.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     } else if (tipo === 'Parametrizado') {
       // Se possível, calcular custo dos componentes calculados
       if (produto.detalhes_calculo && produto.detalhes_calculo.custo_total) {
@@ -1079,12 +1071,33 @@ function editProdutoComposto(id) {
           componentes.forEach(comp => {
             const produtoComp = allProductsOriginal.find(p => p.id == comp.produto_componente);
             if (produtoComp) {
+              let custoUnitario = produtoComp.custo_centavos / 100;
+              let custoTotal = custoUnitario * parseFloat(comp.quantidade);
+              let descricaoComponente = produtoComp.descricao;
+              
+              // Tentar extrair custos calculados da observação
+              if (comp.observacao) {
+                try {
+                  const custosCalculados = JSON.parse(comp.observacao);
+                  if (custosCalculados.custo_unitario && custosCalculados.custo_total) {
+                    custoUnitario = custosCalculados.custo_unitario / 100;
+                    custoTotal = custosCalculados.custo_total / 100;
+                    if (custosCalculados.nome_componente) {
+                      descricaoComponente = custosCalculados.nome_componente;
+                    }
+                    console.log(`✅ Custos recuperados da observação para ${descricaoComponente}: Unit: R$ ${custoUnitario.toFixed(2)}, Total: R$ ${custoTotal.toFixed(2)}`);
+                  }
+                } catch (e) {
+                  console.warn(`⚠️ Erro ao parsear observação do componente ${comp.id}:`, e);
+                }
+              }
+              
               componentesTemp.push({
                 produto_id: produtoComp.id,
-                produto_descricao: produtoComp.descricao,
+                produto_descricao: descricaoComponente,
                 quantidade: parseFloat(comp.quantidade),
-                custo_unitario: produtoComp.custo_centavos / 100,
-                custo_total: (produtoComp.custo_centavos / 100) * parseFloat(comp.quantidade)
+                custo_unitario: custoUnitario,
+                custo_total: custoTotal
               });
             }
           });
@@ -1477,6 +1490,16 @@ function calcularGrade() {
                 throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
             }
             
+            // Encontrar mão de obra processamento/montagem
+            const maoObraProcessamento = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('mão de obra') && 
+                p.descricao.toLowerCase().includes('processamento')
+            );
+            if (!maoObraProcessamento) {
+                throw new Error('Produto de mão de obra Processamento/Montagem não encontrado no banco');
+            }
+            
             console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
             console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m`);
             console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
@@ -1550,6 +1573,12 @@ function calcularGrade() {
             console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
             console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
             
+            console.log('\n🔍 DEBUG CUSTOS INDIVIDUAIS:');
+            console.log(`Perfil com perda: ${custoPerfilCentavos * fatorPerda} centavos`);
+            console.log(`Chaveta com perda: ${custoChaveta * fatorPerda} centavos`);
+            console.log(`Cola com perda: ${custoCola * fatorPerda} centavos`);
+            console.log(`Mão de obra (sem perda): ${custoMaoObraTotal} centavos`);
+            
             // Criar resultado final
             const resultado = {
                 success: true,
@@ -1557,11 +1586,12 @@ function calcularGrade() {
                 custo_total: custoTotalCentavos,
                 peso_total: pesoTotalKg,
                 metros_lineares_por_m2: metrosLinearesPorM2,
+                mao_obra_produto_id: maoObraProcessamento.id, // Adicionar ID do produto de mão de obra
                 componentes: [
                     {
                         nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: perfilSelecionado.descricao,
-                        quantidade: metrosLinearesPorM2,
+                        quantidade: metrosLinearesPorM2 * fatorPerda,
                         custo_unitario: perfilSelecionado.custo_centavos,
                         custo_total: custoPerfilCentavos * fatorPerda,
                         unidade: 'm'
@@ -1569,7 +1599,7 @@ function calcularGrade() {
                     {
                         nome: `${chaveta.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: chaveta.descricao,
-                        quantidade: quantidadeChaveta,
+                        quantidade: quantidadeChaveta * fatorPerda,
                         custo_unitario: chaveta.custo_centavos,
                         custo_total: custoChaveta * fatorPerda,
                         unidade: 'm'
@@ -1577,7 +1607,7 @@ function calcularGrade() {
                     {
                         nome: `${cola.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: cola.descricao,
-                        quantidade: quantidadeCola,
+                        quantidade: quantidadeCola * fatorPerda,
                         custo_unitario: cola.custo_centavos,
                         custo_total: custoCola * fatorPerda,
                         unidade: 'unid'
@@ -1591,11 +1621,21 @@ function calcularGrade() {
                     nome: maoObraDescricao,
                     produto_nome: maoObraDescricao,
                     quantidade: dados.tempo_proc + dados.tempo_mtg,
-                    custo_unitario: custoMaoObraTotal / (dados.tempo_proc + dados.tempo_mtg),
+                    custo_unitario: valorHoraMO * 100, // R$ 65.79/hora em centavos
                     custo_total: custoMaoObraTotal,
                     unidade: 'h'
                 });
             }
+            
+            // Debug final: verificar soma dos componentes
+            const somaComponentes = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+            console.log(`\n🔎 VERIFICAÇÃO FINAL:`);
+            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(2)}`);
+            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(2)}`);
+            console.log(`Diferença: ${Math.abs(custoTotalCentavos - somaComponentes)} centavos = R$ ${(Math.abs(custoTotalCentavos - somaComponentes)/100).toFixed(2)}`);
+            
+            // Atualizar o custo_total do resultado com a soma correta dos componentes
+            resultado.custo_total = somaComponentes;
             
             // Salvar resultado globalmente
             ultimoCalculo = resultado;
@@ -3215,10 +3255,20 @@ function salvarGradeParametrizada() {
     
     console.log('Dados da grade para salvar:', ultimoCalculo);
     
+    // Usar sempre o custo_total que já foi corrigido no ultimoCalculo
+    // (que foi atualizado na função calcularGrade com a soma correta dos componentes)
+    const custoTotalComponentes = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    console.log(`💰 Verificação de custos:`);
+    console.log(`   ultimoCalculo.custo_total (já corrigido): ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(2)}`);
+    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(2)}`);
+    
+    // Usar o custo_total que já foi corrigido na função calcularGrade
+    const custoFinalCentavos = Math.round(ultimoCalculo.custo_total);
+    
     // Dados do produto principal (grade)
     const produtoData = {
         descricao: nomeGrade,
-        custo_centavos: Math.round(ultimoCalculo.custo_total),
+        custo_centavos: custoFinalCentavos,
         peso_und: parseFloat(ultimoCalculo.peso_total.toFixed(3)),
         unidade: 'm²',
         referencia: gerarReferenciaGrade(nomeGrade),
@@ -3227,7 +3277,7 @@ function salvarGradeParametrizada() {
         subcategoria: 'Estrutural'
     };
     
-    console.log('Salvando grade:', produtoData);
+    console.log('Salvando grade com custo corrigido:', produtoData);
     
     // Salvar produto principal
     fetch('/api/produtos/', {
@@ -3307,8 +3357,17 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
                 produtoComponenteId = 1330;
             } else if (componente.nome.includes('Chaveta')) {
                 produtoComponenteId = 1332; // ID fixo da chaveta
-            } else if (componente.nome.includes('COLA ESTRUTURAL 4500')) {
+            } else if (componente.nome.includes('COLA ESTRUTURAL')) {
                 produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
+            } else if (componente.nome.includes('Processamento/Montagem')) {
+                // Buscar produto de mão de obra dinamicamente
+                const maoObraProduto = ultimoCalculo.mao_obra_produto_id;
+                if (maoObraProduto) {
+                    produtoComponenteId = maoObraProduto;
+                } else {
+                    console.error('❌ ID do produto de mão de obra não encontrado no ultimoCalculo');
+                    throw new Error('Produto de mão de obra não mapeado corretamente');
+                }
             }
             
             if (!produtoComponenteId) {
@@ -3316,17 +3375,29 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
                 throw new Error(`Componente não mapeado: ${componente.nome}`);
             }
             
+            // Salvar custos calculados na observação como JSON
+            const custosCalculados = {
+                custo_unitario: Math.round(componente.custo_unitario),
+                custo_total: Math.round(componente.custo_total),
+                nome_componente: componente.nome,
+                calculated_at: new Date().toISOString()
+            };
+            
             const componenteData = {
                 produto_principal: produtoId,
                 produto_componente: produtoComponenteId,
                 quantidade: Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000, // Garantir max 3 decimais
-                custo_unitario: Math.round(componente.custo_unitario),
-                custo_total: Math.round(componente.custo_total),
-                nome_componente: componente.nome
+                observacao: JSON.stringify(custosCalculados)
             };
             
             console.log(`Salvando componente: ${componente.nome}`);
-            console.log('Dados do componente:', componenteData);
+            console.log('Dados originais do componente:', {
+                nome: componente.nome,
+                quantidade: componente.quantidade,
+                custo_unitario_original: componente.custo_unitario,
+                custo_total_original: componente.custo_total
+            });
+            console.log('Dados processados:', componenteData);
             
             const response = await fetch('/api/componentes/', {
                 method: 'POST',
@@ -3350,6 +3421,30 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
         }
         
         console.log('✅ Todos os componentes da grade foram salvos');
+        
+        // Forçar recálculo final do produto composto
+        console.log('🔄 Forçando recálculo final do produto composto...');
+        try {
+            const recalculoResponse = await fetch(`/api/produtos/${produtoId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    'force_recalculate': true
+                })
+            });
+            
+            if (recalculoResponse.ok) {
+                const produtoAtualizado = await recalculoResponse.json();
+                console.log(`✅ Recálculo forçado: novo custo R$ ${(produtoAtualizado.custo_centavos/100).toFixed(2)}`);
+            } else {
+                console.warn('⚠️ Erro no recálculo forçado, mas componentes foram salvos');
+            }
+        } catch (error) {
+            console.warn('⚠️ Erro no recálculo forçado:', error);
+        }
         
     } catch (error) {
         console.error('❌ Erro ao salvar componentes da grade:', error);

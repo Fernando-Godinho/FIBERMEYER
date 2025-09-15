@@ -1417,6 +1417,180 @@ function carregarPerfisGrade() {
         });
 }
 
+function carregarInterfaceTampaMontada() {
+    console.log('=== CARREGANDO INTERFACE TAMPA MONTADA ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'tampa_montada_customizado', tipo: 'tampa_montada' };
+    ultimoCalculo = null;
+    
+    // Selecionar o template correto
+    document.getElementById('templateSelect').value = 'tampa_montada_customizado';
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Tampa Montada</h6>
+        <small class="text-muted">Categoria: PRODUTO_FINAL</small>
+    `;
+    
+    // Criar campos específicos para tampa montada
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="tampa_nome" class="form-label">Nome da Tampa *</label>
+            <input type="text" class="form-control param-input" id="tampa_nome" name="nome_tampa" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_vao" class="form-label">Vão (mm) *</label>
+            <input type="number" step="0.1" class="form-control param-input" id="tampa_vao" name="vao" required min="0">
+            <div class="form-text">Vão da tampa em milímetros</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_comprimento" class="form-label">Comprimento (mm) *</label>
+            <input type="number" step="0.1" class="form-control param-input" id="tampa_comprimento" name="comprimento" required min="0">
+            <div class="form-text">Comprimento total da tampa em milímetros</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_eixo_i" class="form-label">Eixo I (mm) *</label>
+            <input type="number" step="0.1" class="form-control param-input" id="tampa_eixo_i" name="eixo_i" required min="0">
+            <div class="form-text">Distância entre perfis em milímetros</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_perfil" class="form-label">Selecione o Perfil *</label>
+            <select class="form-select param-input" id="tampa_perfil" name="perfil_id" required>
+                <option value="">Carregando perfis...</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_perda" class="form-label">Perda (%)</label>
+            <input type="number" step="0.1" class="form-control param-input" id="tampa_perda" name="perda" value="3" min="0" max="100">
+            <div class="form-text">Percentual de perda dos materiais (padrão: 3%)</div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="tampa_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_proc" name="tempo_proc" value="1.5" min="0">
+                    <div class="form-text">Tempo de processamento em horas</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="tampa_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_mtg" name="tempo_mtg" value="0.5" min="0">
+                    <div class="form-text">Tempo de montagem em horas</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="tampa_quadro_u4" name="quadro_u4">
+                <label class="form-check-label" for="tampa_quadro_u4">
+                    Incluir Quadro U4" (2 unidades)
+                </label>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="tampa_alca" name="alca">
+                <label class="form-check-label" for="tampa_alca">
+                    Incluir Alças (2 unidades)
+                </label>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="tampa_chapa_ev" name="chapa_ev">
+                <label class="form-check-label" for="tampa_chapa_ev">
+                    Incluir Chapa EV
+                </label>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary" onclick="calcularTampaMontada()" id="calcularTampaBtn">
+                <i class="fas fa-calculator"></i> Calcular Tampa Montada
+            </button>
+        </div>
+    `;
+    
+    // Habilitar botão calcular
+    const calcularBtn = document.getElementById('calcularBtn');
+    if (calcularBtn) {
+        calcularBtn.disabled = false;
+    }
+    
+    // Carregar perfis disponíveis
+    carregarPerfisTampa();
+    
+    console.log('Interface Tampa Montada carregada com campos extras');
+}
+
+function carregarPerfisTampa() {
+    console.log('=== CARREGANDO PERFIS PARA TAMPA MONTADA ===');
+    
+    const selectPerfil = document.getElementById('tampa_perfil');
+    if (!selectPerfil) {
+        console.warn('Select de perfil não encontrado');
+        return;
+    }
+    
+    // Buscar perfis I25, I32, I38, TRAV via API
+    fetch('/api/produtos/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(produtos => {
+            console.log(`✅ ${produtos.length} produtos carregados da API`);
+            
+            // Filtrar perfis I25, I32, I38 e TRAV
+            const perfis = produtos.filter(p => {
+                const desc = p.descricao ? p.descricao.toLowerCase() : '';
+                return desc.includes('i25') || desc.includes('i32') || desc.includes('i38') || desc.includes('trav');
+            });
+            
+            console.log(`✅ ${perfis.length} perfis encontrados:`, perfis.map(p => `${p.id}: ${p.descricao}`));
+            
+            // Limpar opções atuais
+            selectPerfil.innerHTML = '<option value="">Selecione um perfil...</option>';
+            
+            // Adicionar opções dos perfis
+            perfis.forEach(perfil => {
+                const option = document.createElement('option');
+                option.value = perfil.id;
+                option.textContent = `${perfil.descricao} - ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(2)}`;
+                selectPerfil.appendChild(option);
+            });
+            
+            if (perfis.length === 0) {
+                selectPerfil.innerHTML = '<option value="">Nenhum perfil I25/I32/I38/TRAV encontrado</option>';
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar perfis:', error);
+            // Fallback com perfis básicos
+            selectPerfil.innerHTML = `
+                <option value="">Erro ao carregar perfis</option>
+                <option value="1331">I25mm Leve - 0.298kg (fallback)</option>
+                <option value="1328">I25mm - 0.497kg (fallback)</option>
+                <option value="1329">I32mm - 0.539kg (fallback)</option>
+                <option value="1330">I38mm - 0.590kg (fallback)</option>
+            `;
+        });
+}
+
 function calcularGrade() {
     console.log('=== CALCULANDO GRADE ===');
     
@@ -1529,18 +1703,19 @@ function calcularGrade() {
             const pesoCola = quantidadeCola * cola.peso_und;
             const custoCola = quantidadeCola * cola.custo_centavos;
             
-            // Totais básicos dos materiais (perfil + chaveta + cola)
-            let pesoTotalMateriaisKg = pesoPerfilKg + pesoChaveta + pesoCola;
-            let custoTotalMateriaisCentavos = custoPerfilCentavos + custoChaveta + custoCola;
-            
-            console.log(`📊 Subtotal MATERIAIS (sem perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
-            
-            // Aplicar perda APENAS aos materiais
+            // Aplicar perda APENAS aos custos dos materiais (individualmente)
             const fatorPerda = 1 + (dados.perda / 100);
-            pesoTotalMateriaisKg = pesoTotalMateriaisKg * fatorPerda;
-            custoTotalMateriaisCentavos = custoTotalMateriaisCentavos * fatorPerda;
+            const custoPerfilComPerda = custoPerfilCentavos * fatorPerda;
+            const custoChaveteComPerda = custoChaveta * fatorPerda;
+            const custoColaComPerda = custoCola * fatorPerda;
             
+            // Totais dos materiais (já com perda aplicada)
+            let pesoTotalMateriaisKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
+            let custoTotalMateriaisCentavos = custoPerfilComPerda + custoChaveteComPerda + custoColaComPerda;
+            
+            console.log(`📊 Subtotal MATERIAIS (sem perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola)/100).toFixed(2)}/m²`);
             console.log(`📊 Subtotal MATERIAIS (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
+            
             
             // Calcular mão de obra se selecionada
             let custoMaoObraTotal = 0;
@@ -1589,27 +1764,27 @@ function calcularGrade() {
                 mao_obra_produto_id: maoObraProcessamento.id, // Adicionar ID do produto de mão de obra
                 componentes: [
                     {
-                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda)`,
+                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda no custo)`,
                         produto_nome: perfilSelecionado.descricao,
-                        quantidade: metrosLinearesPorM2 * fatorPerda,
+                        quantidade: metrosLinearesPorM2,
                         custo_unitario: perfilSelecionado.custo_centavos,
-                        custo_total: custoPerfilCentavos * fatorPerda,
+                        custo_total: custoPerfilComPerda,
                         unidade: 'm'
                     },
                     {
-                        nome: `${chaveta.descricao} (com ${dados.perda}% perda)`,
+                        nome: `${chaveta.descricao} (com ${dados.perda}% perda no custo)`,
                         produto_nome: chaveta.descricao,
-                        quantidade: quantidadeChaveta * fatorPerda,
+                        quantidade: quantidadeChaveta,
                         custo_unitario: chaveta.custo_centavos,
-                        custo_total: custoChaveta * fatorPerda,
+                        custo_total: custoChaveteComPerda,
                         unidade: 'm'
                     },
                     {
-                        nome: `${cola.descricao} (com ${dados.perda}% perda)`,
+                        nome: `${cola.descricao} (com ${dados.perda}% perda no custo)`,
                         produto_nome: cola.descricao,
-                        quantidade: quantidadeCola * fatorPerda,
+                        quantidade: quantidadeCola,
                         custo_unitario: cola.custo_centavos,
-                        custo_total: custoCola * fatorPerda,
+                        custo_total: custoColaComPerda,
                         unidade: 'unid'
                     }
                 ]
@@ -1677,6 +1852,414 @@ function preencherTabelaComponentesGrade(resultado) {
         const row = tbody.insertRow();
         
         // Componentes de grade não têm fator editável
+        const fatorCol = '<span class="text-muted">-</span>';
+        const acaoCol = '<span class="text-muted">-</span>';
+        
+        row.innerHTML = `
+            <td>${comp.nome || 'N/A'}</td>
+            <td>${comp.produto_nome || 'N/A'}</td>
+            <td>${fatorCol}</td>
+            <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
+            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(2) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(2) : '0.00'}</span></td>
+            <td>${acaoCol}</td>`;
+        
+        console.log(`✓ Componente adicionado: ${comp.nome} - ${comp.quantidade.toFixed(4)} ${comp.unidade || 'm'}`);
+    });
+    
+    // Adicionar linha de total
+    const totalRow = tbody.insertRow();
+    const custoTotalGeral = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    totalRow.innerHTML = `
+        <td colspan="5"><strong>TOTAL GERAL</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td></td>`;
+    totalRow.style.backgroundColor = '#f8f9fa';
+    
+    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(2)}`);
+}
+
+function calcularTampaMontada() {
+    console.log('=== CALCULANDO TAMPA MONTADA ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'tampa_nome', 'tampa_vao', 'tampa_comprimento', 'tampa_eixo_i', 'tampa_perfil'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'tampa_nome') {
+            dados.nome_tampa = valor;
+        } else if (campo === 'tampa_perfil') {
+            dados.perfil_id = parseInt(valor);
+        } else {
+            const nomeLimpo = campo.replace('tampa_', '');
+            dados[nomeLimpo] = parseFloat(valor);
+        }
+    });
+    
+    // Campos opcionais
+    dados.perda = parseFloat(document.getElementById('tampa_perda').value) || 3;
+    dados.tempo_proc = parseFloat(document.getElementById('tampa_tempo_proc').value) || 1.5;
+    dados.tempo_mtg = parseFloat(document.getElementById('tampa_tempo_mtg').value) || 0.5;
+    dados.quadro_u4 = document.getElementById('tampa_quadro_u4').checked;
+    dados.alca = document.getElementById('tampa_alca').checked;
+    dados.chapa_ev = document.getElementById('tampa_chapa_ev').checked;
+    dados.tipo_calculo = 'tampa_montada';
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios (marcados com *).');
+        return;
+    }
+    
+    console.log('Dados da tampa montada:', dados);
+    
+    // Buscar produtos necessários
+    fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            console.log(`✅ ${produtos.length} produtos carregados da API`);
+            
+            // Encontrar perfil selecionado
+            const perfilSelecionado = produtos.find(p => p.id === dados.perfil_id);
+            if (!perfilSelecionado) {
+                throw new Error(`Perfil com ID ${dados.perfil_id} não encontrado`);
+            }
+            
+            // Encontrar chaveta (sempre ID 1332)
+            const chaveta = produtos.find(p => p.id === 1332);
+            if (!chaveta) {
+                throw new Error('Chaveta Perfil I (ID 1332) não encontrada no banco');
+            }
+            
+            // Encontrar cola estrutural (sempre ID 1183)
+            const cola = produtos.find(p => p.id === 1183);
+            if (!cola) {
+                throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
+            }
+            
+            // Encontrar chapa 2,5mm (buscar por descrição)
+            const chapa25 = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('chapa') && 
+                p.descricao.toLowerCase().includes('2,5')
+            );
+            if (!chapa25) {
+                throw new Error('Chapa 2,5mm não encontrada no banco');
+            }
+            
+            // Encontrar perfil U4" (se necessário)
+            let perfilU4 = null;
+            if (dados.quadro_u4) {
+                perfilU4 = produtos.find(p => 
+                    p.descricao && 
+                    p.descricao.toLowerCase().includes('u4')
+                );
+                if (!perfilU4) {
+                    throw new Error('Perfil U4" não encontrado no banco');
+                }
+            }
+            
+            // Encontrar alça (se necessário)
+            let alca = null;
+            if (dados.alca) {
+                alca = produtos.find(p => 
+                    p.descricao && 
+                    p.descricao.toLowerCase().includes('alça')
+                );
+                if (!alca) {
+                    throw new Error('Alça não encontrada no banco');
+                }
+            }
+            
+            // Encontrar chapa EV (se necessário)
+            let chapaEV = null;
+            if (dados.chapa_ev) {
+                chapaEV = produtos.find(p => 
+                    p.descricao && 
+                    p.descricao.toLowerCase().includes('chapa') &&
+                    p.descricao.toLowerCase().includes('ev')
+                );
+                if (!chapaEV) {
+                    throw new Error('Chapa EV não encontrada no banco');
+                }
+            }
+            
+            // Encontrar mão de obra processamento/montagem
+            const maoObraProcessamento = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('mão de obra') && 
+                p.descricao.toLowerCase().includes('processamento')
+            );
+            if (!maoObraProcessamento) {
+                throw new Error('Produto de mão de obra Processamento/Montagem não encontrado no banco');
+            }
+            
+            console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
+            console.log(`🔧 Chaveta incluída: ${chaveta.descricao}`);
+            console.log(`🧴 Cola incluída: ${cola.descricao}`);
+            console.log(`📋 Chapa 2,5mm: ${chapa25.descricao}`);
+            if (perfilU4) console.log(`🔲 Perfil U4": ${perfilU4.descricao}`);
+            if (alca) console.log(`🎯 Alça: ${alca.descricao}`);
+            if (chapaEV) console.log(`📋 Chapa EV: ${chapaEV.descricao}`);
+            
+            // APLICAR FÓRMULAS DA TAMPA MONTADA
+            const fatorPerda = 1 + (dados.perda / 100);
+            
+            // 1. Perfil (mesma lógica da grade)
+            const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
+            const pesoPerfilKg = metrosLinearesPorM2 * perfilSelecionado.peso_und;
+            let custoPerfilCentavos = metrosLinearesPorM2 * perfilSelecionado.custo_centavos;
+            
+            // 2. Chaveta (mesma lógica da grade)
+            const quantidadeChaveta = (dados.vao / 150) * 2;
+            const pesoChaveta = quantidadeChaveta * chaveta.peso_und;
+            let custoChaveta = quantidadeChaveta * chaveta.custo_centavos;
+            
+            // 3. Cola - 0,1 * custo da cola
+            const quantidadeCola = 0.1;
+            const pesoCola = quantidadeCola * cola.peso_und;
+            let custoCola = quantidadeCola * cola.custo_centavos;
+            
+            // 4. Chapa 2,5mm - vão * comprimento * custo chapa (em m²)
+            const areaChapa = (dados.vao / 1000) * (dados.comprimento / 1000); // em m²
+            const pesoChapa25 = areaChapa * chapa25.peso_und;
+            let custoChapa25 = areaChapa * chapa25.custo_centavos;
+            
+            // 5. Quadro U4" - se 'sim' custo perfil u4 * 2
+            let pesoU4 = 0, custoU4 = 0;
+            if (dados.quadro_u4 && perfilU4) {
+                pesoU4 = 2 * perfilU4.peso_und;
+                custoU4 = 2 * perfilU4.custo_centavos;
+            }
+            
+            // 6. Alça - se sim custo da alça * 2
+            let pesoAlca = 0, custoAlca = 0;
+            if (dados.alca && alca) {
+                pesoAlca = 2 * alca.peso_und;
+                custoAlca = 2 * alca.custo_centavos;
+            }
+            
+            // 7. Chapa EV - vão * comprimento * custo chapa ev (em m²)
+            let pesoChapaEV = 0, custoChapaEV = 0;
+            if (dados.chapa_ev && chapaEV) {
+                const areaChapaEV = (dados.vao / 1000) * (dados.comprimento / 1000); // em m²
+                pesoChapaEV = areaChapaEV * chapaEV.peso_und;
+                custoChapaEV = areaChapaEV * chapaEV.custo_centavos;
+            }
+            
+            // Aplicar perda aos materiais individuais (exceto mão de obra)
+            custoPerfilCentavos = custoPerfilCentavos * fatorPerda;
+            custoChaveta = custoChaveta * fatorPerda;
+            custoCola = custoCola * fatorPerda;
+            custoChapa25 = custoChapa25 * fatorPerda;
+            custoU4 = custoU4 * fatorPerda;
+            custoAlca = custoAlca * fatorPerda;
+            custoChapaEV = custoChapaEV * fatorPerda;
+            
+            // Total dos materiais com perda já aplicada
+            const custoTotalMateriaisCentavos = custoPerfilCentavos + custoChaveta + custoCola + custoChapa25 + custoU4 + custoAlca + custoChapaEV;
+            
+            // Calcular mão de obra (sem perda) - LÓGICA ESPECIAL PARA TAMPA MONTADA
+            const valorHoraMO = 65.79; // R$/hora
+            const custoMaoObraBase = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100; // custo base em centavos
+            
+            // Aplicar multiplicador baseado nas opções selecionadas
+            let multiplicadorMO = 1.0; // padrão: nenhuma opção selecionada
+            let descricaoOpcoes = '';
+            
+            if (dados.quadro_u4 && dados.alca) {
+                multiplicadorMO = 2.0;
+                descricaoOpcoes = ' (com Quadro U4" + Alça)';
+            } else if (!dados.quadro_u4 && dados.alca) {
+                multiplicadorMO = 1.9;
+                descricaoOpcoes = ' (com Alça)';
+            } else if (dados.quadro_u4 && !dados.alca) {
+                multiplicadorMO = 1.1;
+                descricaoOpcoes = ' (com Quadro U4")';
+            } else {
+                multiplicadorMO = 1.0;
+                descricaoOpcoes = ' (básico)';
+            }
+            
+            const custoMaoObraTotal = Math.round(custoMaoObraBase * multiplicadorMO);
+            const maoObraDescricao = `MÃO DE OBRA Processamento/Montagem${descricaoOpcoes}`;
+            
+            console.log(`\n🔧 CÁLCULO ESPECIAL MÃO DE OBRA TAMPA:`);
+            console.log(`   • Custo base: R$ ${(custoMaoObraBase/100).toFixed(2)}`);
+            console.log(`   • Multiplicador: ${multiplicadorMO}x ${descricaoOpcoes}`);
+            console.log(`   • Custo final MO: R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
+            
+            // Custo total
+            const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+            
+            // Peso total
+            const pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola + pesoChapa25 + pesoU4 + pesoAlca + pesoChapaEV) * fatorPerda;
+            
+            console.log('\n🧮 CÁLCULO DETALHADO TAMPA MONTADA:');
+            console.log(`Perfil - Metros lineares/m²: ${metrosLinearesPorM2.toFixed(4)} m/m²`);
+            console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(2)}/m²`);
+            console.log(`Chaveta - Quantidade: ${quantidadeChaveta.toFixed(4)} m/m²`);
+            console.log(`Cola - Quantidade fixa: ${quantidadeCola} unid`);
+            console.log(`Chapa 2,5mm - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(2)}`);
+            if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(2)}`);
+            if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(2)}`);
+            if (dados.chapa_ev) console.log(`Chapa EV - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapaEV/100).toFixed(2)}`);
+            console.log(`\n💰 RESUMO DE CUSTOS:`);
+            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
+            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
+            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
+            
+            // Criar resultado final
+            const resultado = {
+                success: true,
+                nome_produto: dados.nome_tampa,
+                custo_total: custoTotalCentavos,
+                peso_total: pesoTotalKg,
+                metros_lineares_por_m2: metrosLinearesPorM2,
+                mao_obra_produto_id: maoObraProcessamento.id,
+                componentes: [
+                    {
+                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda no custo)`,
+                        produto_nome: perfilSelecionado.descricao,
+                        quantidade: metrosLinearesPorM2,
+                        custo_unitario: perfilSelecionado.custo_centavos,
+                        custo_total: custoPerfilCentavos,
+                        unidade: 'm'
+                    },
+                    {
+                        nome: `${chaveta.descricao} (com ${dados.perda}% perda no custo)`,
+                        produto_nome: chaveta.descricao,
+                        quantidade: quantidadeChaveta,
+                        custo_unitario: chaveta.custo_centavos,
+                        custo_total: custoChaveta,
+                        unidade: 'm'
+                    },
+                    {
+                        nome: `${cola.descricao} - Quantidade fixa 0,1`,
+                        produto_nome: cola.descricao,
+                        quantidade: quantidadeCola,
+                        custo_unitario: cola.custo_centavos,
+                        custo_total: custoCola,
+                        unidade: 'unid'
+                    },
+                    {
+                        nome: `${chapa25.descricao} - Área completa`,
+                        produto_nome: chapa25.descricao,
+                        quantidade: areaChapa,
+                        custo_unitario: chapa25.custo_centavos,
+                        custo_total: custoChapa25,
+                        unidade: 'm²'
+                    }
+                ]
+            };
+            
+            // Adicionar componentes opcionais
+            if (dados.quadro_u4 && perfilU4) {
+                resultado.componentes.push({
+                    nome: `${perfilU4.descricao} - 2 unidades`,
+                    produto_nome: perfilU4.descricao,
+                    quantidade: 2,
+                    custo_unitario: perfilU4.custo_centavos,
+                    custo_total: custoU4,
+                    unidade: 'unid'
+                });
+            }
+            
+            if (dados.alca && alca) {
+                resultado.componentes.push({
+                    nome: `${alca.descricao} - 2 unidades`,
+                    produto_nome: alca.descricao,
+                    quantidade: 2,
+                    custo_unitario: alca.custo_centavos,
+                    custo_total: custoAlca,
+                    unidade: 'unid'
+                });
+            }
+            
+            if (dados.chapa_ev && chapaEV) {
+                resultado.componentes.push({
+                    nome: `${chapaEV.descricao} - Área completa`,
+                    produto_nome: chapaEV.descricao,
+                    quantidade: areaChapa,
+                    custo_unitario: chapaEV.custo_centavos,
+                    custo_total: custoChapaEV,
+                    unidade: 'm²'
+                });
+            }
+            
+            // Adicionar mão de obra aos componentes se selecionada
+            if (custoMaoObraTotal > 0) {
+                resultado.componentes.push({
+                    nome: maoObraDescricao,
+                    produto_nome: maoObraDescricao,
+                    quantidade: dados.tempo_proc + dados.tempo_mtg,
+                    custo_unitario: valorHoraMO * 100,
+                    custo_total: custoMaoObraTotal,
+                    unidade: 'h'
+                });
+            }
+            
+            // Verificar soma dos componentes
+            const somaComponentes = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+            console.log(`\n🔎 VERIFICAÇÃO FINAL:`);
+            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(2)}`);
+            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(2)}`);
+            
+            // Atualizar o custo_total com a soma correta
+            resultado.custo_total = somaComponentes;
+            
+            // Salvar resultado globalmente
+            ultimoCalculo = resultado;
+            
+            // Mostrar resultado na interface
+            document.getElementById('nomeProdutoCalculado').textContent = dados.nome_tampa;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(custoTotalCentavos / 100).toFixed(2)}/m²`;
+            document.getElementById('pesoTotalCalculado').textContent = `${pesoTotalKg.toFixed(3)} kg/m²`;
+            document.getElementById('resultadoCalculado').style.display = 'block';
+            
+            // Preencher tabela de componentes
+            preencherTabelaComponentesTampa(resultado);
+            
+            // Habilitar botão salvar
+            document.getElementById('salvarProdutoBtn').disabled = false;
+            
+            console.log('✅ Cálculo de tampa montada concluído:', resultado);
+        })
+        .catch(error => {
+            console.error('❌ Erro ao calcular tampa montada:', error);
+            alert('Erro ao calcular tampa montada: ' + error.message);
+        });
+}
+
+function preencherTabelaComponentesTampa(resultado) {
+    console.log('=== PREENCHENDO TABELA DE COMPONENTES PARA TAMPA MONTADA ===');
+    
+    const tbody = document.getElementById('componentesCalculadosTable');
+    if (!tbody) {
+        console.warn('Tabela componentesCalculadosTable não encontrada');
+        return;
+    }
+    
+    // Limpar tabela
+    tbody.innerHTML = '';
+    
+    // Adicionar linha para cada componente
+    resultado.componentes.forEach((comp, index) => {
+        const row = tbody.insertRow();
+        
+        // Componentes de tampa montada não têm fator editável
         const fatorCol = '<span class="text-muted">-</span>';
         const acaoCol = '<span class="text-muted">-</span>';
         
@@ -2448,6 +3031,12 @@ function carregarTemplates() {
             gradesOption.textContent = 'Grades';
             select.appendChild(gradesOption);
             
+            // Adicionar opção "Tampa Montada"
+            const tampaOption = document.createElement('option');
+            tampaOption.value = 'tampa_montada_customizado';
+            tampaOption.textContent = 'Tampa Montada';
+            select.appendChild(tampaOption);
+            
             templates.forEach(template => {
                 const option = document.createElement('option');
                 option.value = template.id;
@@ -2512,6 +3101,13 @@ function carregarTemplate() {
     if (templateId === 'grades_customizado') {
         console.log('Carregando interface de Grades');
         carregarInterfaceGrades();
+        return;
+    }
+    
+    // Verificar se é "Tampa Montada"
+    if (templateId === 'tampa_montada_customizado') {
+        console.log('Carregando interface de Tampa Montada');
+        carregarInterfaceTampaMontada();
         return;
     }
     
@@ -3298,7 +3894,7 @@ function salvarGradeParametrizada() {
         console.log('✅ Grade principal salva:', produto);
         
         // Salvar componentes da grade
-        return salvarComponentesGrade(produto.id, csrftoken);
+        return salvarComponentesCalculados(produto.id, csrftoken);
     })
     .then(() => {
         alert('Grade salva com sucesso na base de dados!');
@@ -3340,8 +3936,8 @@ function gerarReferenciaGrade(nomeGrade) {
     return referencia;
 }
 
-async function salvarComponentesGrade(produtoId, csrftoken) {
-    console.log('=== SALVANDO COMPONENTES DA GRADE ===');
+async function salvarComponentesCalculados(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES CALCULADOS ===');
     
     try {
         for (const componente of ultimoCalculo.componentes) {
@@ -3359,6 +3955,21 @@ async function salvarComponentesGrade(produtoId, csrftoken) {
                 produtoComponenteId = 1332; // ID fixo da chaveta
             } else if (componente.nome.includes('COLA ESTRUTURAL')) {
                 produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
+            } else if (componente.nome.includes('TRAV')) {
+                // Buscar perfil TRAV dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('trav');
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('lisa')) {
+                // Buscar chapa lisa 2,5mm dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('chapa lisa');
+            } else if (componente.nome.toLowerCase().includes('u4')) {
+                // Buscar perfil U4" dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('u4');
+            } else if (componente.nome.toLowerCase().includes('alça')) {
+                // Buscar alça dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('alça');
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
+                // Buscar chapa EV dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('chapa ev');
             } else if (componente.nome.includes('Processamento/Montagem')) {
                 // Buscar produto de mão de obra dinamicamente
                 const maoObraProduto = ultimoCalculo.mao_obra_produto_id;
@@ -3859,6 +4470,32 @@ function atualizarTotalGeral() {
     document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(2)}`;
     
     console.log(`Total geral atualizado: R$ ${custoTotalGeral.toFixed(2)}`);
+}
+
+// Função auxiliar para buscar produto por descrição
+async function buscarProdutoPorDescricao(termo) {
+    try {
+        const response = await fetch('/api/produtos/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const produtos = await response.json();
+        
+        const produto = produtos.find(p => 
+            p.descricao && 
+            p.descricao.toLowerCase().includes(termo.toLowerCase())
+        );
+        
+        if (!produto) {
+            throw new Error(`Produto com termo "${termo}" não encontrado`);
+        }
+        
+        console.log(`✅ Produto encontrado para "${termo}": ID ${produto.id} - ${produto.descricao}`);
+        return produto.id;
+    } catch (error) {
+        console.error(`❌ Erro ao buscar produto "${termo}":`, error);
+        throw error;
+    }
 }
 
 

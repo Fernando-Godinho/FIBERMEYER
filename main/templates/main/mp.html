@@ -351,11 +351,11 @@
                   <table class="table table-sm">
                     <thead>
                       <tr>
-                        <th>Componente</th>
-                        <th>Produto</th>
+                        <th>Material/Serviço</th>
+                        <th>Descrição do Produto</th>
                         <th>Fator %</th>
                         <th>Quantidade</th>
-                        <th>Custo Unit.</th>
+                        <th>Custo Unitário</th>
                         <th>Custo Total</th>
                         <th>Ação</th>
                       </tr>
@@ -1555,10 +1555,12 @@ function carregarPerfisTampa() {
         .then(produtos => {
             console.log(`✅ ${produtos.length} produtos carregados da API`);
             
-            // Filtrar perfis I25, I32, I38 e TRAV
+            // Filtrar perfis I25, I32, I38 e TRAV (excluir porca sextavada)
             const perfis = produtos.filter(p => {
                 const desc = p.descricao ? p.descricao.toLowerCase() : '';
-                return desc.includes('i25') || desc.includes('i32') || desc.includes('i38') || desc.includes('trav');
+                const incluiPerfil = desc.includes('i25') || desc.includes('i32') || desc.includes('i38') || desc.includes('trav');
+                const excluirPorca = desc.includes('por-sxt') || desc.includes('travante') || desc.includes('porca');
+                return incluiPerfil && !excluirPorca;
             });
             
             console.log(`✅ ${perfis.length} perfis encontrados:`, perfis.map(p => `${p.id}: ${p.descricao}`));
@@ -2035,7 +2037,20 @@ function calcularTampaMontada() {
             // 4. Chapa 2,5mm - vão * comprimento * custo chapa (em m²)
             const areaChapa = (dados.vao / 1000) * (dados.comprimento / 1000); // em m²
             const pesoChapa25 = areaChapa * chapa25.peso_und;
-            let custoChapa25 = areaChapa * chapa25.custo_centavos;
+            
+            // AJUSTE ESPECIAL: Se Chapa EV marcada, usar valor fixo R$ 277,50
+            let custoChapa25;
+            let nomeChapa, descricaoChapa;
+            if (dados.chapa_ev) {
+                custoChapa25 = 27750; // R$ 277,50 em centavos (valor fixo quando EV marcada)
+                nomeChapa = "Chapa EV - Res. Poliéster";
+                descricaoChapa = "Chapa EV - Res. Poliéster";
+                console.log(`🔧 CHAPA EV MARCADA: Custo da chapa alterado para R$ 277,50 (fixo)`);
+            } else {
+                custoChapa25 = areaChapa * chapa25.custo_centavos; // Cálculo normal
+                nomeChapa = chapa25.descricao;
+                descricaoChapa = chapa25.descricao;
+            }
             
             // 5. Quadro U4" - se 'sim' custo perfil u4 * 2
             let pesoU4 = 0, custoU4 = 0;
@@ -2051,13 +2066,7 @@ function calcularTampaMontada() {
                 custoAlca = 2 * alca.custo_centavos;
             }
             
-            // 7. Chapa EV - vão * comprimento * custo chapa ev (em m²)
-            let pesoChapaEV = 0, custoChapaEV = 0;
-            if (dados.chapa_ev && chapaEV) {
-                const areaChapaEV = (dados.vao / 1000) * (dados.comprimento / 1000); // em m²
-                pesoChapaEV = areaChapaEV * chapaEV.peso_und;
-                custoChapaEV = areaChapaEV * chapaEV.custo_centavos;
-            }
+            // 7. Chapa EV - REMOVIDO: agora integrado na lógica da chapa principal
             
             // Aplicar perda aos materiais individuais (exceto mão de obra)
             custoPerfilCentavos = custoPerfilCentavos * fatorPerda;
@@ -2066,10 +2075,9 @@ function calcularTampaMontada() {
             custoChapa25 = custoChapa25 * fatorPerda;
             custoU4 = custoU4 * fatorPerda;
             custoAlca = custoAlca * fatorPerda;
-            custoChapaEV = custoChapaEV * fatorPerda;
             
             // Total dos materiais com perda já aplicada
-            const custoTotalMateriaisCentavos = custoPerfilCentavos + custoChaveta + custoCola + custoChapa25 + custoU4 + custoAlca + custoChapaEV;
+            const custoTotalMateriaisCentavos = custoPerfilCentavos + custoChaveta + custoCola + custoChapa25 + custoU4 + custoAlca;
             
             // Calcular mão de obra (sem perda) - LÓGICA ESPECIAL PARA TAMPA MONTADA
             const valorHoraMO = 65.79; // R$/hora
@@ -2105,17 +2113,16 @@ function calcularTampaMontada() {
             const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
             
             // Peso total
-            const pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola + pesoChapa25 + pesoU4 + pesoAlca + pesoChapaEV) * fatorPerda;
+            const pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola + pesoChapa25 + pesoU4 + pesoAlca) * fatorPerda;
             
             console.log('\n🧮 CÁLCULO DETALHADO TAMPA MONTADA:');
             console.log(`Perfil - Metros lineares/m²: ${metrosLinearesPorM2.toFixed(4)} m/m²`);
             console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(2)}/m²`);
             console.log(`Chaveta - Quantidade: ${quantidadeChaveta.toFixed(4)} m/m²`);
             console.log(`Cola - Quantidade fixa: ${quantidadeCola} unid`);
-            console.log(`Chapa 2,5mm - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(2)}`);
+            console.log(`${nomeChapa} - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(2)}`);
             if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(2)}`);
             if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(2)}`);
-            if (dados.chapa_ev) console.log(`Chapa EV - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapaEV/100).toFixed(2)}`);
             console.log(`\n💰 RESUMO DE CUSTOS:`);
             console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
             console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
@@ -2155,10 +2162,10 @@ function calcularTampaMontada() {
                         unidade: 'unid'
                     },
                     {
-                        nome: `${chapa25.descricao} - Área completa`,
-                        produto_nome: chapa25.descricao,
+                        nome: `${nomeChapa} - Área completa`,
+                        produto_nome: descricaoChapa,
                         quantidade: areaChapa,
-                        custo_unitario: chapa25.custo_centavos,
+                        custo_unitario: dados.chapa_ev ? 27750 : chapa25.custo_centavos,
                         custo_total: custoChapa25,
                         unidade: 'm²'
                     }
@@ -2188,16 +2195,7 @@ function calcularTampaMontada() {
                 });
             }
             
-            if (dados.chapa_ev && chapaEV) {
-                resultado.componentes.push({
-                    nome: `${chapaEV.descricao} - Área completa`,
-                    produto_nome: chapaEV.descricao,
-                    quantidade: areaChapa,
-                    custo_unitario: chapaEV.custo_centavos,
-                    custo_total: custoChapaEV,
-                    unidade: 'm²'
-                });
-            }
+            // Chapa EV agora é integrada na chapa principal - não adicionar separadamente
             
             // Adicionar mão de obra aos componentes se selecionada
             if (custoMaoObraTotal > 0) {

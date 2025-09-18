@@ -1324,12 +1324,12 @@ function carregarInterfaceGrades() {
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="grade_tempo_proc" class="form-label">Tempo PROC (h)</label>
-                        <input type="number" step="0.1" class="form-control param-input" id="grade_tempo_proc" name="tempo_proc" value="0.2" min="0">
+                        <input type="number" step="0.1" class="form-control param-input" id="grade_tempo_proc" name="tempo_proc" value="0.7" min="0">
                         <div class="form-text">Tempo de processamento em horas</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="grade_tempo_mtg" class="form-label">Tempo MTG (h)</label>
-                        <input type="number" step="0.1" class="form-control param-input" id="grade_tempo_mtg" name="tempo_mtg" value="0.2" min="0">
+                        <input type="number" step="0.1" class="form-control param-input" id="grade_tempo_mtg" name="tempo_mtg" value="0.3" min="0">
                         <div class="form-text">Tempo de montagem em horas</div>
                     </div>
                 </div>
@@ -1508,7 +1508,7 @@ function carregarInterfaceTampaInjetada() {
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="tampa_inj_tempo_proc" class="form-label">Tempo PROC (h)</label>
-                        <input type="number" step="0.1" class="form-control param-input" id="tampa_inj_tempo_proc" name="tempo_proc" value="0.3" min="0">
+                        <input type="number" step="0.1" class="form-control param-input" id="tampa_inj_tempo_proc" name="tempo_proc" value="0.7" min="0">
                         <div class="form-text">Tempo de processamento em horas</div>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -1651,14 +1651,14 @@ function carregarInterfaceTampaMontada() {
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="tampa_tempo_proc" class="form-label">Tempo Processamento (h)</label>
-                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_proc" name="tempo_proc" value="1.5" min="0">
+                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_proc" name="tempo_proc" value="0.7" min="0">
                     <div class="form-text">Tempo de processamento em horas</div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="tampa_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
-                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_mtg" name="tempo_mtg" value="0.5" min="0">
+                    <input type="number" step="0.1" class="form-control param-input" id="tampa_tempo_mtg" name="tempo_mtg" value="0.3" min="0">
                     <div class="form-text">Tempo de montagem em horas</div>
                 </div>
             </div>
@@ -1804,11 +1804,11 @@ function calcularGrade() {
     const perdaElement = document.getElementById('grade_perda');
     dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 5) : 5;
     
-    const tempoProc = document.getElementById('grade_tempo_proc');
-    dados.tempo_proc = tempoProc ? (parseFloat(tempoProc.value) || 0.2) : 0.2;
+    const tempoProc = document.getElementById('tampa_tempo_proc');
+    dados.tempo_proc = tempoProc ? (parseFloat(tempoProc.value) || 1.5) : 1.5;
     
-    const tempoMtg = document.getElementById('grade_tempo_mtg');  
-    dados.tempo_mtg = tempoMtg ? (parseFloat(tempoMtg.value) || 0.2) : 0.2;
+    const tempoMtg = document.getElementById('tampa_tempo_mtg');  
+    dados.tempo_mtg = tempoMtg ? (parseFloat(tempoMtg.value) || 0.5) : 0.5;
     
     // Usar sempre MÃO DE OBRA Processamento/Montagem (ID 2) 
     dados.mao_obra_id = 2;
@@ -1895,6 +1895,10 @@ function calcularGrade() {
             
             
             // Calcular mão de obra se selecionada
+            console.log(`\n🔧 INÍCIO CÁLCULO MÃO DE OBRA:`);
+            console.log(`   dados.tempo_proc: ${dados.tempo_proc}h`);
+            console.log(`   dados.tempo_mtg: ${dados.tempo_mtg}h`);
+            
             let custoMaoObraTotal = 0;
             // Calcular mão de obra diretamente - Processamento/Montagem R$ 65.79/hora
             const valorHoraMO = 65.79; // R$/hora
@@ -1968,7 +1972,15 @@ function calcularGrade() {
             };
             
             // Adicionar mão de obra aos componentes se selecionada
+            console.log(`🔧 DEBUG MÃO DE OBRA:`);
+            console.log(`   custoMaoObraTotal: ${custoMaoObraTotal} centavos = R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
+            console.log(`   maoObraDescricao: "${maoObraDescricao}"`);
+            console.log(`   tempo_proc: ${dados.tempo_proc}h`);
+            console.log(`   tempo_mtg: ${dados.tempo_mtg}h`);
+            console.log(`   total_tempo: ${dados.tempo_proc + dados.tempo_mtg}h`);
+            
             if (custoMaoObraTotal > 0) {
+                console.log(`✅ Adicionando mão de obra aos componentes`);
                 resultado.componentes.push({
                     nome: maoObraDescricao,
                     produto_nome: maoObraDescricao,
@@ -1977,6 +1989,8 @@ function calcularGrade() {
                     custo_total: custoMaoObraTotal,
                     unidade: 'h'
                 });
+            } else {
+                console.log(`❌ Mão de obra NÃO adicionada - custoMaoObraTotal = ${custoMaoObraTotal}`);
             }
             
             // Debug final: verificar soma dos componentes
@@ -2354,6 +2368,9 @@ function calcularTampaInjetada() {
             
             // Mostrar componentes na tabela
             mostrarComponentesCalculados(resultado.componentes);
+            
+            // Habilitar botão salvar
+            document.getElementById('salvarProdutoBtn').disabled = false;
             
             console.log('✅ Cálculo da Tampa Injetada concluído com sucesso');
             
@@ -3977,12 +3994,12 @@ function mostrarComponentesCalculados(componentes) {
     // Adicionar linha de total
     const custoTotalGeral = componentes.reduce((total, comp) => total + comp.custo_total, 0);
     const totalRow = document.createElement('tr');
-    totalRow.className = 'table-warning';
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL</strong></td>
         <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
         <td></td>
     `;
+    totalRow.style.backgroundColor = '#f8f9fa'; // Mesmo estilo da Tampa Montada
     tbody.appendChild(totalRow);
     
     console.log('Tabela atualizada com', tbody.children.length, 'linhas');
@@ -4203,6 +4220,16 @@ function salvarProdutoParametrizado() {
     // Verificar se é uma grade
     if (templateId === 'grades_customizado') {
         return salvarGradeParametrizada();
+    }
+    
+    // Verificar se é uma tampa montada
+    if (templateId === 'tampa_montada_customizado') {
+        return salvarTampaMontadaParametrizada();
+    }
+    
+    // Verificar se é uma tampa injetada
+    if (templateId === 'tampa_injetada_customizado') {
+        return salvarTampaInjetadaParametrizada();
     }
     
     const template = templatesCache.find(t => t.id == templateId);
@@ -4443,16 +4470,299 @@ function gerarReferenciaGrade(nomeGrade) {
     return referencia;
 }
 
+function salvarTampaMontadaParametrizada() {
+    console.log('=== SALVANDO TAMPA MONTADA PARAMETRIZADA ===');
+    
+    // Função para obter cookie CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Obter token CSRF
+    const csrftoken = getCookie('csrftoken');
+    
+    // Verificar se o cálculo foi feito
+    if (!ultimoCalculo || !ultimoCalculo.success) {
+        alert('Realize o cálculo da tampa montada primeiro!');
+        return;
+    }
+    
+    // Verificar se nome foi preenchido
+    const nomeTampa = document.getElementById('tampa_nome').value.trim();
+    if (!nomeTampa) {
+        alert('Por favor, digite um nome para a tampa montada!');
+        return;
+    }
+    
+    console.log('Dados da tampa montada para salvar:', ultimoCalculo);
+    
+    // Usar sempre o custo_total que já foi corrigido no ultimoCalculo
+    const custoTotalComponentes = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    console.log(`💰 Verificação de custos:`);
+    console.log(`   ultimoCalculo.custo_total: ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(2)}`);
+    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(2)}`);
+    
+    // Usar o custo_total que já foi corrigido na função calcularTampaMontada
+    const custoFinalCentavos = Math.round(ultimoCalculo.custo_total);
+    
+    // Dados do produto principal (tampa montada)
+    const produtoData = {
+        descricao: nomeTampa,
+        custo_centavos: custoFinalCentavos,
+        peso_und: parseFloat(ultimoCalculo.peso_total.toFixed(3)),
+        unidade: 'm²',
+        referencia: gerarReferenciaTampa(nomeTampa),
+        tipo_produto: 'composto',
+        categoria: 'Tampa',
+        subcategoria: 'Montada'
+    };
+    
+    console.log('Salvando tampa montada com custo corrigido:', produtoData);
+    
+    // Salvar produto principal
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('✅ Tampa montada principal salva:', produto);
+        
+        // Salvar componentes da tampa montada
+        return salvarComponentesCalculados(produto.id, csrftoken);
+    })
+    .then(() => {
+        alert('Tampa montada salva com sucesso na base de dados!');
+        
+        // Limpar formulário
+        document.getElementById('tampa_nome').value = '';
+        document.getElementById('tampa_vao').value = '';
+        document.getElementById('tampa_comprimento').value = '';
+        document.getElementById('tampa_eixo_i').value = '';
+        document.getElementById('tampa_perfil').value = '';
+        document.getElementById('tampa_quadro_u4').checked = false;
+        document.getElementById('tampa_alca').checked = false;
+        document.getElementById('tampa_chapa_ev').checked = false;
+        
+        // Ocultar resultado
+        document.getElementById('resultadoCalculado').style.display = 'none';
+        
+        // Desabilitar botão
+        document.getElementById('salvarProdutoBtn').disabled = true;
+        
+        // Limpar tabela
+        document.getElementById('componentesCalculadosTable').innerHTML = '';
+        
+        // Fechar modal
+        closeProdutoParametrizadoModal();
+        
+        // Recarregar lista de produtos
+        fetchProdutos();
+        
+        console.log('✅ Tampa montada salva e formulário limpo');
+    })
+    .catch(error => {
+        console.error('Erro ao salvar tampa montada:', error);
+        alert('Erro ao salvar tampa montada: ' + error.message);
+    });
+}
+
+function salvarTampaInjetadaParametrizada() {
+    console.log('=== SALVANDO TAMPA INJETADA PARAMETRIZADA ===');
+    
+    // Função para obter cookie CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Obter token CSRF
+    const csrftoken = getCookie('csrftoken');
+    
+    // Verificar se o cálculo foi feito
+    if (!ultimoCalculo || !ultimoCalculo.success) {
+        alert('Realize o cálculo da tampa injetada primeiro!');
+        return;
+    }
+    
+    // Verificar se nome foi preenchido
+    const nomeTampa = document.getElementById('tampa_inj_nome').value.trim();
+    if (!nomeTampa) {
+        alert('Por favor, digite um nome para a tampa injetada!');
+        return;
+    }
+    
+    console.log('Dados da tampa injetada para salvar:', ultimoCalculo);
+    
+    // Usar o custo_total corrigido
+    const custoFinalCentavos = Math.round(ultimoCalculo.custo_total);
+    
+    // Dados do produto principal (tampa injetada)
+    const produtoData = {
+        descricao: nomeTampa,
+        custo_centavos: custoFinalCentavos,
+        peso_und: parseFloat(ultimoCalculo.peso_total.toFixed(3)),
+        unidade: 'm²',
+        referencia: gerarReferenciaTampa(nomeTampa),
+        tipo_produto: 'composto',
+        categoria: 'Tampa',
+        subcategoria: 'Injetada'
+    };
+    
+    console.log('Salvando tampa injetada:', produtoData);
+    
+    // Salvar produto principal
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('✅ Tampa injetada principal salva:', produto);
+        
+        // Salvar componentes da tampa injetada
+        return salvarComponentesTampaInjetada(produto.id, csrftoken);
+    })
+    .then(() => {
+        alert('Tampa injetada salva com sucesso na base de dados!');
+        
+        // Limpar formulário
+        document.getElementById('tampa_inj_nome').value = '';
+        document.getElementById('tampa_inj_vao').value = '';
+        document.getElementById('tampa_inj_comprimento').value = '';
+        document.getElementById('tampa_inj_grade').value = '';
+        document.getElementById('tampa_inj_quadro_u4').checked = false;
+        document.getElementById('tampa_inj_alca').checked = false;
+        document.getElementById('tampa_inj_chapa_ev').checked = false;
+        
+        // Fechar modal
+        closeProdutoParametrizadoModal();
+        
+        // Recarregar lista de produtos
+        fetchProdutos();
+        
+        console.log('✅ Tampa injetada salva e formulário limpo');
+    })
+    .catch(error => {
+        console.error('Erro ao salvar tampa injetada:', error);
+        alert('Erro ao salvar tampa injetada: ' + error.message);
+    });
+}
+
+function gerarReferenciaTampa(nomeTampa) {
+    // Gerar referência baseada no nome da tampa
+    const palavras = nomeTampa.split(' ').filter(p => p.length > 0);
+    let referencia = 'TAMPA-' + palavras.slice(0, 2).join('').substring(0, 8).toUpperCase();
+    
+    // Adicionar timestamp para unicidade
+    const timestamp = Date.now().toString().slice(-4);
+    referencia += timestamp;
+    
+    console.log(`Referência gerada: ${referencia} para "${nomeTampa}"`);
+    return referencia;
+}
+
 async function salvarComponentesCalculados(produtoId, csrftoken) {
     console.log('=== SALVANDO COMPONENTES CALCULADOS ===');
     
     try {
+        // Primeiro, limpar componentes existentes deste produto para evitar conflitos
+        console.log('🧹 Limpando componentes existentes do produto...');
+        try {
+            const componentesExistentesResponse = await fetch(`/api/componentes/?produto_principal=${produtoId}`);
+            if (componentesExistentesResponse.ok) {
+                const componentesExistentes = await componentesExistentesResponse.json();
+                
+                console.log(`   Encontrados ${componentesExistentes.length} componentes existentes`);
+                
+                for (const comp of componentesExistentes) {
+                    const deleteResponse = await fetch(`/api/componentes/${comp.id}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrftoken
+                        }
+                    });
+                    
+                    if (deleteResponse.ok) {
+                        console.log(`   ✅ Removido componente ID ${comp.id}`);
+                    } else {
+                        console.warn(`   ⚠️ Erro ao remover componente ID ${comp.id}: ${deleteResponse.status}`);
+                    }
+                }
+                
+                console.log('✅ Limpeza de componentes existentes concluída');
+            } else {
+                console.warn('⚠️ Erro ao buscar componentes existentes:', componentesExistentesResponse.status);
+            }
+        } catch (error) {
+            console.warn('⚠️ Erro ao limpar componentes existentes:', error);
+        }
+        
+        // Array para rastrear componentes já processados (evitar duplicatas)
+        const componentesProcessados = new Map();
+        
+        console.log(`💾 Salvando ${ultimoCalculo.componentes.length} componentes únicos...`);
+        console.log('📋 Lista completa de componentes:', ultimoCalculo.componentes.map(c => `"${c.nome}"`));
+        
         for (const componente of ultimoCalculo.componentes) {
+            console.log(`\n🔧 Processando componente: "${componente.nome}"`);
+            
             // Encontrar o ID do produto componente baseado no nome
             let produtoComponenteId = null;
             
+            // PRIMEIRO: Verificar mão de obra (deve vir antes de U4 e outras verificações)
+            if (componente.nome.toLowerCase().includes('processamento') || 
+                componente.nome.toLowerCase().includes('montagem') ||
+                componente.nome.toLowerCase().includes('mão de obra')) {
+                // Detectada mão de obra
+                console.log('🔧 DETECTADA MÃO DE OBRA:', componente.nome);
+                
+                // Usar o ID do produto de mão de obra do ultimoCalculo ou ID fixo conhecido
+                const maoObraProduto = ultimoCalculo.mao_obra_produto_id || 1374;
+                produtoComponenteId = maoObraProduto;
+                console.log('✅ Usando ID da mão de obra:', produtoComponenteId);
+            
             // Para perfis I25, I32, I38
-            if (componente.nome.includes('I25')) {
+            } else if (componente.nome.includes('I25')) {
                 produtoComponenteId = componente.nome.includes('Leve') ? 1331 : 1328;
             } else if (componente.nome.includes('I32')) {
                 produtoComponenteId = 1329;
@@ -4468,24 +4778,156 @@ async function salvarComponentesCalculados(produtoId, csrftoken) {
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('lisa')) {
                 // Buscar chapa lisa 2,5mm dinamicamente
                 produtoComponenteId = await buscarProdutoPorDescricao('chapa lisa');
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('2,5')) {
+                // Buscar chapa 2,5mm dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('chapa 2,5');
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
+                // Para Chapa EV com valor fixo, criar produto se não existir
+                produtoComponenteId = await buscarOuCriarChapaEV(csrftoken);
             } else if (componente.nome.toLowerCase().includes('u4')) {
                 // Buscar perfil U4" dinamicamente
                 produtoComponenteId = await buscarProdutoPorDescricao('u4');
             } else if (componente.nome.toLowerCase().includes('alça')) {
                 // Buscar alça dinamicamente
                 produtoComponenteId = await buscarProdutoPorDescricao('alça');
-            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
-                // Buscar chapa EV dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('chapa ev');
-            } else if (componente.nome.includes('Processamento/Montagem')) {
-                // Buscar produto de mão de obra dinamicamente
-                const maoObraProduto = ultimoCalculo.mao_obra_produto_id;
-                if (maoObraProduto) {
-                    produtoComponenteId = maoObraProduto;
-                } else {
-                    console.error('❌ ID do produto de mão de obra não encontrado no ultimoCalculo');
-                    throw new Error('Produto de mão de obra não mapeado corretamente');
+            } else if (componente.nome.toLowerCase().includes('grade') && componente.nome.toLowerCase().includes('injetada')) {
+                // Buscar grade injetada dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('grade injetada');
+            }
+            
+            if (!produtoComponenteId) {
+                console.error(`❌ Não foi possível mapear o componente: ${componente.nome}`);
+                throw new Error(`Componente não mapeado: ${componente.nome}`);
+            }
+            
+            // Verificar se já foi processado este produto componente (evitar duplicatas)
+            if (componentesProcessados.has(produtoComponenteId)) {
+                console.warn(`⚠️ Produto componente já processado, somando quantidades: ${componente.nome} (ID: ${produtoComponenteId})`);
+                
+                // Somar as quantidades se for o mesmo produto
+                const componenteExistente = componentesProcessados.get(produtoComponenteId);
+                componenteExistente.quantidade += Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000;
+                componenteExistente.custo_total += Math.round(componente.custo_total);
+                
+                console.log(`   Nova quantidade total: ${componenteExistente.quantidade}`);
+                console.log(`   Novo custo total: ${componenteExistente.custo_total} centavos`);
+                continue;
+            }
+            
+            // Salvar custos calculados na observação como JSON
+            const custosCalculados = {
+                custo_unitario: Math.round(componente.custo_unitario),
+                custo_total: Math.round(componente.custo_total),
+                nome_componente: componente.nome,
+                calculated_at: new Date().toISOString()
+            };
+            
+            const componenteData = {
+                produto_principal: produtoId,
+                produto_componente: produtoComponenteId,
+                quantidade: Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000, // Garantir max 3 decimais
+                observacao: JSON.stringify(custosCalculados)
+            };
+            
+            // Adicionar ao mapa de componentes processados
+            componentesProcessados.set(produtoComponenteId, {
+                ...componenteData,
+                nome: componente.nome,
+                custo_total: Math.round(componente.custo_total)
+            });
+            
+            console.log(`Preparando componente: ${componente.nome}`);
+            console.log('Dados originais do componente:', {
+                nome: componente.nome,
+                quantidade: componente.quantidade,
+                custo_unitario_original: componente.custo_unitario,
+                custo_total_original: componente.custo_total
+            });
+            console.log('Dados processados:', componenteData);
+        }
+        
+        // Agora salvar todos os componentes únicos
+        console.log(`\n💾 Salvando ${componentesProcessados.size} componentes únicos...`);
+        
+        for (const [produtoComponenteId, dadosComponente] of componentesProcessados) {
+            try {
+                console.log(`Salvando componente: ${dadosComponente.nome} (ID: ${produtoComponenteId})`);
+                
+                const response = await fetch('/api/componentes/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        produto_principal: dadosComponente.produto_principal,
+                        produto_componente: produtoComponenteId,
+                        quantidade: dadosComponente.quantidade,
+                        observacao: dadosComponente.observacao
+                    })
+                });
+                
+                console.log(`Response status: ${response.status} para componente: ${dadosComponente.nome}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Erro detalhado para ${dadosComponente.nome}:`, errorText);
+                    throw new Error(`Erro ao salvar componente ${dadosComponente.nome}: ${response.status} - ${errorText}`);
                 }
+                
+                const componenteSalvo = await response.json();
+                console.log(`✅ Componente salvo:`, componenteSalvo);
+                
+            } catch (error) {
+                console.error(`❌ Erro ao salvar componente ${dadosComponente.nome}:`, error);
+                throw error;
+            }
+        }
+        console.log('✅ Todos os componentes foram salvos');
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar componentes:', error);
+        throw error;
+    }
+}
+
+async function salvarComponentesTampaInjetada(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES TAMPA INJETADA ===');
+    
+    try {
+        for (const componente of ultimoCalculo.componentes) {
+            // Encontrar o ID do produto componente baseado no nome
+            let produtoComponenteId = null;
+            
+            // PRIMEIRO: Verificar mão de obra (deve vir antes de U4 e outras verificações)
+            if (componente.nome.toLowerCase().includes('processamento') || 
+                componente.nome.toLowerCase().includes('montagem') ||
+                componente.nome.toLowerCase().includes('mão de obra')) {
+                // Detectada mão de obra
+                console.log('🔧 DETECTADA MÃO DE OBRA TAMPA INJETADA:', componente.nome);
+                
+                // Usar o ID do produto de mão de obra do ultimoCalculo ou ID fixo conhecido
+                const maoObraProduto = ultimoCalculo.mao_obra_produto_id || 1374;
+                produtoComponenteId = maoObraProduto;
+                console.log('✅ Usando ID da mão de obra:', produtoComponenteId);
+            
+            } else if (componente.nome.toLowerCase().includes('grade') && componente.nome.toLowerCase().includes('injetada')) {
+                // Buscar grade injetada dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('grade injetada');
+            } else if (componente.nome.includes('COLA ESTRUTURAL')) {
+                produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('2,5')) {
+                // Buscar chapa lisa 2,5mm dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('chapa lisa');
+            } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
+                // Para Chapa EV com valor fixo, criar produto se não existir
+                produtoComponenteId = await buscarOuCriarChapaEV(csrftoken);
+            } else if (componente.nome.toLowerCase().includes('u4')) {
+                // Buscar perfil U4" dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('u4');
+            } else if (componente.nome.toLowerCase().includes('alça')) {
+                // Buscar alça dinamicamente
+                produtoComponenteId = await buscarProdutoPorDescricao('alça');
             }
             
             if (!produtoComponenteId) {
@@ -4504,18 +4946,11 @@ async function salvarComponentesCalculados(produtoId, csrftoken) {
             const componenteData = {
                 produto_principal: produtoId,
                 produto_componente: produtoComponenteId,
-                quantidade: Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000, // Garantir max 3 decimais
+                quantidade: Math.round(parseFloat(componente.quantidade.toFixed(3)) * 1000) / 1000,
                 observacao: JSON.stringify(custosCalculados)
             };
             
-            console.log(`Salvando componente: ${componente.nome}`);
-            console.log('Dados originais do componente:', {
-                nome: componente.nome,
-                quantidade: componente.quantidade,
-                custo_unitario_original: componente.custo_unitario,
-                custo_total_original: componente.custo_total
-            });
-            console.log('Dados processados:', componenteData);
+            console.log(`Salvando componente tampa injetada: ${componente.nome}`);
             
             const response = await fetch('/api/componentes/', {
                 method: 'POST',
@@ -4526,46 +4961,72 @@ async function salvarComponentesCalculados(produtoId, csrftoken) {
                 body: JSON.stringify(componenteData)
             });
             
-            console.log(`Response status: ${response.status} para componente: ${componente.nome}`);
-            
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`Erro detalhado para ${componente.nome}:`, errorText);
                 throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.status} - ${errorText}`);
             }
             
             const componenteSalvo = await response.json();
-            console.log(`✅ Componente salvo:`, componenteSalvo);
+            console.log(`✅ Componente tampa injetada salvo:`, componenteSalvo);
         }
         
-        console.log('✅ Todos os componentes da grade foram salvos');
+        console.log('✅ Todos os componentes da tampa injetada foram salvos');
         
-        // Forçar recálculo final do produto composto
-        console.log('🔄 Forçando recálculo final do produto composto...');
-        try {
-            const recalculoResponse = await fetch(`/api/produtos/${produtoId}/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify({
-                    'force_recalculate': true
-                })
-            });
-            
-            if (recalculoResponse.ok) {
-                const produtoAtualizado = await recalculoResponse.json();
-                console.log(`✅ Recálculo forçado: novo custo R$ ${(produtoAtualizado.custo_centavos/100).toFixed(2)}`);
-            } else {
-                console.warn('⚠️ Erro no recálculo forçado, mas componentes foram salvos');
-            }
-        } catch (error) {
-            console.warn('⚠️ Erro no recálculo forçado:', error);
+    } catch (error) {
+        console.error('❌ Erro ao salvar componentes da tampa injetada:', error);
+        throw error;
+    }
+}
+
+async function buscarOuCriarChapaEV(csrftoken) {
+    try {
+        // Primeiro, tentar buscar chapa EV existente
+        const response = await fetch('/api/produtos/');
+        const produtos = await response.json();
+        
+        const chapaEV = produtos.find(p => 
+            p.descricao && 
+            p.descricao.toLowerCase().includes('chapa') &&
+            p.descricao.toLowerCase().includes('ev')
+        );
+        
+        if (chapaEV) {
+            console.log(`✅ Chapa EV encontrada: ID ${chapaEV.id} - ${chapaEV.descricao}`);
+            return chapaEV.id;
+        }
+        
+        // Se não encontrar, criar produto para Chapa EV
+        console.log('🔧 Criando produto para Chapa EV...');
+        const chapaEVData = {
+            descricao: 'Chapa EV - Res. Poliéster',
+            custo_centavos: 27750, // R$ 277,50 fixo
+            peso_und: '2.500',
+            unidade: 'm²',
+            referencia: 'CHAPA-EV',
+            tipo_produto: 'simples',
+            categoria: 'Chapa',
+            subcategoria: 'EV'
+        };
+        
+        const createResponse = await fetch('/api/produtos/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(chapaEVData)
+        });
+        
+        if (createResponse.ok) {
+            const novaChapaEV = await createResponse.json();
+            console.log(`✅ Chapa EV criada: ID ${novaChapaEV.id}`);
+            return novaChapaEV.id;
+        } else {
+            throw new Error('Erro ao criar produto Chapa EV');
         }
         
     } catch (error) {
-        console.error('❌ Erro ao salvar componentes da grade:', error);
+        console.error('❌ Erro ao buscar/criar Chapa EV:', error);
         throw error;
     }
 }
@@ -4612,29 +5073,37 @@ async function salvarComponentesParametrizados(produtoId, csrftoken) {
     let componentesSalvos = 0;
     let produtoFinal = null;
     
-    // Primeiro, limpar componentes existentes deste produto para evitar conflitos
-    console.log('🧹 Limpando componentes existentes do produto...');
-    try {
-        const componentesExistentesResponse = await fetch(`/api/componentes/?produto_principal=${produtoId}`);
-        const componentesExistentes = await componentesExistentesResponse.json();
-        
-        console.log(`   Encontrados ${componentesExistentes.length} componentes existentes`);
-        
-        for (const comp of componentesExistentes) {
-            await fetch(`/api/componentes/${comp.id}/`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': csrftoken
+        // Primeiro, limpar componentes existentes deste produto para evitar conflitos
+        console.log('🧹 Limpando componentes existentes do produto...');
+        try {
+            const componentesExistentesResponse = await fetch(`/api/componentes/?produto_principal=${produtoId}`);
+            if (componentesExistentesResponse.ok) {
+                const componentesExistentes = await componentesExistentesResponse.json();
+                
+                console.log(`   Encontrados ${componentesExistentes.length} componentes existentes`);
+                
+                for (const comp of componentesExistentes) {
+                    const deleteResponse = await fetch(`/api/componentes/${comp.id}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrftoken
+                        }
+                    });
+                    
+                    if (deleteResponse.ok) {
+                        console.log(`   ✅ Removido componente ID ${comp.id}`);
+                    } else {
+                        console.warn(`   ⚠️ Erro ao remover componente ID ${comp.id}: ${deleteResponse.status}`);
+                    }
                 }
-            });
-        }
-        
-        console.log('✅ Componentes existentes removidos');
-    } catch (error) {
-        console.warn('⚠️ Erro ao limpar componentes existentes:', error);
-    }
-    
-    // Primeiro, buscar todos os produtos para fazer mapeamento dinâmico
+                
+                console.log('✅ Limpeza de componentes existentes concluída');
+            } else {
+                console.warn('⚠️ Erro ao buscar componentes existentes:', componentesExistentesResponse.status);
+            }
+        } catch (error) {
+            console.warn('⚠️ Erro ao limpar componentes existentes:', error);
+        }    // Primeiro, buscar todos os produtos para fazer mapeamento dinâmico
     const produtosResponse = await fetch('/api/produtos/');
     const todosProdutos = await produtosResponse.json();
     

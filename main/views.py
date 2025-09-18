@@ -118,9 +118,10 @@ class MP_ProdutosViewSet(viewsets.ModelViewSet):
     queryset = MP_Produtos.objects.all()
     serializer_class = MP_ProdutosSerializer
     
-    def partial_update(self, request, *args, **kwargs):
-        """Sobrescrevendo PATCH para forçar recálculo quando necessário"""
-        if request.data.get('force_recalculate'):
+    # Método partial_update removido - lógica de recálculo forçado desabilitada
+    def partial_update_removido(self, request, *args, **kwargs):
+        """REMOVIDO: Sobrescrevendo PATCH para forçar recálculo quando necessário"""
+        if False:  # Desabilitado
             # Forçar recálculo do produto composto
             try:
                 produto = self.get_object()
@@ -161,12 +162,12 @@ class MP_ProdutosViewSet(viewsets.ModelViewSet):
                                 custo_componente_centavos = produto_comp.custo_centavos * float(comp.quantidade)
                                 print(f"   • {produto_comp.descricao}: sem observação, usando custo padrão R$ {custo_componente_centavos/100:.2f}")
                             
-                            custo_total += custo_componente_centavos / 100
+                            custo_total += custo_componente_centavos  # Manter em centavos
                             peso_total += float(produto_comp.peso_und) * float(comp.quantidade)
+                   
+                    print(f"   💰 Custo total calculado: R$ {custo_total/100:.2f}")
                     
-                    print(f"   💰 Custo total calculado: R$ {custo_total:.2f}")
-                    
-                    produto.custo_centavos = int(round(custo_total * 100))
+                    produto.custo_centavos = int(round(custo_total))
                     produto.peso_und = peso_total
                     produto.save()
                     

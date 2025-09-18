@@ -1592,6 +1592,96 @@ function carregarGradesInjetadas() {
         });
 }
 
+function carregarInterfaceDegraus() {
+    console.log('=== CARREGANDO INTERFACE DEGRAUS ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'degraus_customizado', tipo: 'degraus' };
+    ultimoCalculo = null;
+    
+    // Definir valor do select
+    document.getElementById('templateSelect').value = 'degraus_customizado';
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Degraus</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            <strong>Componentes:</strong> Perfis I25/I38, Travessas, Reforços F4"/E, Tubos, Parafusos, Cola
+        </p>
+    `;
+    
+    // Criar campos específicos para degraus
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="degraus_nome" class="form-label">Nome do Degrau *</label>
+            <input type="text" class="form-control param-input" id="degraus_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degraus_perfil" class="form-label">Tipo de Perfil *</label>
+            <select class="form-select param-input" id="degraus_perfil" name="tipo_perfil" required>
+                <option value="">Selecione o perfil...</option>
+                <option value="I25">I25mm - R$ 6,48</option>
+                <option value="I38">I38mm - R$ 7,81</option>
+            </select>
+            <div class="form-text">I25 usa reforço E, I38 usa reforço F4"</div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="degraus_largura" class="form-label">Largura (mm) *</label>
+                <input type="number" step="0.1" class="form-control param-input" id="degraus_largura" name="largura" required min="0">
+                <div class="form-text">Largura do degrau em milímetros</div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="degraus_comprimento" class="form-label">Comprimento (mm) *</label>
+                <input type="number" step="0.1" class="form-control param-input" id="degraus_comprimento" name="comprimento" required min="0">
+                <div class="form-text">Comprimento do degrau em milímetros</div>
+            </div>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-tools"></i> Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="degraus_tempo_proc" class="form-label">Tempo PROC (h)</label>
+                        <input type="number" step="0.1" class="form-control param-input" id="degraus_tempo_proc" name="tempo_proc" value="1.0" min="0">
+                        <div class="form-text">Tempo de processamento em horas</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="degraus_tempo_mtg" class="form-label">Tempo MTG (h)</label>
+                        <input type="number" step="0.1" class="form-control param-input" id="degraus_tempo_mtg" name="tempo_mtg" value="1.5" min="0">
+                        <div class="form-text">Tempo de montagem em horas</div>
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <small><i class="fas fa-info-circle"></i> Mão de Obra: Processamento/Montagem - R$ 65,79/hora</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degraus_perda" class="form-label">Percentual de Perda (%)</label>
+            <input type="number" step="0.1" class="form-control param-input" id="degraus_perda" name="percentual_perda" value="3.0" min="0" max="100">
+            <div class="form-text">Percentual de perda aplicado aos materiais (padrão: 3%)</div>
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-primary" onclick="calcularDegraus()" id="calcularDegrausBtn">
+                <i class="fas fa-calculator"></i> Calcular Degraus
+            </button>
+        </div>
+    `;
+    
+    console.log('Interface Degraus carregada');
+}
+
 function carregarInterfaceTampaMontada() {
     console.log('=== CARREGANDO INTERFACE TAMPA MONTADA ===');
     
@@ -2379,6 +2469,224 @@ function calcularTampaInjetada() {
             console.error('❌ Erro no cálculo:', error);
             alert(`Erro no cálculo: ${error.message}`);
         });
+}
+
+function calcularDegraus() {
+    console.log('=== CALCULANDO DEGRAUS ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'degraus_nome', 'degraus_perfil', 'degraus_largura', 'degraus_comprimento'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'degraus_nome') {
+            dados.nome_degrau = valor;
+        } else if (campo === 'degraus_perfil') {
+            dados.tipo_perfil = valor;
+        } else {
+            const nomeLimpo = campo.replace('degraus_', '');
+            dados[nomeLimpo] = parseFloat(valor);
+        }
+    });
+    
+    // Campos opcionais
+    dados.quantidade = 1; // Fixo em 1 unidade
+    dados.tempo_proc = parseFloat(document.getElementById('degraus_tempo_proc')?.value || '1.0');
+    dados.tempo_mtg = parseFloat(document.getElementById('degraus_tempo_mtg')?.value || '1.5');
+    dados.percentual_perda = parseFloat(document.getElementById('degraus_perda')?.value || '3.0');
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    console.log('Dados coletados:', dados);
+    
+    // Buscar produtos necessários dinamicamente
+    Promise.all([
+        buscarProdutoPorDescricao(dados.tipo_perfil === 'I25' ? 'I25mm' : 'I38mm'),
+        buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa R$ 2,12
+        buscarProdutoPorDescricao('COLA ESTRUTURAL'),
+        dados.tipo_perfil === 'I25' ? null : buscarProdutoPorDescricao('PERFIL F'), // Reforço só para I38
+        buscarProdutoPorDescricao('Tubo Quadrado'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'),
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304')
+    ]).then(([perfilPrincipal, travessa, cola, perfilReforco, tuboQuadrado, paraf40, paraf60, porca]) => {
+        
+        console.log('=== PRODUTOS ENCONTRADOS ===');
+        console.log('Perfil Principal:', perfilPrincipal);
+        console.log('Travessa:', travessa);
+        console.log('Cola:', cola);
+        console.log('Reforço:', perfilReforco);
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Parafusos:', { paraf40, paraf60, porca });
+        
+        // Calcular dimensões e quantidades
+        const areaDegrau = (dados.largura * dados.comprimento) / 1000000; // m²
+        const alturaFixa = 150; // Altura fixa de 150mm para degraus
+        const volumeDegrau = areaDegrau * (alturaFixa / 1000); // m³
+        
+        // Calcular quantidades baseadas nas dimensões
+        const comprimentoPerfil = (5 * dados.comprimento) / 1000; // 5*comprimento/1000 metros
+        const quantidadeTravessas = (((dados.comprimento - 100) / 150) * dados.largura * 2) / 1000; // ((comprimento-100)/150)*largura*2/1000
+        const quantidadePorcas = quantidadeTravessas * 4; // 4 por travessa
+        const quantidadeParafusos40 = quantidadeTravessas * 2;
+        const quantidadeParafusos60 = quantidadeTravessas * 2;
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Calcular custos individuais (com perda para materiais)
+        const custoPerfil = (5 * dados.comprimento * perfilPrincipal.custo_centavos / 1000 * dados.quantidade) * fatorPerda;
+        const custoTravessa = (quantidadeTravessas * travessa.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoCola = (cola.custo_centavos * dados.quantidade * 0.5) * fatorPerda; // Meio tubo por degrau
+        const custoReforco = (dados.tipo_perfil === 'I38' && perfilReforco && perfilReforco.id !== cola.id) ? 
+                           (2 * dados.largura * perfilReforco.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        const custoTubo = (comprimentoPerfil * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Total dos materiais
+        const custoTotalMateriaisCentavos = custoPerfil + custoTravessa + custoCola + custoReforco + 
+                                          custoTubo + custoParaf40 + custoParaf60 + custoPorcas;
+        
+        // Calcular mão de obra (sem perda)
+        const valorHoraMO = 65.79; // R$/hora
+        const custoMaoObraTotal = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100 * dados.quantidade;
+        
+        // Custo total
+        const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+        
+        // Criar resultado
+        const resultado = {
+            nome: dados.nome_degrau,
+            categoria: 'ESTRUTURAS',
+            tipo_calculo: 'degraus',
+            custo_total: custoTotalCentavos,
+            parametros: dados,
+            componentes: []
+        };
+        
+        // Adicionar componentes ao resultado
+        resultado.componentes.push({
+            nome: `${perfilPrincipal.descricao} - ${comprimentoPerfil.toFixed(2)}m`,
+            descricao_produto: perfilPrincipal.descricao,
+            quantidade: comprimentoPerfil * dados.quantidade,
+            custo_unitario: perfilPrincipal.custo_centavos,
+            custo_total: custoPerfil,
+            unidade: 'm'
+        });
+        
+        resultado.componentes.push({
+            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(2)}m`,
+            descricao_produto: travessa.descricao,
+            quantidade: quantidadeTravessas * dados.quantidade,
+            custo_unitario: travessa.custo_centavos,
+            custo_total: custoTravessa,
+            unidade: 'm'
+        });
+        
+        resultado.componentes.push({
+            nome: `${cola.descricao} - ${(dados.quantidade * 0.5).toFixed(1)} tubos`,
+            descricao_produto: cola.descricao,
+            quantidade: dados.quantidade * 0.5,
+            custo_unitario: cola.custo_centavos,
+            custo_total: custoCola,
+            unidade: 'tubo'
+        });
+        
+        // Perfil de reforço só para I38 e se encontrado
+        if (dados.tipo_perfil === 'I38' && perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
+            const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+            resultado.componentes.push({
+                nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
+                descricao_produto: perfilReforco.descricao,
+                quantidade: quantidadeReforco,
+                custo_unitario: perfilReforco.custo_centavos,
+                custo_total: custoReforco,
+                unidade: 'm'
+            });
+        }
+        
+        resultado.componentes.push({
+            nome: `${tuboQuadrado.descricao} - ${comprimentoPerfil.toFixed(2)}m`,
+            descricao_produto: tuboQuadrado.descricao,
+            quantidade: comprimentoPerfil * dados.quantidade,
+            custo_unitario: tuboQuadrado.custo_centavos,
+            custo_total: custoTubo,
+            unidade: 'm'
+        });
+        
+        resultado.componentes.push({
+            nome: `${paraf40.descricao} - ${quantidadeParafusos40} unid`,
+            descricao_produto: paraf40.descricao,
+            quantidade: quantidadeParafusos40 * dados.quantidade,
+            custo_unitario: paraf40.custo_centavos,
+            custo_total: custoParaf40,
+            unidade: 'unid'
+        });
+        
+        resultado.componentes.push({
+            nome: `${paraf60.descricao} - ${quantidadeParafusos60} unid`,
+            descricao_produto: paraf60.descricao,
+            quantidade: quantidadeParafusos60 * dados.quantidade,
+            custo_unitario: paraf60.custo_centavos,
+            custo_total: custoParaf60,
+            unidade: 'unid'
+        });
+        
+        resultado.componentes.push({
+            nome: `${porca.descricao} - ${quantidadePorcas} unid`,
+            descricao_produto: porca.descricao,
+            quantidade: quantidadePorcas * dados.quantidade,
+            custo_unitario: porca.custo_centavos,
+            custo_total: custoPorcas,
+            unidade: 'unid'
+        });
+        
+        // Adicionar mão de obra se houver
+        if (custoMaoObraTotal > 0) {
+            const maoObraDescricao = `Processamento/Montagem - ${dados.tempo_proc + dados.tempo_mtg}h`;
+            resultado.componentes.push({
+                nome: maoObraDescricao,
+                descricao_produto: maoObraDescricao,
+                quantidade: (dados.tempo_proc + dados.tempo_mtg) * dados.quantidade,
+                custo_unitario: valorHoraMO * 100,
+                custo_total: custoMaoObraTotal,
+                unidade: 'h'
+            });
+        }
+        
+        // Salvar resultado globalmente
+        ultimoCalculo = resultado;
+        
+        // Mostrar componentes na tabela
+        mostrarComponentesCalculados(resultado.componentes);
+        
+        // Habilitar botão de salvar
+        document.getElementById('salvarProdutoBtn').disabled = false;
+        
+        console.log('✅ Cálculo de Degraus concluído com sucesso');
+        console.log('Resultado final:', resultado);
+        
+    }).catch(error => {
+        console.error('❌ Erro no cálculo:', error);
+        alert(`Erro no cálculo: ${error.message}`);
+    });
 }
 
 function calcularTampaMontada() {
@@ -3541,6 +3849,12 @@ function carregarTemplates() {
             tampaInjetadaOption.textContent = 'Tampa Injetada';
             select.appendChild(tampaInjetadaOption);
             
+            // Adicionar opção "Degraus"
+            const degrausOption = document.createElement('option');
+            degrausOption.value = 'degraus_customizado';
+            degrausOption.textContent = 'Degraus';
+            select.appendChild(degrausOption);
+            
             templates.forEach(template => {
                 const option = document.createElement('option');
                 option.value = template.id;
@@ -3619,6 +3933,13 @@ function carregarTemplate() {
     if (templateId === 'tampa_injetada_customizado') {
         console.log('Carregando interface de Tampa Injetada');
         carregarInterfaceTampaInjetada();
+        return;
+    }
+    
+    // Verificar se é "Degraus"
+    if (templateId === 'degraus_customizado') {
+        console.log('Carregando interface de Degraus');
+        carregarInterfaceDegraus();
         return;
     }
     
@@ -4230,6 +4551,11 @@ function salvarProdutoParametrizado() {
     // Verificar se é uma tampa injetada
     if (templateId === 'tampa_injetada_customizado') {
         return salvarTampaInjetadaParametrizada();
+    }
+    
+    // Verificar se é degraus
+    if (templateId === 'degraus_customizado') {
+        return salvarDegrausParametrizado();
     }
     
     const template = templatesCache.find(t => t.id == templateId);
@@ -4891,6 +5217,186 @@ async function salvarComponentesCalculados(produtoId, csrftoken) {
     }
 }
 
+async function salvarDegrausParametrizado() {
+    console.log('=== SALVANDO DEGRAUS PARAMETRIZADO ===');
+    
+    if (!ultimoCalculo) {
+        alert('Realize o cálculo antes de salvar!');
+        return;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    
+    // Dados do produto principal
+    const produtoData = {
+        descricao: ultimoCalculo.nome,
+        categoria: ultimoCalculo.categoria,
+        tipo_produto: 'PRODUTO_FINAL',
+        custo_centavos: Math.round(ultimoCalculo.custo_total),
+        preco_venda_centavos: Math.round(ultimoCalculo.custo_total * 1.3), // 30% de margem padrão
+        peso_und: 0, // Será calculado a partir dos componentes
+        unidade: 'unid',
+        observacoes: `Degrau calculado automaticamente - ${ultimoCalculo.parametros.tipo_perfil}`,
+        referencia: gerarReferenciaDegrau(ultimoCalculo.nome),
+        ativo: true
+    };
+    
+    console.log('Dados do produto degrau:', produtoData);
+    
+    // Salvar produto principal
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('✅ Degrau principal salvo:', produto);
+        
+        // Salvar componentes do degrau
+        return salvarComponentesDegrau(produto.id, csrftoken);
+    })
+    .then(() => {
+        alert('Degrau salvo com sucesso na base de dados!');
+        
+        // Limpar formulário
+        document.getElementById('degraus_nome').value = '';
+        document.getElementById('degraus_perfil').value = '';
+        document.getElementById('degraus_largura').value = '';
+        document.getElementById('degraus_comprimento').value = '';
+        
+        // Fechar modal
+        closeProdutoParametrizadoModal();
+        
+        // Recarregar lista de produtos
+        fetchProdutos();
+        
+        console.log('✅ Degrau salvo e formulário limpo');
+    })
+    .catch(error => {
+        console.error('Erro ao salvar degrau:', error);
+        alert('Erro ao salvar degrau: ' + error.message);
+    });
+}
+
+function gerarReferenciaDegrau(nomeDegrau) {
+    // Gerar referência baseada no nome do degrau
+    const palavras = nomeDegrau.split(' ').filter(p => p.length > 0);
+    let referencia = 'DEGR-' + palavras.slice(0, 2).join('').substring(0, 8).toUpperCase();
+    
+    // Adicionar timestamp para unicidade
+    const timestamp = Date.now().toString().slice(-4);
+    referencia += timestamp;
+    
+    console.log(`Referência gerada: ${referencia} para "${nomeDegrau}"`);
+    return referencia;
+}
+
+async function salvarComponentesDegrau(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES DE DEGRAU ===');
+    
+    if (!ultimoCalculo || !ultimoCalculo.componentes) {
+        throw new Error('Nenhum componente calculado encontrado');
+    }
+    
+    console.log(`💾 Salvando ${ultimoCalculo.componentes.length} componentes para produto ${produtoId}`);
+    
+    for (const componente of ultimoCalculo.componentes) {
+        console.log(`\n📦 Processando: ${componente.nome}`);
+        console.log(`   Quantidade: ${componente.quantidade}`);
+        console.log(`   Custo total: R$ ${(componente.custo_total/100).toFixed(2)}`);
+        
+        // Identificar o produto componente
+        let produtoComponenteId;
+        
+        // Lógica de identificação de produtos baseada no nome do componente
+        if (componente.nome.toLowerCase().includes('processamento') || componente.nome.toLowerCase().includes('montagem')) {
+            // Mão de obra - usar ID fixo 1374
+            produtoComponenteId = 1374;
+        } else if (componente.nome.toLowerCase().includes('i25')) {
+            // Perfil I25
+            produtoComponenteId = await buscarProdutoPorDescricao('I25mm');
+        } else if (componente.nome.toLowerCase().includes('i38')) {
+            // Perfil I38
+            produtoComponenteId = await buscarProdutoPorDescricao('I38mm');
+        } else if (componente.nome.toLowerCase().includes('trav')) {
+            // Travessa
+            produtoComponenteId = await buscarProdutoPorDescricao('TRAV');
+        } else if (componente.nome.toLowerCase().includes('cola')) {
+            // Cola estrutural
+            produtoComponenteId = 1183; // ID fixo da cola estrutural
+        } else if (componente.nome.toLowerCase().includes('perfil f')) {
+            // Perfil F para reforço
+            produtoComponenteId = await buscarProdutoPorDescricao('PERFIL F');
+        } else if (componente.nome.toLowerCase().includes(' e ')) {
+            // Perfil E para reforço
+            produtoComponenteId = await buscarProdutoPorDescricao('E');
+        } else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
+            // Tubo quadrado
+            produtoComponenteId = await buscarProdutoPorDescricao('Tubo Quadrado');
+        } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
+            // Parafuso M6x40
+            produtoComponenteId = await buscarProdutoPorDescricao('PARAF-SXT-M6X40');
+        } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
+            // Parafuso M6x60
+            produtoComponenteId = await buscarProdutoPorDescricao('PARAF-SXT-M6X60');
+        } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
+            // Porca M6
+            produtoComponenteId = await buscarProdutoPorDescricao('POR-SXT-M6');
+        } else {
+            console.warn(`⚠️ Produto não reconhecido: ${componente.nome}`);
+            continue;
+        }
+        
+        if (!produtoComponenteId) {
+            console.error(`❌ Produto não encontrado para: ${componente.nome}`);
+            continue;
+        }
+        
+        console.log(`   ✅ Produto componente ID: ${produtoComponenteId}`);
+        
+        // Criar dados do componente
+        const componenteData = {
+            produto_principal: produtoId,
+            produto_componente: produtoComponenteId,
+            quantidade: componente.quantidade,
+            custo_total_centavos: Math.round(componente.custo_total),
+            observacoes: `Componente de degrau - ${componente.nome}`
+        };
+        
+        console.log('   📝 Dados do componente:', componenteData);
+        
+        // Salvar componente
+        const response = await fetch('/api/componentes/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(componenteData)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ Erro ao salvar componente ${componente.nome}:`, errorText);
+            throw new Error(`Erro ao salvar ${componente.nome}: ${response.status}`);
+        }
+        
+        const componenteSalvo = await response.json();
+        console.log(`   ✅ Componente salvo: ID ${componenteSalvo.id}`);
+    }
+    
+    console.log('✅ Todos os componentes de degrau foram salvos com sucesso');
+}
+
 async function salvarComponentesTampaInjetada(produtoId, csrftoken) {
     console.log('=== SALVANDO COMPONENTES TAMPA INJETADA ===');
     
@@ -5467,7 +5973,7 @@ async function buscarProdutoPorDescricao(termo) {
         }
         
         console.log(`✅ Produto encontrado para "${termo}": ID ${produto.id} - ${produto.descricao}`);
-        return produto.id;
+        return produto; // Retornar o produto completo em vez de apenas o ID
     } catch (error) {
         console.error(`❌ Erro ao buscar produto "${termo}":`, error);
         throw error;

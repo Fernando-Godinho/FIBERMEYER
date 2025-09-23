@@ -1626,7 +1626,7 @@ function carregarInterfaceDegraus() {
                 <option value="I25">I25mm - R$ 6,48</option>
                 <option value="I38">I38mm - R$ 7,81</option>
             </select>
-            <div class="form-text">I25 usa reforço E, I38 usa reforço F4"</div>
+            <div class="form-text">I25 usa reforço E (R$ 14,73), I38 usa reforço F (R$ 19,70)</div>
         </div>
         
         <div class="row">
@@ -2519,8 +2519,8 @@ function calcularDegraus() {
         buscarProdutoPorDescricao(dados.tipo_perfil === 'I25' ? 'I25mm' : 'I38mm'),
         buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa R$ 2,12
         buscarProdutoPorDescricao('COLA ESTRUTURAL'),
-        dados.tipo_perfil === 'I25' ? null : buscarProdutoPorDescricao('PERFIL F'), // Reforço só para I38
-        buscarProdutoPorDescricao('Tubo Quadrado'),
+        dados.tipo_perfil === 'I25' ? buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\'') : buscarProdutoPorDescricao('PERFIL F 4"'), // Perfil E para I25, Perfil F para I38
+        buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'),
         buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
         buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'),
         buscarProdutoPorDescricao('POR-SXT-M6-AI304')
@@ -2542,9 +2542,21 @@ function calcularDegraus() {
         // Calcular quantidades baseadas nas dimensões
         const comprimentoPerfil = (5 * dados.comprimento) / 1000; // 5*comprimento/1000 metros
         const quantidadeTravessas = (((dados.comprimento - 100) / 150) * dados.largura * 2) / 1000; // ((comprimento-100)/150)*largura*2/1000
-        const quantidadePorcas = quantidadeTravessas * 4; // 4 por travessa
-        const quantidadeParafusos40 = quantidadeTravessas * 2;
-        const quantidadeParafusos60 = quantidadeTravessas * 2;
+        
+        // Quantidades fixas de parafusos e porcas por degrau conforme especificação
+        let quantidadeParafusos40, quantidadeParafusos60, quantidadePorcas;
+        
+        if (dados.tipo_perfil === 'I38') {
+            // Quantidades para perfil I38
+            quantidadeParafusos40 = 2; // 2 parafusos M6X40 por degrau
+            quantidadeParafusos60 = 4; // 4 parafusos M6X60 por degrau  
+            quantidadePorcas = 6; // 6 porcas M6 por degrau
+        } else {
+            // Quantidades para perfil I25 (padrão)
+            quantidadeParafusos40 = 4; // 4 parafusos M6X40 por degrau
+            quantidadeParafusos60 = 2; // 2 parafusos M6X60 por degrau  
+            quantidadePorcas = 6; // 6 porcas M6 por degrau
+        }
         
         // Aplicar fator de perda conforme definido no formulário
         const fatorPerda = 1 + (dados.percentual_perda / 100);
@@ -2552,10 +2564,10 @@ function calcularDegraus() {
         // Calcular custos individuais (com perda para materiais)
         const custoPerfil = (5 * dados.comprimento * perfilPrincipal.custo_centavos / 1000 * dados.quantidade) * fatorPerda;
         const custoTravessa = (quantidadeTravessas * travessa.custo_centavos * dados.quantidade) * fatorPerda;
-        const custoCola = (cola.custo_centavos * dados.quantidade * 0.5) * fatorPerda; // Meio tubo por degrau
-        const custoReforco = (dados.tipo_perfil === 'I38' && perfilReforco && perfilReforco.id !== cola.id) ? 
+        const custoCola = (0.05 * (dados.largura * dados.comprimento) * cola.custo_centavos / 1000000 * dados.quantidade) * fatorPerda;
+        const custoReforco = (perfilReforco && perfilReforco.id !== cola.id) ? 
                            (2 * dados.largura * perfilReforco.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
-        const custoTubo = (comprimentoPerfil * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoTubo = (dados.comprimento / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
         const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
         const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
         const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
@@ -2600,17 +2612,18 @@ function calcularDegraus() {
             unidade: 'm'
         });
         
+        const quantidadeCola = (0.05 * (dados.largura * dados.comprimento) / 1000000) * dados.quantidade;
         resultado.componentes.push({
-            nome: `${cola.descricao} - ${(dados.quantidade * 0.5).toFixed(1)} tubos`,
+            nome: `${cola.descricao} - ${quantidadeCola.toFixed(4)} tubos`,
             descricao_produto: cola.descricao,
-            quantidade: dados.quantidade * 0.5,
+            quantidade: quantidadeCola,
             custo_unitario: cola.custo_centavos,
             custo_total: custoCola,
             unidade: 'tubo'
         });
         
-        // Perfil de reforço só para I38 e se encontrado
-        if (dados.tipo_perfil === 'I38' && perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
+        // Perfil de reforço (E para I25, F para I38)
+        if (perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
             const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
             resultado.componentes.push({
                 nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
@@ -2622,10 +2635,11 @@ function calcularDegraus() {
             });
         }
         
+        const quantidadeTubo = (dados.comprimento / 1000) * dados.quantidade;
         resultado.componentes.push({
-            nome: `${tuboQuadrado.descricao} - ${comprimentoPerfil.toFixed(2)}m`,
+            nome: `${tuboQuadrado.descricao} - ${quantidadeTubo.toFixed(2)}m`,
             descricao_produto: tuboQuadrado.descricao,
-            quantidade: comprimentoPerfil * dados.quantidade,
+            quantidade: quantidadeTubo,
             custo_unitario: tuboQuadrado.custo_centavos,
             custo_total: custoTubo,
             unidade: 'm'

@@ -495,6 +495,22 @@ let templateAtual = null;
 let templatesCache = [];
 let ultimoCalculo = null;
 
+// Função global para obter CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 if(document.getElementById('produtoModal')) produtoModal = new bootstrap.Modal(document.getElementById('produtoModal'));
 if(document.getElementById('selectProductModal')) selectProductModal = new bootstrap.Modal(document.getElementById('selectProductModal'));
 if(document.getElementById('produtoCompostoModal')) produtoCompostoModal = new bootstrap.Modal(document.getElementById('produtoCompostoModal'));
@@ -660,21 +676,6 @@ function submitFormProduto() {
     const method = (id && !isDuplicate) ? 'PUT' : 'POST';
     const url = (id && !isDuplicate) ? apiProdutos + id + '/' : apiProdutos;
     
-    // Função para obter CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
     const csrftoken = getCookie('csrftoken');
     
     fetch(url, {
@@ -1680,6 +1681,142 @@ function carregarInterfaceDegraus() {
     `;
     
     console.log('Interface Degraus carregada');
+}
+
+function carregarInterfaceDegrauInjetado() {
+    console.log('=== CARREGANDO INTERFACE DEGRAU INJETADO ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'degrau_injetado_customizado', tipo: 'degrau_injetado' };
+    ultimoCalculo = null;
+    
+    // Definir valor do select
+    document.getElementById('templateSelect').value = 'degrau_injetado_customizado';
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Degrau Injetado</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            Cálculo de degraus usando grade injetada ao invés de perfil I. Fórmulas e componentes iguais aos degraus normais.
+        </p>
+    `;
+    
+    // Criar campos específicos para degrau injetado (similar aos degraus normais)
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="degrau_inj_nome" class="form-label">Nome do Degrau *</label>
+            <input type="text" class="form-control param-input" id="degrau_inj_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_grade" class="form-label">Grade Injetada *</label>
+            <select class="form-select param-input" id="degrau_inj_grade" name="grade_injetada" required>
+                <option value="">Selecione a grade injetada...</option>
+            </select>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="degrau_inj_largura" class="form-label">Largura (mm) *</label>
+                    <input type="number" class="form-control param-input" id="degrau_inj_largura" name="largura" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="degrau_inj_comprimento" class="form-label">Comprimento (mm) *</label>
+                    <input type="number" class="form-control param-input" id="degrau_inj_comprimento" name="comprimento" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="degrau_inj_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" class="form-control param-input" id="degrau_inj_tempo_proc" name="tempo_proc" step="0.1" value="1.0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="degrau_inj_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="degrau_inj_tempo_mtg" name="tempo_mtg" step="0.1" value="1.5">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control param-input" id="degrau_inj_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-success" onclick="calcularDegrauInjetado()">
+                <i class="fas fa-calculator"></i> Calcular Degrau Injetado
+            </button>
+        </div>
+    `;
+    
+    // Carregar grades injetadas disponíveis
+    carregarGradesInjetadasDegrau();
+    
+    console.log('Interface Degrau Injetado carregada');
+}
+
+function carregarGradesInjetadasDegrau() {
+    console.log('=== CARREGANDO GRADES INJETADAS PARA DEGRAU ===');
+    
+    const selectGrade = document.getElementById('degrau_inj_grade');
+    if (!selectGrade) {
+        console.warn('Select de grade injetada para degrau não encontrado');
+        return;
+    }
+    
+    // Buscar grades injetadas via API
+    fetch('/api/produtos/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(produtos => {
+            console.log(`📦 ${produtos.length} produtos carregados da API`);
+            
+            // Filtrar produtos que são grades injetadas
+            const gradesInjetadas = produtos.filter(produto => 
+                produto.descricao && 
+                produto.descricao.toLowerCase().includes('grade injetada') &&
+                produto.descricao.toLowerCase().includes('gi')
+            );
+            
+            console.log(`🔍 ${gradesInjetadas.length} grades injetadas encontradas`);
+            
+            selectGrade.innerHTML = '<option value="">Selecione a grade injetada...</option>';
+            
+            gradesInjetadas.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade.id;
+                option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos/100).toFixed(2)}/m²`;
+                selectGrade.appendChild(option);
+                console.log(`✓ Grade adicionada: ${grade.descricao} - ID ${grade.id}`);
+            });
+            
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar grades injetadas:', error);
+            selectGrade.innerHTML = '<option value="">Erro ao carregar</option>';
+        });
 }
 
 function carregarInterfaceTampaMontada() {
@@ -2695,6 +2832,228 @@ function calcularDegraus() {
         document.getElementById('salvarProdutoBtn').disabled = false;
         
         console.log('✅ Cálculo de Degraus concluído com sucesso');
+        console.log('Resultado final:', resultado);
+        
+    }).catch(error => {
+        console.error('❌ Erro no cálculo:', error);
+        alert(`Erro no cálculo: ${error.message}`);
+    });
+}
+
+function calcularDegrauInjetado() {
+    console.log('=== CALCULANDO DEGRAU INJETADO ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'degrau_inj_nome', 'degrau_inj_grade', 'degrau_inj_largura', 'degrau_inj_comprimento'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'degrau_inj_nome') {
+            dados.nome_degrau = valor;
+        } else if (campo === 'degrau_inj_grade') {
+            dados.grade_id = parseInt(valor);
+        } else {
+            const nomeLimpo = campo.replace('degrau_inj_', '');
+            dados[nomeLimpo] = parseFloat(valor);
+        }
+    });
+    
+    // Campos opcionais
+    dados.quantidade = 1; // Fixo em 1 unidade
+    dados.tempo_proc = parseFloat(document.getElementById('degrau_inj_tempo_proc')?.value || '1.0');
+    dados.tempo_mtg = parseFloat(document.getElementById('degrau_inj_tempo_mtg')?.value || '1.5');
+    dados.percentual_perda = parseFloat(document.getElementById('degrau_inj_perda')?.value || '3.0');
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    console.log('Dados coletados (Degrau Injetado):', dados);
+    
+    // Buscar produtos necessários dinamicamente (sem o perfil I, usando grade injetada)
+    Promise.all([
+        buscarProdutoPorId(dados.grade_id), // Grade injetada selecionada
+        buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa R$ 2,12
+        buscarProdutoPorDescricao('COLA ESTRUTURAL'),
+        buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\''), // Sempre perfil E para degrau injetado
+        buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'),
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304')
+    ]).then(([gradeInjetada, travessa, cola, perfilReforco, tuboQuadrado, paraf40, paraf60, porca]) => {
+        
+        console.log('=== PRODUTOS ENCONTRADOS (DEGRAU INJETADO) ===');
+        console.log('Grade Injetada:', gradeInjetada);
+        console.log('Travessa:', travessa);
+        console.log('Cola:', cola);
+        console.log('Reforço:', perfilReforco);
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Parafusos:', { paraf40, paraf60, porca });
+        
+        // Calcular dimensões e quantidades (igual aos degraus normais)
+        const areaDegrau = (dados.largura * dados.comprimento) / 1000000; // m²
+        const alturaFixa = 150; // Altura fixa de 150mm para degraus
+        const volumeDegrau = areaDegrau * (alturaFixa / 1000); // m³
+        
+        // Calcular quantidades baseadas nas dimensões
+        const quantidadeTravessas = (((dados.comprimento - 100) / 150) * dados.largura * 2) / 1000; // ((comprimento-100)/150)*largura*2/1000
+        
+        // Para degrau injetado, sempre usar quantidades padrão (I25)
+        const quantidadeParafusos40 = 4; // 4 parafusos M6X40 por degrau
+        const quantidadeParafusos60 = 2; // 2 parafusos M6X60 por degrau  
+        const quantidadePorcas = 6; // 6 porcas M6 por degrau
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Calcular custos individuais (com perda para materiais)
+        // Para grade injetada: usar área do degrau × custo/m² da grade
+        const custoGrade = (areaDegrau * gradeInjetada.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoTravessa = (quantidadeTravessas * travessa.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoCola = (0.05 * (dados.largura * dados.comprimento) * cola.custo_centavos / 1000000 * dados.quantidade) * fatorPerda;
+        const custoReforco = (perfilReforco && perfilReforco.id !== cola.id) ? 
+                           (2 * dados.largura * perfilReforco.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        const custoTubo = (dados.comprimento / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Total dos materiais
+        const custoTotalMateriaisCentavos = custoGrade + custoTravessa + custoCola + custoReforco + 
+                                          custoTubo + custoParaf40 + custoParaf60 + custoPorcas;
+        
+        // Calcular mão de obra (sem perda)
+        const valorHoraMO = 65.79; // R$/hora
+        const custoMaoObraTotal = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100 * dados.quantidade;
+        
+        // Custo total
+        const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+        
+        // Criar resultado
+        const resultado = {
+            nome: dados.nome_degrau,
+            categoria: 'ESTRUTURAS',
+            tipo_calculo: 'degrau_injetado',
+            custo_total: custoTotalCentavos,
+            parametros: dados,
+            componentes: []
+        };
+        
+        // Adicionar componentes ao resultado
+        resultado.componentes.push({
+            nome: `${gradeInjetada.descricao} - ${areaDegrau.toFixed(4)}m²`,
+            descricao_produto: gradeInjetada.descricao,
+            quantidade: areaDegrau * dados.quantidade,
+            custo_unitario: gradeInjetada.custo_centavos,
+            custo_total: custoGrade,
+            unidade: 'm²'
+        });
+        
+        resultado.componentes.push({
+            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(2)}m`,
+            descricao_produto: travessa.descricao,
+            quantidade: quantidadeTravessas * dados.quantidade,
+            custo_unitario: travessa.custo_centavos,
+            custo_total: custoTravessa,
+            unidade: 'm'
+        });
+        
+        const quantidadeCola = (0.05 * (dados.largura * dados.comprimento) / 1000000) * dados.quantidade;
+        resultado.componentes.push({
+            nome: `${cola.descricao} - ${quantidadeCola.toFixed(4)} tubos`,
+            descricao_produto: cola.descricao,
+            quantidade: quantidadeCola,
+            custo_unitario: cola.custo_centavos,
+            custo_total: custoCola,
+            unidade: 'tubo'
+        });
+        
+        // Perfil de reforço (sempre E para degrau injetado)
+        if (perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
+            const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+            resultado.componentes.push({
+                nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
+                descricao_produto: perfilReforco.descricao,
+                quantidade: quantidadeReforco,
+                custo_unitario: perfilReforco.custo_centavos,
+                custo_total: custoReforco,
+                unidade: 'm'
+            });
+        }
+        
+        const quantidadeTubo = (dados.comprimento / 1000) * dados.quantidade;
+        resultado.componentes.push({
+            nome: `${tuboQuadrado.descricao} - ${quantidadeTubo.toFixed(2)}m`,
+            descricao_produto: tuboQuadrado.descricao,
+            quantidade: quantidadeTubo,
+            custo_unitario: tuboQuadrado.custo_centavos,
+            custo_total: custoTubo,
+            unidade: 'm'
+        });
+        
+        resultado.componentes.push({
+            nome: `${paraf40.descricao} - ${quantidadeParafusos40} unid`,
+            descricao_produto: paraf40.descricao,
+            quantidade: quantidadeParafusos40 * dados.quantidade,
+            custo_unitario: paraf40.custo_centavos,
+            custo_total: custoParaf40,
+            unidade: 'unid'
+        });
+        
+        resultado.componentes.push({
+            nome: `${paraf60.descricao} - ${quantidadeParafusos60} unid`,
+            descricao_produto: paraf60.descricao,
+            quantidade: quantidadeParafusos60 * dados.quantidade,
+            custo_unitario: paraf60.custo_centavos,
+            custo_total: custoParaf60,
+            unidade: 'unid'
+        });
+        
+        resultado.componentes.push({
+            nome: `${porca.descricao} - ${quantidadePorcas} unid`,
+            descricao_produto: porca.descricao,
+            quantidade: quantidadePorcas * dados.quantidade,
+            custo_unitario: porca.custo_centavos,
+            custo_total: custoPorcas,
+            unidade: 'unid'
+        });
+        
+        // Adicionar mão de obra se houver
+        if (custoMaoObraTotal > 0) {
+            const maoObraDescricao = `Processamento/Montagem - ${dados.tempo_proc + dados.tempo_mtg}h`;
+            resultado.componentes.push({
+                nome: maoObraDescricao,
+                descricao_produto: maoObraDescricao,
+                quantidade: (dados.tempo_proc + dados.tempo_mtg) * dados.quantidade,
+                custo_unitario: valorHoraMO * 100,
+                custo_total: custoMaoObraTotal,
+                unidade: 'h'
+            });
+        }
+        
+        // Salvar resultado globalmente
+        ultimoCalculo = resultado;
+        
+        // Mostrar componentes na tabela
+        mostrarComponentesCalculados(resultado.componentes);
+        
+        // Habilitar botão de salvar
+        document.getElementById('salvarProdutoBtn').disabled = false;
+        
+        console.log('✅ Cálculo de Degrau Injetado concluído com sucesso');
         console.log('Resultado final:', resultado);
         
     }).catch(error => {
@@ -3731,22 +4090,6 @@ function salvarPerfilParametrizado() {
     
     console.log('Dados do produto:', produtoData);
     
-    // Função para obter CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-    
     // Salvar produto
     fetch('/api/produtos/', {
         method: 'POST',
@@ -3869,6 +4212,12 @@ function carregarTemplates() {
             degrausOption.textContent = 'Degraus';
             select.appendChild(degrausOption);
             
+            // Adicionar opção "Degrau Injetado"
+            const degrauInjetadoOption = document.createElement('option');
+            degrauInjetadoOption.value = 'degrau_injetado_customizado';
+            degrauInjetadoOption.textContent = 'Degrau Injetado';
+            select.appendChild(degrauInjetadoOption);
+            
             templates.forEach(template => {
                 const option = document.createElement('option');
                 option.value = template.id;
@@ -3954,6 +4303,13 @@ function carregarTemplate() {
     if (templateId === 'degraus_customizado') {
         console.log('Carregando interface de Degraus');
         carregarInterfaceDegraus();
+        return;
+    }
+    
+    // Verificar se é "Degrau Injetado"
+    if (templateId === 'degrau_injetado_customizado') {
+        console.log('Carregando interface de Degrau Injetado');
+        carregarInterfaceDegrauInjetado();
         return;
     }
     
@@ -4213,21 +4569,6 @@ function calcularProdutoParametrizado() {
     // Mostrar o nome do produto
     document.getElementById('nomeProdutoCalculado').textContent = template.produto_base.descricao;
     
-    // Função para obter CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
     const csrftoken = getCookie('csrftoken');
     
     const requestBody = {
@@ -4570,6 +4911,11 @@ function salvarProdutoParametrizado() {
     // Verificar se é degraus
     if (templateId === 'degraus_customizado') {
         return salvarDegrausParametrizado();
+    }
+    
+    // Verificar se é degrau injetado
+    if (templateId === 'degrau_injetado_customizado') {
+        return salvarDegrauInjetadoParametrizado();
     }
     
     const template = templatesCache.find(t => t.id == templateId);
@@ -5114,25 +5460,31 @@ async function salvarComponentesCalculados(produtoId, csrftoken) {
                 produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
             } else if (componente.nome.includes('TRAV')) {
                 // Buscar perfil TRAV dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('trav');
+                const produto = await buscarProdutoPorDescricao('trav');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('lisa')) {
                 // Buscar chapa lisa 2,5mm dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('chapa lisa');
+                const produto = await buscarProdutoPorDescricao('chapa lisa');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('2,5')) {
                 // Buscar chapa 2,5mm dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('chapa 2,5');
+                const produto = await buscarProdutoPorDescricao('chapa 2,5');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
                 // Para Chapa EV com valor fixo, criar produto se não existir
                 produtoComponenteId = await buscarOuCriarChapaEV(csrftoken);
             } else if (componente.nome.toLowerCase().includes('u4')) {
                 // Buscar perfil U4" dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('u4');
+                const produto = await buscarProdutoPorDescricao('u4');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('alça')) {
                 // Buscar alça dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('alça');
+                const produto = await buscarProdutoPorDescricao('alça');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('grade') && componente.nome.toLowerCase().includes('injetada')) {
                 // Buscar grade injetada dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('grade injetada');
+                const produto = await buscarProdutoPorDescricao('grade injetada');
+                produtoComponenteId = produto.id;
             }
             
             if (!produtoComponenteId) {
@@ -5245,17 +5597,30 @@ async function salvarDegrausParametrizado() {
     const produtoData = {
         descricao: ultimoCalculo.nome,
         categoria: ultimoCalculo.categoria,
-        tipo_produto: 'PRODUTO_FINAL',
+        tipo_produto: 'composto',
         custo_centavos: Math.round(ultimoCalculo.custo_total),
         preco_venda_centavos: Math.round(ultimoCalculo.custo_total * 1.3), // 30% de margem padrão
         peso_und: 0, // Será calculado a partir dos componentes
         unidade: 'unid',
         observacoes: `Degrau calculado automaticamente - ${ultimoCalculo.parametros.tipo_perfil}`,
         referencia: gerarReferenciaDegrau(ultimoCalculo.nome),
+        data_revisao: new Date().toISOString(),
         ativo: true
     };
     
     console.log('Dados do produto degrau:', produtoData);
+    console.log('ultimoCalculo completo:', ultimoCalculo);
+    
+    // Validar dados antes de enviar
+    if (!produtoData.descricao || produtoData.descricao.trim() === '') {
+        alert('Nome do degrau é obrigatório');
+        return;
+    }
+    
+    if (!produtoData.custo_centavos || produtoData.custo_centavos <= 0) {
+        alert('Custo do degrau deve ser maior que zero');
+        return;
+    }
     
     // Salvar produto principal
     fetch('/api/produtos/', {
@@ -5268,7 +5633,10 @@ async function salvarDegrausParametrizado() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+            return response.text().then(text => {
+                console.error('Erro na resposta do servidor:', text);
+                throw new Error(`Erro HTTP ${response.status}: ${response.statusText}. Detalhes: ${text}`);
+            });
         }
         return response.json();
     })
@@ -5314,6 +5682,19 @@ function gerarReferenciaDegrau(nomeDegrau) {
     return referencia;
 }
 
+function gerarReferenciaDegrauInjetado(nomeDegrau) {
+    // Gerar referência baseada no nome do degrau injetado
+    const palavras = nomeDegrau.split(' ').filter(p => p.length > 0);
+    let referencia = 'DEGI-' + palavras.slice(0, 2).join('').substring(0, 8).toUpperCase();
+    
+    // Adicionar timestamp para unicidade
+    const timestamp = Date.now().toString().slice(-4);
+    referencia += timestamp;
+    
+    console.log(`Referência gerada: ${referencia} para "${nomeDegrau}"`);
+    return referencia;
+}
+
 async function salvarComponentesDegrau(produtoId, csrftoken) {
     console.log('=== SALVANDO COMPONENTES DE DEGRAU ===');
     
@@ -5337,34 +5718,43 @@ async function salvarComponentesDegrau(produtoId, csrftoken) {
             produtoComponenteId = 1374;
         } else if (componente.nome.toLowerCase().includes('i25')) {
             // Perfil I25
-            produtoComponenteId = await buscarProdutoPorDescricao('I25mm');
+            const produto = await buscarProdutoPorDescricao('I25mm');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('i38')) {
             // Perfil I38
-            produtoComponenteId = await buscarProdutoPorDescricao('I38mm');
+            const produto = await buscarProdutoPorDescricao('I38mm');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('trav')) {
             // Travessa
-            produtoComponenteId = await buscarProdutoPorDescricao('TRAV');
+            const produto = await buscarProdutoPorDescricao('TRAV');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('cola')) {
             // Cola estrutural
             produtoComponenteId = 1183; // ID fixo da cola estrutural
         } else if (componente.nome.toLowerCase().includes('perfil f')) {
             // Perfil F para reforço
-            produtoComponenteId = await buscarProdutoPorDescricao('PERFIL F');
+            const produto = await buscarProdutoPorDescricao('PERFIL F');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes(' e ')) {
             // Perfil E para reforço
-            produtoComponenteId = await buscarProdutoPorDescricao('E');
+            const produto = await buscarProdutoPorDescricao('E');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
             // Tubo quadrado
-            produtoComponenteId = await buscarProdutoPorDescricao('Tubo Quadrado');
+            const produto = await buscarProdutoPorDescricao('Tubo Quadrado');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
             // Parafuso M6x40
-            produtoComponenteId = await buscarProdutoPorDescricao('PARAF-SXT-M6X40');
+            const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
             // Parafuso M6x60
-            produtoComponenteId = await buscarProdutoPorDescricao('PARAF-SXT-M6X60');
+            const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60');
+            produtoComponenteId = produto.id;
         } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
             // Porca M6
-            produtoComponenteId = await buscarProdutoPorDescricao('POR-SXT-M6');
+            const produto = await buscarProdutoPorDescricao('POR-SXT-M6');
+            produtoComponenteId = produto.id;
         } else {
             console.warn(`⚠️ Produto não reconhecido: ${componente.nome}`);
             continue;
@@ -5381,9 +5771,8 @@ async function salvarComponentesDegrau(produtoId, csrftoken) {
         const componenteData = {
             produto_principal: produtoId,
             produto_componente: produtoComponenteId,
-            quantidade: componente.quantidade,
-            custo_total_centavos: Math.round(componente.custo_total),
-            observacoes: `Componente de degrau - ${componente.nome}`
+            quantidade: Math.round(componente.quantidade * 1000) / 1000, // Arredondar para 3 casas decimais
+            observacao: `Componente de degrau - ${componente.nome}`
         };
         
         console.log('   📝 Dados do componente:', componenteData);
@@ -5411,6 +5800,159 @@ async function salvarComponentesDegrau(produtoId, csrftoken) {
     console.log('✅ Todos os componentes de degrau foram salvos com sucesso');
 }
 
+async function salvarDegrauInjetadoParametrizado() {
+    console.log('=== SALVANDO DEGRAU INJETADO PARAMETRIZADO ===');
+    
+    if (!ultimoCalculo) {
+        alert('Realize o cálculo antes de salvar!');
+        return;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    
+    // Dados do produto principal
+    const produtoData = {
+        descricao: ultimoCalculo.nome,
+        categoria: ultimoCalculo.categoria,
+        tipo_produto: 'composto',
+        custo_centavos: Math.round(ultimoCalculo.custo_total),
+        preco_venda_centavos: Math.round(ultimoCalculo.custo_total * 1.3), // 30% de margem padrão
+        peso_und: 0, // Será calculado a partir dos componentes
+        unidade: 'unid',
+        observacoes: `Degrau Injetado calculado automaticamente - Grade ID ${ultimoCalculo.parametros.grade_id}`,
+        referencia: gerarReferenciaDegrauInjetado(ultimoCalculo.nome),
+        data_revisao: new Date().toISOString(),
+        ativo: true
+    };
+    
+    console.log('Dados do produto degrau injetado:', produtoData);
+    
+    // Salvar produto principal
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Erro ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(produto => {
+        console.log('✅ Degrau injetado salvo:', produto);
+        
+        // Salvar componentes
+        salvarComponentesDegrauInjetado(produto.id, csrftoken);
+        
+        alert('Degrau injetado salvo com sucesso na base de dados!');
+        
+        // Limpar formulário e resultado
+        document.getElementById('parametrosContainer').innerHTML = '<p class="text-muted">Selecione um template para começar...</p>';
+        document.getElementById('resultadoCalculado').style.display = 'none';
+        document.getElementById('salvarProdutoBtn').disabled = true;
+        ultimoCalculo = null;
+        
+        // Recarregar produtos
+        fetchProdutos();
+    })
+    .catch(error => {
+        console.error('❌ Erro ao salvar degrau injetado:', error);
+        alert('Erro ao salvar degrau injetado: ' + (error.message || 'Erro desconhecido'));
+    });
+}
+
+async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES DEGRAU INJETADO ===');
+    
+    try {
+        for (const componente of ultimoCalculo.componentes) {
+            // Encontrar o ID do produto componente baseado no nome
+            let produtoComponenteId = null;
+            
+            // Verificar mão de obra
+            if (componente.nome.toLowerCase().includes('processamento') || 
+                componente.nome.toLowerCase().includes('montagem')) {
+                produtoComponenteId = 2; // ID fixo da mão de obra
+            } 
+            // Verificar grade injetada
+            else if (componente.nome.toLowerCase().includes('grade injetada')) {
+                produtoComponenteId = ultimoCalculo.parametros.grade_id;
+            }
+            // Verificar perfil chaveta
+            else if (componente.nome.toLowerCase().includes('chaveta')) {
+                const produto = await buscarProdutoPorDescricao('Perfil Chaveta');
+                produtoComponenteId = produto.id;
+            }
+            // Verificar cola estrutural
+            else if (componente.nome.toLowerCase().includes('cola estrutural')) {
+                produtoComponenteId = 1183;
+            }
+            // Verificar perfil reforço E
+            else if (componente.nome.toLowerCase().includes('e - 4')) {
+                const produto = await buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\'');
+                produtoComponenteId = produto.id;
+            }
+            // Verificar tubo quadrado
+            else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
+                const produto = await buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm');
+                produtoComponenteId = produto.id;
+            }
+            // Verificar parafusos e porcas
+            else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40');
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60');
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
+                const produto = await buscarProdutoPorDescricao('POR-SXT-M6');
+                produtoComponenteId = produto.id;
+            }
+            
+            if (!produtoComponenteId) {
+                console.warn(`❓ Produto componente não encontrado para: ${componente.nome}`);
+                continue;
+            }
+            
+            // Criar dados do componente
+            const componenteData = {
+                produto_pai: produtoId,
+                produto_componente: produtoComponenteId,
+                quantidade: Math.round(componente.quantidade * 1000) / 1000 // Arredondar para 3 casas decimais
+            };
+            
+            console.log(`💾 Salvando componente: ${componente.nome} (ID: ${produtoComponenteId})`);
+            
+            // Salvar componente
+            const response = await fetch('/api/componentes/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(componenteData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.statusText}`);
+            }
+            
+            console.log(`✅ Componente salvo: ${componente.nome}`);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao salvar componentes de degrau injetado:', error);
+        throw error;
+    }
+    
+    console.log('✅ Todos os componentes de degrau injetado foram salvos com sucesso');
+}
+
 async function salvarComponentesTampaInjetada(produtoId, csrftoken) {
     console.log('=== SALVANDO COMPONENTES TAMPA INJETADA ===');
     
@@ -5433,21 +5975,25 @@ async function salvarComponentesTampaInjetada(produtoId, csrftoken) {
             
             } else if (componente.nome.toLowerCase().includes('grade') && componente.nome.toLowerCase().includes('injetada')) {
                 // Buscar grade injetada dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('grade injetada');
+                const produto = await buscarProdutoPorDescricao('grade injetada');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.includes('COLA ESTRUTURAL')) {
                 produtoComponenteId = 1183; // ID fixo da cola estrutural 4500 A/B
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('2,5')) {
                 // Buscar chapa lisa 2,5mm dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('chapa lisa');
+                const produto = await buscarProdutoPorDescricao('chapa lisa');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('chapa') && componente.nome.toLowerCase().includes('ev')) {
                 // Para Chapa EV com valor fixo, criar produto se não existir
                 produtoComponenteId = await buscarOuCriarChapaEV(csrftoken);
             } else if (componente.nome.toLowerCase().includes('u4')) {
                 // Buscar perfil U4" dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('u4');
+                const produto = await buscarProdutoPorDescricao('u4');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('alça')) {
                 // Buscar alça dinamicamente
-                produtoComponenteId = await buscarProdutoPorDescricao('alça');
+                const produto = await buscarProdutoPorDescricao('alça');
+                produtoComponenteId = produto.id;
             }
             
             if (!produtoComponenteId) {
@@ -5994,6 +6540,27 @@ async function buscarProdutoPorDescricao(termo) {
     }
 }
 
+async function buscarProdutoPorId(id) {
+    try {
+        const response = await fetch('/api/produtos/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const produtos = await response.json();
+        
+        const produto = produtos.find(p => p.id === id);
+        
+        if (!produto) {
+            throw new Error(`Produto com ID "${id}" não encontrado`);
+        }
+        
+        console.log(`✅ Produto encontrado por ID "${id}": ${produto.descricao}`);
+        return produto;
+    } catch (error) {
+        console.error(`❌ Erro ao buscar produto por ID "${id}":`, error);
+        throw error;
+    }
+}
 
 window.onload = function() {
     fetchProdutos();

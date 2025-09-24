@@ -5877,7 +5877,7 @@ async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
             // Verificar mão de obra
             if (componente.nome.toLowerCase().includes('processamento') || 
                 componente.nome.toLowerCase().includes('montagem')) {
-                produtoComponenteId = 2; // ID fixo da mão de obra
+                produtoComponenteId = 1374; // ID fixo da mão de obra (mesmo usado em degraus normais)
             } 
             // Verificar grade injetada
             else if (componente.nome.toLowerCase().includes('grade injetada')) {
@@ -5917,12 +5917,20 @@ async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
             
             // Criar dados do componente
             const componenteData = {
-                produto_pai: produtoId,
+                produto_principal: produtoId,
                 produto_componente: produtoComponenteId,
-                quantidade: Math.round(componente.quantidade * 1000) / 1000 // Arredondar para 3 casas decimais
+                quantidade: Math.round(componente.quantidade * 1000) / 1000, // Arredondar para 3 casas decimais
+                observacao: JSON.stringify({
+                    nome_componente: componente.nome,
+                    custo_unitario: componente.custo_unitario,
+                    custo_total: componente.custo_total,
+                    tipo_calculo: 'degrau_injetado',
+                    unidade: componente.unidade || 'unid'
+                })
             };
             
             console.log(`💾 Salvando componente: ${componente.nome} (ID: ${produtoComponenteId})`);
+            console.log('Dados do componente:', componenteData);
             
             // Salvar componente
             const response = await fetch('/api/componentes/', {
@@ -5935,7 +5943,9 @@ async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
             });
             
             if (!response.ok) {
-                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.statusText}`);
+                const errorText = await response.text();
+                console.error('Erro detalhado:', errorText);
+                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.statusText}. Detalhes: ${errorText}`);
             }
             
             console.log(`✅ Componente salvo: ${componente.nome}`);

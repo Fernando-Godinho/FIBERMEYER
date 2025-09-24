@@ -2740,8 +2740,9 @@ function calcularDegraus() {
             unidade: 'm'
         });
         
+        // Travessa (Perfil Chaveta)
         resultado.componentes.push({
-            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(2)}m`,
+            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(3)}m`,
             descricao_produto: travessa.descricao,
             quantidade: quantidadeTravessas * dados.quantidade,
             custo_unitario: travessa.custo_centavos,
@@ -2749,30 +2750,30 @@ function calcularDegraus() {
             unidade: 'm'
         });
         
-        const quantidadeCola = (0.05 * (dados.largura * dados.comprimento) / 1000000) * dados.quantidade;
+        // Cola Estrutural
+        const quantidadeCola = (0.05 * (dados.largura * dados.comprimento) / 1000000) * dados.quantidade; // kg
         resultado.componentes.push({
-            nome: `${cola.descricao} - ${quantidadeCola.toFixed(4)} tubos`,
+            nome: `${cola.descricao} - ${quantidadeCola.toFixed(3)}kg`,
             descricao_produto: cola.descricao,
             quantidade: quantidadeCola,
             custo_unitario: cola.custo_centavos,
             custo_total: custoCola,
-            unidade: 'tubo'
+            unidade: 'kg'
         });
         
-        // Perfil de reforço (E para I25, F para I38)
-        if (perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
-            const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
-            resultado.componentes.push({
-                nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
-                descricao_produto: perfilReforco.descricao,
-                quantidade: quantidadeReforco,
-                custo_unitario: perfilReforco.custo_centavos,
-                custo_total: custoReforco,
-                unidade: 'm'
-            });
-        }
+        // Perfil de reforço E
+        const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+        resultado.componentes.push({
+            nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
+            descricao_produto: perfilReforco.descricao,
+            quantidade: quantidadeReforco,
+            custo_unitario: perfilReforco.custo_centavos,
+            custo_total: custoReforco,
+            unidade: 'm'
+        });
         
-        const quantidadeTubo = (dados.comprimento / 1000) * dados.quantidade;
+        // Tubo quadrado (comprimento × 2)
+        const quantidadeTubo = ((dados.comprimento * 2) / 1000) * dados.quantidade;
         resultado.componentes.push({
             nome: `${tuboQuadrado.descricao} - ${quantidadeTubo.toFixed(2)}m`,
             descricao_produto: tuboQuadrado.descricao,
@@ -2883,38 +2884,38 @@ function calcularDegrauInjetado() {
     
     console.log('Dados coletados (Degrau Injetado):', dados);
     
-    // Buscar produtos necessários dinamicamente (sem o perfil I, usando grade injetada)
+    // Buscar produtos necessários dinamicamente (sem cola e chaveta)
     Promise.all([
         buscarProdutoPorId(dados.grade_id), // Grade injetada selecionada
-        buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa R$ 2,12
-        buscarProdutoPorDescricao('COLA ESTRUTURAL'),
         buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\''), // Sempre perfil E para degrau injetado
+        buscarProdutoPorDescricao('PERFIL F 4"'), // Perfil F para grades 38mm
         buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'),
         buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
         buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'),
         buscarProdutoPorDescricao('POR-SXT-M6-AI304')
-    ]).then(([gradeInjetada, travessa, cola, perfilReforco, tuboQuadrado, paraf40, paraf60, porca]) => {
+    ]).then(([gradeInjetada, perfilE, perfilF, tuboQuadrado, paraf40, paraf60, porca]) => {
         
         console.log('=== PRODUTOS ENCONTRADOS (DEGRAU INJETADO) ===');
         console.log('Grade Injetada:', gradeInjetada);
-        console.log('Travessa:', travessa);
-        console.log('Cola:', cola);
-        console.log('Reforço:', perfilReforco);
+        console.log('Perfil E:', perfilE);
+        console.log('Perfil F:', perfilF);
         console.log('Tubo Quadrado:', tuboQuadrado);
         console.log('Parafusos:', { paraf40, paraf60, porca });
+        
+        // Verificar se é grade de 38mm (e NÃO de 25mm)
+        const isGrade38 = gradeInjetada.descricao && 
+                         gradeInjetada.descricao.toLowerCase().includes('38') && 
+                         !gradeInjetada.descricao.toLowerCase().includes('25');
         
         // Calcular dimensões e quantidades (igual aos degraus normais)
         const areaDegrau = (dados.largura * dados.comprimento) / 1000000; // m²
         const alturaFixa = 150; // Altura fixa de 150mm para degraus
         const volumeDegrau = areaDegrau * (alturaFixa / 1000); // m³
         
-        // Calcular quantidades baseadas nas dimensões
-        const quantidadeTravessas = (((dados.comprimento - 100) / 150) * dados.largura * 2) / 1000; // ((comprimento-100)/150)*largura*2/1000
-        
-        // Para degrau injetado, sempre usar quantidades padrão (I25)
+        // Quantidades específicas para degrau injetado
         const quantidadeParafusos40 = 4; // 4 parafusos M6X40 por degrau
-        const quantidadeParafusos60 = 2; // 2 parafusos M6X60 por degrau  
-        const quantidadePorcas = 6; // 6 porcas M6 por degrau
+        const quantidadeParafusos60 = 4; // 4 parafusos M6X60 por degrau  
+        const quantidadePorcas = 8; // 8 porcas M6 por degrau
         
         // Aplicar fator de perda conforme definido no formulário
         const fatorPerda = 1 + (dados.percentual_perda / 100);
@@ -2922,17 +2923,20 @@ function calcularDegrauInjetado() {
         // Calcular custos individuais (com perda para materiais)
         // Para grade injetada: usar área do degrau × custo/m² da grade
         const custoGrade = (areaDegrau * gradeInjetada.custo_centavos * dados.quantidade) * fatorPerda;
-        const custoTravessa = (quantidadeTravessas * travessa.custo_centavos * dados.quantidade) * fatorPerda;
-        const custoCola = (0.05 * (dados.largura * dados.comprimento) * cola.custo_centavos / 1000000 * dados.quantidade) * fatorPerda;
-        const custoReforco = (perfilReforco && perfilReforco.id !== cola.id) ? 
-                           (2 * dados.largura * perfilReforco.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
-        const custoTubo = (dados.comprimento / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Perfil E (apenas para grades que NÃO são 38mm)
+        const custoPerfilE = !isGrade38 ? (2 * dados.largura * perfilE.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        
+        // Perfil F (apenas para grades 38mm)
+        const custoPerfilF = isGrade38 ? (2 * dados.largura * perfilF.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        
+        const custoTubo = ((dados.comprimento * 2) / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda; // Comprimento × 2
         const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
         const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
         const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
         
-        // Total dos materiais
-        const custoTotalMateriaisCentavos = custoGrade + custoTravessa + custoCola + custoReforco + 
+        // Total dos materiais (sem cola e travessa)
+        const custoTotalMateriaisCentavos = custoGrade + custoPerfilE + custoPerfilF + 
                                           custoTubo + custoParaf40 + custoParaf60 + custoPorcas;
         
         // Calcular mão de obra (sem perda)
@@ -2962,39 +2966,34 @@ function calcularDegrauInjetado() {
             unidade: 'm²'
         });
         
-        resultado.componentes.push({
-            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(2)}m`,
-            descricao_produto: travessa.descricao,
-            quantidade: quantidadeTravessas * dados.quantidade,
-            custo_unitario: travessa.custo_centavos,
-            custo_total: custoTravessa,
-            unidade: 'm'
-        });
-        
-        const quantidadeCola = (0.05 * (dados.largura * dados.comprimento) / 1000000) * dados.quantidade;
-        resultado.componentes.push({
-            nome: `${cola.descricao} - ${quantidadeCola.toFixed(4)} tubos`,
-            descricao_produto: cola.descricao,
-            quantidade: quantidadeCola,
-            custo_unitario: cola.custo_centavos,
-            custo_total: custoCola,
-            unidade: 'tubo'
-        });
-        
-        // Perfil de reforço (sempre E para degrau injetado)
-        if (perfilReforco && perfilReforco.id !== cola.id && custoReforco > 0) {
-            const quantidadeReforco = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+        // Perfil E (apenas para grades que NÃO são 38mm)
+        if (!isGrade38) {
+            const quantidadePerfilE = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
             resultado.componentes.push({
-                nome: `${perfilReforco.descricao} - ${quantidadeReforco.toFixed(2)}m`,
-                descricao_produto: perfilReforco.descricao,
-                quantidade: quantidadeReforco,
-                custo_unitario: perfilReforco.custo_centavos,
-                custo_total: custoReforco,
+                nome: `${perfilE.descricao} - ${quantidadePerfilE.toFixed(2)}m`,
+                descricao_produto: perfilE.descricao,
+                quantidade: quantidadePerfilE,
+                custo_unitario: perfilE.custo_centavos,
+                custo_total: custoPerfilE,
                 unidade: 'm'
             });
         }
         
-        const quantidadeTubo = (dados.comprimento / 1000) * dados.quantidade;
+        // Perfil F (apenas para grades 38mm)
+        if (isGrade38) {
+            const quantidadePerfilF = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+            resultado.componentes.push({
+                nome: `${perfilF.descricao} - ${quantidadePerfilF.toFixed(2)}m`,
+                descricao_produto: perfilF.descricao,
+                quantidade: quantidadePerfilF,
+                custo_unitario: perfilF.custo_centavos,
+                custo_total: custoPerfilF,
+                unidade: 'm'
+            });
+        }
+        
+        // Tubo quadrado (comprimento × 2)
+        const quantidadeTubo = ((dados.comprimento * 2) / 1000) * dados.quantidade;
         resultado.componentes.push({
             nome: `${tuboQuadrado.descricao} - ${quantidadeTubo.toFixed(2)}m`,
             descricao_produto: tuboQuadrado.descricao,
@@ -5884,18 +5883,14 @@ async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
             else if (componente.nome.toLowerCase().includes('grade injetada')) {
                 produtoComponenteId = ultimoCalculo.parametros.grade_id;
             }
-            // Verificar perfil chaveta
-            else if (componente.nome.toLowerCase().includes('chaveta')) {
-                const produto = await buscarProdutoPorDescricao('Perfil Chaveta');
-                produtoComponenteId = produto.id;
-            }
-            // Verificar cola estrutural
-            else if (componente.nome.toLowerCase().includes('cola estrutural')) {
-                produtoComponenteId = 1183;
-            }
             // Verificar perfil reforço E
             else if (componente.nome.toLowerCase().includes('e - 4')) {
                 const produto = await buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\'');
+                produtoComponenteId = produto.id;
+            }
+            // Verificar perfil reforço F
+            else if (componente.nome.toLowerCase().includes('f - 4')) {
+                const produto = await buscarProdutoPorDescricao('F - 4\'x1.1/4\' #3/16\'');
                 produtoComponenteId = produto.id;
             }
             // Verificar tubo quadrado

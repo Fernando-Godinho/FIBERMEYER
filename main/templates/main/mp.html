@@ -3715,9 +3715,8 @@ function calcularGuardaCorpoHorizontal() {
         // POR-SXT-M6-AI304: usa a mesma lógica do parafuso M6x70
         const quantidadePorcas = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * 2;
         
-        // Outros parafusos baseados em conexões
-        const conexoes = dados.n_colunas + dados.n_br_intermediaria;
-        const quantidadeParafAA = Math.ceil(conexoes * 0.5) * dados.quantidade; // 50% paraf AA 4,8x19
+        // PARAF-AA-PN-PH-4,8X19-AI304: (qtd colunas / largura) × largura × (n barras × 2 + 6)
+        const quantidadeParafAA = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * (dados.n_br_intermediaria * 2 + 6);
         
         console.log('=== CÁLCULO PARAF-SXT-M6X70 ===');
         console.log('N° colunas:', dados.n_colunas);
@@ -3726,6 +3725,12 @@ function calcularGuardaCorpoHorizontal() {
         console.log(`Cálculo: (${dados.n_colunas} / ${dados.larg_modulo}) × ${dados.larg_modulo} × 2`);
         console.log('Resultado paraf M6x70:', quantidadeParaf70.toFixed(0), 'unid');
         console.log('Resultado porcas M6:', quantidadePorcas.toFixed(0), 'unid');
+        
+        console.log('=== CÁLCULO PARAF-AA-PN-PH-4,8X19 ===');
+        console.log('N° barras intermediárias:', dados.n_br_intermediaria);
+        console.log('Fórmula: (qtd_colunas / largura) × largura × (n_barras × 2 + 6)');
+        console.log(`Cálculo: (${dados.n_colunas} / ${dados.larg_modulo}) × ${dados.larg_modulo} × (${dados.n_br_intermediaria} × 2 + 6)`);
+        console.log('Resultado paraf AA:', quantidadeParafAA.toFixed(0), 'unid');
         
         // Calcular custos individuais (com perda para materiais)
         const custoTuboQuadrado = (quantidadeTuboQuadrado * tuboQuadrado.custo_centavos) * fatorPerda;

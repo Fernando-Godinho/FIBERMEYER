@@ -6500,11 +6500,11 @@ async function salvarGuardaCorpoHorizontalParametrizado() {
         }
         return response.json();
     })
-    .then(produto => {
+    .then(async produto => {
         console.log('✅ Guarda corpo horizontal salvo:', produto);
         
-        // Salvar componentes
-        salvarComponentesGuardaCorpoHorizontal(produto.id, csrftoken);
+        // Salvar componentes (aguardar conclusão)
+        await salvarComponentesGuardaCorpoHorizontal(produto.id, csrftoken);
         
         alert('Guarda corpo horizontal salvo com sucesso na base de dados!');
         
@@ -6525,6 +6525,14 @@ async function salvarGuardaCorpoHorizontalParametrizado() {
 
 async function salvarComponentesGuardaCorpoHorizontal(produtoId, csrftoken) {
     console.log('=== SALVANDO COMPONENTES GUARDA CORPO - HORIZONTAL ===');
+    
+    // Verificar se ultimoCalculo existe
+    if (!ultimoCalculo || !ultimoCalculo.parametros || !ultimoCalculo.componentes) {
+        console.error('❌ Erro: ultimoCalculo não está disponível ou está incompleto');
+        console.error('ultimoCalculo atual:', ultimoCalculo);
+        alert('Erro: É necessário fazer um cálculo antes de salvar os componentes.');
+        return;
+    }
     
     try {
         for (const componente of ultimoCalculo.componentes) {
@@ -6551,6 +6559,14 @@ async function salvarComponentesGuardaCorpoHorizontal(produtoId, csrftoken) {
                 const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_sapata);
                 produtoComponenteId = produto.id;
             }
+            // Verificar corrimão
+            else if (componente.nome.toLowerCase().includes('corrimão') || componente.nome.toLowerCase().includes('corrimao')) {
+                produtoComponenteId = 1322; // ID fixo do corrimão
+            }
+            // Verificar rodapé
+            else if (componente.nome.toLowerCase().includes('rodapé') || componente.nome.toLowerCase().includes('rodape')) {
+                produtoComponenteId = 1323; // ID fixo do rodapé
+            }
             // Verificar parafusos e porcas
             else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
                 const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304');
@@ -6558,8 +6574,18 @@ async function salvarComponentesGuardaCorpoHorizontal(produtoId, csrftoken) {
             } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
                 const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304');
                 produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x70')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304');
+                produtoComponenteId = produto.id;
             } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
                 const produto = await buscarProdutoPorDescricao('POR-SXT-M6-AI304');
+                produtoComponenteId = produto.id;
+            } else if (
+                componente.nome.toLowerCase().includes('paraf-aa-pn-ph-4,8x19') ||
+                componente.nome.toLowerCase().includes('paraf aa pn ph 4,8x19') ||
+                componente.nome.toLowerCase().includes('paraf-aa-pn-ph')
+            ) {
+                const produto = await buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304');
                 produtoComponenteId = produto.id;
             }
             

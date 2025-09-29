@@ -1942,6 +1942,230 @@ function carregarInterfaceGuardaCorpoHorizontal() {
     console.log('Interface Guarda Corpo - Horizontal carregada');
 }
 
+function carregarInterfaceGuardaCorpoVertical() {
+    console.log('=== CARREGANDO INTERFACE GUARDA CORPO - VERTICAL ===');
+    // Limpar estado anterior
+    templateAtual = { id: 'guarda_corpo_vertical_customizado', tipo: 'guarda_corpo_vertical' };
+    ultimoCalculo = null;
+    document.getElementById('templateSelect').value = 'guarda_corpo_vertical_customizado';
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Guarda Corpo - Vertical</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            Cálculo de guarda corpo vertical com colunas, barras intermediárias, tubos quadrados, perfis ômega e sapatas.
+        </p>
+    `;
+    // Copiar campos do horizontal, mas IDs começam com gc_vert_
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="gc_vert_nome" class="form-label">Nome do Guarda Corpo *</label>
+            <input type="text" class="form-control param-input" id="gc_vert_nome" name="nome_guarda_corpo" required>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_larg_modulo" class="form-label">Largura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_vert_larg_modulo" name="larg_modulo" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_altura" class="form-label">Altura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_vert_altura" name="altura" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_n_colunas" class="form-label">Nº Colunas *</label>
+                    <input type="number" class="form-control param-input" id="gc_vert_n_colunas" name="n_colunas" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_n_br_intermediaria" class="form-label">Nº Brr. Intermed.*</label>
+                    <input type="number" class="form-control param-input" id="gc_vert_n_br_intermediaria" name="n_br_intermediaria" min="0" required>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="gc_vert_tipo_tubo_quad" class="form-label">Tipo de Tubo Quadrado *</label>
+            <select class="form-select param-input" id="gc_vert_tipo_tubo_quad" name="tipo_tubo_quad" required>
+                <option value="">Selecione o tipo de tubo quadrado...</option>
+                <option value="Tubo Quadrado 50 #6mm">Tubo Quadrado 50 #6mm</option>
+                <option value="Tubo Quadrado 50 #4mm">Tubo Quadrado 50 #4mm</option>
+                <option value="Tubo Quadrado 50 #3mm">Tubo Quadrado 50 #3mm</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="gc_vert_tipo_omega" class="form-label">Tipo de Ômega *</label>
+            <select class="form-select param-input" id="gc_vert_tipo_omega" name="tipo_omega" required>
+                <option value="">Selecione o tipo de ômega...</option>
+                <option value="PERFIL OMEGA 45X20MM">PERFIL OMEGA 45X20MM</option>
+                <option value="Perfil ômega 50mm">Perfil ômega 50mm</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="gc_vert_tipo_sapata" class="form-label">Tipo de Sapata *</label>
+            <select class="form-select param-input" id="gc_vert_tipo_sapata" name="tipo_sapata" required>
+                <option value="">Selecione o tipo de sapata...</option>
+                <option value="SAPATA LAMINADA">SAPATA LAMINADA</option>
+                <option value="SAPATA INOX 150#3MM">SAPATA INOX 150#3MM</option>
+            </select>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_vert_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_vert_tempo_proc" name="tempo_proc" step="0.1" value="2.0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_vert_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_vert_tempo_mtg" name="tempo_mtg" step="0.1" value="3.0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="gc_vert_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control param-input" id="gc_vert_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-success" onclick="calcularGuardaCorpoVertical()">
+                <i class="fas fa-calculator"></i> Calcular Guarda Corpo
+            </button>
+        </div>
+    `;
+}
+    console.log('=== CARREGANDO INTERFACE GUARDA CORPO - HORIZONTAL ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'guarda_corpo_horizontal_customizado', tipo: 'guarda_corpo_horizontal' };
+    ultimoCalculo = null;
+    
+    // Definir valor do select
+    document.getElementById('templateSelect').value = 'guarda_corpo_horizontal_customizado';
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Guarda Corpo - Horizontal</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            Cálculo de guarda corpo horizontal com colunas, barras intermediárias, tubos quadrados, perfis ômega e sapatas.
+        </p>
+    `;
+    
+    // Criar campos específicos para guarda corpo horizontal
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="gc_horiz_nome" class="form-label">Nome do Guarda Corpo *</label>
+            <input type="text" class="form-control param-input" id="gc_horiz_nome" name="nome_guarda_corpo" required>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_larg_modulo" class="form-label">Largura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_larg_modulo" name="larg_modulo" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_altura" class="form-label">Altura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_altura" name="altura" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_n_colunas" class="form-label">Nº Colunas *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_n_colunas" name="n_colunas" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_n_br_intermediaria" class="form-label">Nº Brr. Intermed.*</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_n_br_intermediaria" name="n_br_intermediaria" min="0" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_tubo_quad" class="form-label">Tipo de Tubo Quadrado *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_tubo_quad" name="tipo_tubo_quad" required>
+                <option value="">Selecione o tipo de tubo quadrado...</option>
+                <option value="Tubo Quadrado 50 #6mm">Tubo Quadrado 50 #6mm</option>
+                <option value="Tubo Quadrado 50 #4mm">Tubo Quadrado 50 #4mm</option>
+                <option value="Tubo Quadrado 50 #3mm">Tubo Quadrado 50 #3mm</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_omega" class="form-label">Tipo de Ômega *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_omega" name="tipo_omega" required>
+                <option value="">Selecione o tipo de ômega...</option>
+                <option value="PERFIL OMEGA 45X20MM">PERFIL OMEGA 45X20MM</option>
+                <option value="Perfil ômega 50mm">Perfil ômega 50mm</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_sapata" class="form-label">Tipo de Sapata *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_sapata" name="tipo_sapata" required>
+                <option value="">Selecione o tipo de sapata...</option>
+                <option value="SAPATA LAMINADA">SAPATA LAMINADA</option>
+                <option value="SAPATA INOX 150#3MM">SAPATA INOX 150#3MM</option>
+            </select>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_horiz_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_horiz_tempo_proc" name="tempo_proc" step="0.1" value="2.0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_horiz_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_horiz_tempo_mtg" name="tempo_mtg" step="0.1" value="3.0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control param-input" id="gc_horiz_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-success" onclick="calcularGuardaCorpoHorizontal()">
+                <i class="fas fa-calculator"></i> Calcular Guarda Corpo
+            </button>
+        </div>
+    `;
+    
 function carregarInterfaceTampaMontada() {
     console.log('=== CARREGANDO INTERFACE TAMPA MONTADA ===');
     
@@ -3589,6 +3813,300 @@ function preencherTabelaComponentesTampa(resultado) {
 }
 
 function calcularGuardaCorpoHorizontal() {
+function calcularGuardaCorpoVertical() {
+    console.log('=== CALCULANDO GUARDA CORPO - VERTICAL ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'gc_vert_nome', 'gc_vert_larg_modulo', 'gc_vert_altura', 
+        'gc_vert_n_colunas', 'gc_vert_n_br_intermediaria', 
+        'gc_vert_tipo_tubo_quad', 'gc_vert_tipo_omega', 'gc_vert_tipo_sapata'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'gc_vert_nome') {
+            dados.nome_guarda_corpo = valor;
+        } else {
+            const nomeLimpo = campo.replace('gc_vert_', '');
+            if (['larg_modulo', 'altura'].includes(nomeLimpo)) {
+                dados[nomeLimpo] = parseFloat(valor);
+            } else if (['n_colunas', 'n_br_intermediaria'].includes(nomeLimpo)) {
+                dados[nomeLimpo] = parseFloat(valor); // Mudado de parseInt para parseFloat
+            } else {
+                dados[nomeLimpo] = valor;
+            }
+        }
+    });
+    
+    // Campos opcionais
+    dados.quantidade = 1; // Fixo em 1 unidade
+    dados.tempo_proc = parseFloat(document.getElementById('gc_vert_tempo_proc')?.value || '2.0');
+    dados.tempo_mtg = parseFloat(document.getElementById('gc_vert_tempo_mtg')?.value || '3.0');
+    dados.percentual_perda = parseFloat(document.getElementById('gc_vert_perda')?.value || '3.0');
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    console.log('Dados coletados (Guarda Corpo - Vertical):', dados);
+    
+    // Buscar produtos necessários dinamicamente
+    Promise.all([
+        buscarProdutoPorDescricao(dados.tipo_tubo_quad), // Tubo quadrado selecionado
+        buscarProdutoPorDescricao(dados.tipo_omega), // Perfil ômega selecionado
+        buscarProdutoPorDescricao(dados.tipo_sapata), // Sapata selecionada
+        buscarProdutoPorDescricao('Perfil Corrimão (s/ pintura) - Res. Poliéster'), // Corrimão fixo
+        buscarProdutoPorDescricao('Perfil Rodapé 200mm (s/ pintura) - Res. Poliéster'), // Rodapé fixo
+        buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304'),
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304'),
+        buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304')
+    ]).then(([tuboQuadrado, perfilOmega, sapata, corrimao, rodape, paraf70, porca, parafAA]) => {
+        
+        console.log('=== PRODUTOS ENCONTRADOS (GUARDA CORPO - VERTICAL) ===');
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Perfil Ômega:', perfilOmega);
+        console.log('Sapata:', sapata);
+        console.log('Corrimão:', corrimao);
+        console.log('Rodapé:', rodape);
+        console.log('Parafusos:', { paraf70, porca, parafAA });
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Debug: mostrar valores usados no cálculo
+        console.log('=== VALORES PARA CÁLCULO DO TUBO QUADRADO ===');
+        console.log('Largura módulo:', dados.larg_modulo);
+        console.log('N° colunas:', dados.n_colunas);
+        console.log('Altura:', dados.altura);
+        console.log('Quantidade:', dados.quantidade);
+        console.log('Fórmula: (largura/n_colunas) × largura × altura (apenas metros)');
+        console.log(`Cálculo: (${dados.larg_modulo}/${dados.n_colunas}) × ${dados.larg_modulo} × ${dados.altura}`);
+        
+        // Calcular quantidades baseadas nas especificações - VERTICAL PODE TER FÓRMULAS DIFERENTES
+        // Tubo Quadrado: (largura/n_colunas) × largura × altura (resultado em metros)
+        const quantidadeTuboQuadrado = ( dados.n_colunas/dados.larg_modulo ) * dados.larg_modulo * dados.altura;
+        
+        console.log('Resultado cálculo tubo quadrado:', quantidadeTuboQuadrado.toFixed(3), 'm');
+        
+        // Perfil Ômega: qtd barras × largura (resultado em metros)
+        const metrosOmega = dados.n_br_intermediaria * dados.larg_modulo;
+        
+        console.log('=== CÁLCULO PERFIL ÔMEGA ===');
+        console.log('Qtd barras:', dados.n_br_intermediaria);
+        console.log('Largura módulo:', dados.larg_modulo);
+        console.log('Fórmula: qtd_barras × largura');
+        console.log(`Cálculo: ${dados.n_br_intermediaria} × ${dados.larg_modulo}`);
+        console.log('Resultado perfil ômega:', metrosOmega.toFixed(3), 'm');
+        
+        // Corrimão: largura (resultado em metros)
+        const metrosCorrimao = dados.larg_modulo;
+        
+        console.log('=== CÁLCULO CORRIMÃO ===');
+        console.log('Largura módulo:', dados.larg_modulo);
+        console.log('Fórmula: largura');
+        console.log(`Resultado corrimão: ${metrosCorrimao.toFixed(3)} m`);
+        
+        // Rodapé: largura (resultado em metros)
+        const metrosRodape = dados.larg_modulo;
+        
+        console.log('=== CÁLCULO RODAPÉ ===');
+        console.log('Largura módulo:', dados.larg_modulo);
+        console.log('Fórmula: largura');
+        console.log(`Resultado rodapé: ${metrosRodape.toFixed(3)} m`);
+        
+        // Sapatas: 1 por coluna
+        const quantidadeSapatas = dados.n_colunas * dados.quantidade;
+        
+        // Parafusos estimados baseadas nas especificações
+        const quantidadeParaf70 = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * 2;
+        const quantidadePorcas = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * 2;
+        const quantidadeParafAA = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * (dados.n_br_intermediaria * 2 + 6);
+        
+        console.log('=== CÁLCULO PARAF-SXT-M6X70 ===');
+        console.log('N° colunas:', dados.n_colunas);
+        console.log('Largura módulo:', dados.larg_modulo);
+        console.log('Fórmula: (qtd_colunas / largura) × largura × 2');
+        console.log(`Cálculo: (${dados.n_colunas} / ${dados.larg_modulo}) × ${dados.larg_modulo} × 2`);
+        console.log('Resultado paraf M6x70:', quantidadeParaf70.toFixed(0), 'unid');
+        console.log('Resultado porcas M6:', quantidadePorcas.toFixed(0), 'unid');
+        
+        console.log('=== CÁLCULO PARAF-AA-PN-PH-4,8X19 ===');
+        console.log('N° barras intermediárias:', dados.n_br_intermediaria);
+        console.log('Fórmula: (qtd_colunas / largura) × largura × (n_barras × 2 + 6)');
+        console.log(`Cálculo: (${dados.n_colunas} / ${dados.larg_modulo}) × ${dados.larg_modulo} × (${dados.n_br_intermediaria} × 2 + 6)`);
+        console.log('Resultado paraf AA:', quantidadeParafAA.toFixed(0), 'unid');
+        
+        // Calcular custos individuais (com perda para materiais)
+        const custoTuboQuadrado = (quantidadeTuboQuadrado * tuboQuadrado.custo_centavos) * fatorPerda;
+        const custoPerfilOmega = (metrosOmega * perfilOmega.custo_centavos) * fatorPerda;
+        const custoCorrimao = (metrosCorrimao * corrimao.custo_centavos) * fatorPerda;
+        const custoRodape = (metrosRodape * rodape.custo_centavos) * fatorPerda;
+        const custoSapatas = (quantidadeSapatas * sapata.custo_centavos) * fatorPerda;
+        const custoParaf70 = (quantidadeParaf70 * paraf70.custo_centavos) * fatorPerda;
+        const custoPorcas = (quantidadePorcas * porca.custo_centavos) * fatorPerda;
+        const custoParafAA = (quantidadeParafAA * parafAA.custo_centavos) * fatorPerda;
+        
+        // Mão de obra
+        const custoMaoObraProcessamento = dados.tempo_proc * 6579; // 65,79 centavos por hora
+        const custoMaoObraMontagem = dados.tempo_mtg * 6579; // 65,79 centavos por hora
+        
+        // Custo total
+        const custoTotalCentavos = custoTuboQuadrado + custoPerfilOmega + custoCorrimao + custoRodape + 
+                                   custoSapatas + custoParaf70 + custoPorcas + custoParafAA + 
+                                   custoMaoObraProcessamento + custoMaoObraMontagem;
+        
+        // Criar objeto ultimoCalculo para guarda corpo vertical
+        ultimoCalculo = {
+            nome: dados.nome_guarda_corpo,
+            categoria: 'ESTRUTURAS',
+            tipo_calculo: 'guarda_corpo_vertical',
+            custo_total: custoTotalCentavos,
+            parametros: dados,
+            componentes: [
+                {
+                    nome: `${tuboQuadrado.descricao} - ${quantidadeTuboQuadrado.toFixed(2)}m`,
+                    quantidade: quantidadeTuboQuadrado,
+                    custo_unitario: tuboQuadrado.custo_centavos,
+                    custo_total: custoTuboQuadrado,
+                    unidade: 'm'
+                },
+                {
+                    nome: `${perfilOmega.descricao} - ${metrosOmega.toFixed(2)}m`,
+                    quantidade: metrosOmega,
+                    custo_unitario: perfilOmega.custo_centavos,
+                    custo_total: custoPerfilOmega,
+                    unidade: 'm'
+                },
+                {
+                    nome: `${corrimao.descricao} - ${metrosCorrimao.toFixed(2)}m`,
+                    quantidade: metrosCorrimao,
+                    custo_unitario: corrimao.custo_centavos,
+                    custo_total: custoCorrimao,
+                    unidade: 'm'
+                },
+                {
+                    nome: `${rodape.descricao} - ${metrosRodape.toFixed(2)}m`,
+                    quantidade: metrosRodape,
+                    custo_unitario: rodape.custo_centavos,
+                    custo_total: custoRodape,
+                    unidade: 'm'
+                },
+                {
+                    nome: `${sapata.descricao} - ${quantidadeSapatas.toFixed(2)} unid`,
+                    quantidade: quantidadeSapatas,
+                    custo_unitario: sapata.custo_centavos,
+                    custo_total: custoSapatas,
+                    unidade: 'unid'
+                },
+                {
+                    nome: `${paraf70.descricao} - ${quantidadeParaf70.toFixed(1)} unid`,
+                    quantidade: quantidadeParaf70,
+                    custo_unitario: paraf70.custo_centavos,
+                    custo_total: custoParaf70,
+                    unidade: 'unid'
+                },
+                {
+                    nome: `${porca.descricao} - ${quantidadePorcas.toFixed(1)} unid`,
+                    quantidade: quantidadePorcas,
+                    custo_unitario: porca.custo_centavos,
+                    custo_total: custoPorcas,
+                    unidade: 'unid'
+                },
+                {
+                    nome: `${parafAA.descricao} - ${quantidadeParafAA.toFixed(1)} unid`,
+                    quantidade: quantidadeParafAA,
+                    custo_unitario: parafAA.custo_centavos,
+                    custo_total: custoParafAA,
+                    unidade: 'unid'
+                }
+            ]
+        };
+        
+        // Adicionar mão de obra se houver tempo
+        if (dados.tempo_proc > 0) {
+            ultimoCalculo.componentes.push({
+                nome: `Processamento - ${dados.tempo_proc}h`,
+                quantidade: dados.tempo_proc,
+                custo_unitario: 6579,
+                custo_total: custoMaoObraProcessamento,
+                unidade: 'h'
+            });
+        }
+        
+        if (dados.tempo_mtg > 0) {
+            ultimoCalculo.componentes.push({
+                nome: `Montagem - ${dados.tempo_mtg}h`,
+                quantidade: dados.tempo_mtg,
+                custo_unitario: 6579,
+                custo_total: custoMaoObraMontagem,
+                unidade: 'h'
+            });
+        }
+        
+        console.log('=== RESULTADO FINAL (GUARDA CORPO - VERTICAL) ===');
+        console.log('Nome:', ultimoCalculo.nome);
+        console.log('Custo Total: R$', (custoTotalCentavos/100).toFixed(2));
+        console.log('Componentes:', ultimoCalculo.componentes.length);
+        
+        // Exibir resultado
+        const resultadoDiv = document.getElementById('resultadoCalculado');
+        resultadoDiv.innerHTML = `
+            <h5 class="text-success">✅ Guarda Corpo Vertical Calculado</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nome:</strong> ${ultimoCalculo.nome}</p>
+                    <p><strong>Categoria:</strong> ${ultimoCalculo.categoria}</p>
+                    <p><strong>Tipo:</strong> Guarda Corpo Vertical</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Custo Total:</strong> <span class="text-success">R$ ${(custoTotalCentavos/100).toFixed(2)}</span></p>
+                    <p><strong>Preço Sugerido:</strong> <span class="text-info">R$ ${(custoTotalCentavos/100 * 1.3).toFixed(2)}</span> (30% margem)</p>
+                    <p><strong>Componentes:</strong> ${ultimoCalculo.componentes.length}</p>
+                </div>
+            </div>
+        `;
+        resultadoDiv.style.display = 'block';
+        
+        // Preencher tabela de componentes
+        console.log('=== PREENCHENDO TABELA DE COMPONENTES PARA GUARDA CORPO - VERTICAL ===');
+        const tbody = document.getElementById('componentesCalculadosTable');
+        tbody.innerHTML = '';
+        
+        ultimoCalculo.componentes.forEach(comp => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${comp.nome}</td>
+                <td>${comp.quantidade.toFixed(4)} ${comp.unidade}</td>
+                <td>R$ ${(comp.custo_unitario/100).toFixed(2)}</td>
+                <td>R$ ${(comp.custo_total/100).toFixed(2)}</td>
+                <td><span class="badge bg-info">Vertical</span></td>
+            `;
+            
+            console.log(`✓ Componente adicionado: ${comp.nome} - ${comp.quantidade.toFixed(4)} ${comp.unidade}`);
+        });
+        
+        console.log(`✅ Tabela preenchida com ${ultimoCalculo.componentes.length} componentes. Total: R$ ${(custoTotalCentavos/100).toFixed(2)}`);
+        
+        // Habilitar botão salvar
+        document.getElementById('salvarProdutoBtn').disabled = false;
+        
+    }).catch(error => {
+        console.error('❌ Erro ao calcular guarda corpo vertical:', error);
+        alert('Erro ao calcular guarda corpo vertical: ' + error.message);
+    });
+}
     console.log('=== CALCULANDO GUARDA CORPO - HORIZONTAL ===');
     
     // Verificar se todos os campos obrigatórios estão preenchidos
@@ -4679,6 +5197,12 @@ function carregarTemplates() {
             guardaCorpoHorizontalOption.value = 'guarda_corpo_horizontal_customizado';
             guardaCorpoHorizontalOption.textContent = 'Guarda Corpo - Horizontal';
             select.appendChild(guardaCorpoHorizontalOption);
+
+            // Adicionar opção "Guarda Corpo - Vertical"
+            const guardaCorpoVerticalOption = document.createElement('option');
+            guardaCorpoVerticalOption.value = 'guarda_corpo_vertical_customizado';
+            guardaCorpoVerticalOption.textContent = 'Guarda Corpo - Vertical';
+            select.appendChild(guardaCorpoVerticalOption);
             
             templates.forEach(template => {
                 const option = document.createElement('option');
@@ -4779,6 +5303,12 @@ function carregarTemplate() {
     if (templateId === 'guarda_corpo_horizontal_customizado') {
         console.log('Carregando interface de Guarda Corpo - Horizontal');
         carregarInterfaceGuardaCorpoHorizontal();
+        return;
+    }
+    // Verificar se é "Guarda Corpo - Vertical"
+    if (templateId === 'guarda_corpo_vertical_customizado') {
+        console.log('Carregando interface de Guarda Corpo - Vertical');
+        carregarInterfaceGuardaCorpoVertical();
         return;
     }
     
@@ -5390,6 +5920,9 @@ function salvarProdutoParametrizado() {
     // Verificar se é guarda corpo horizontal
     if (templateId === 'guarda_corpo_horizontal_customizado') {
         return salvarGuardaCorpoHorizontalParametrizado();
+    }
+    if (templateId === 'guarda_corpo_vertical_customizado') {
+        return salvarGuardaCorpoVerticalParametrizado();
     }
     
     const template = templatesCache.find(t => t.id == templateId);
@@ -6434,6 +6967,78 @@ async function salvarComponentesDegrauInjetado(produtoId, csrftoken) {
 }
 
 async function salvarGuardaCorpoHorizontalParametrizado() {
+async function salvarGuardaCorpoVerticalParametrizado() {
+    console.log('=== SALVANDO GUARDA CORPO - VERTICAL PARAMETRIZADO ===');
+    if (!ultimoCalculo) {
+        alert('Realize o cálculo antes de salvar!');
+        return;
+    }
+    const csrftoken = getCookie('csrftoken');
+    const produtoData = {
+        descricao: ultimoCalculo.nome,
+        categoria: ultimoCalculo.categoria,
+        tipo_produto: 'composto',
+        custo_centavos: Math.round(ultimoCalculo.custo_total),
+        preco_venda_centavos: Math.round(ultimoCalculo.custo_total * 1.3),
+        peso_und: 0,
+        unidade: 'unid',
+        observacao: JSON.stringify({
+            tipo_calculo: 'guarda_corpo_vertical',
+            parametros: ultimoCalculo.parametros,
+            larg_modulo: ultimoCalculo.parametros.larg_modulo,
+            altura: ultimoCalculo.parametros.altura,
+            n_colunas: ultimoCalculo.parametros.n_colunas,
+            n_br_intermediaria: ultimoCalculo.parametros.n_br_intermediaria,
+            tipo_tubo_quad: ultimoCalculo.parametros.tipo_tubo_quad,
+            tipo_omega: ultimoCalculo.parametros.tipo_omega,
+            tipo_sapata: ultimoCalculo.parametros.tipo_sapata
+        }),
+        referencia: gerarReferenciaGuardaCorpo(ultimoCalculo.nome),
+        data_revisao: new Date().toISOString(),
+        ativo: true
+    };
+    console.log('Dados do produto guarda corpo vertical:', produtoData);
+    console.log('ultimoCalculo completo:', ultimoCalculo);
+    if (!produtoData.descricao || produtoData.descricao.trim() === '') {
+        alert('Nome do guarda corpo é obrigatório');
+        return;
+    }
+    if (!produtoData.custo_centavos || produtoData.custo_centavos <= 0) {
+        alert('Custo do guarda corpo deve ser maior que zero');
+        return;
+    }
+    fetch('/api/produtos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(produtoData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Erro na resposta do servidor:', text);
+                throw new Error(`Erro HTTP ${response.status}: ${response.statusText}. Detalhes: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(async produto => {
+        console.log('✅ Guarda corpo vertical salvo:', produto);
+        await salvarComponentesGuardaCorpoVertical(produto.id, csrftoken);
+        alert('Guarda corpo vertical salvo com sucesso na base de dados!');
+        document.getElementById('parametrosContainer').innerHTML = '<p class="text-muted">Selecione um template para começar...</p>';
+        document.getElementById('resultadoCalculado').style.display = 'none';
+        document.getElementById('salvarProdutoBtn').disabled = true;
+        ultimoCalculo = null;
+        fetchProdutos();
+    })
+    .catch(error => {
+        console.error('❌ Erro ao salvar guarda corpo vertical:', error);
+        alert('Erro ao salvar guarda corpo vertical: ' + (error.message || 'Erro desconhecido'));
+    });
+}
     console.log('=== SALVANDO GUARDA CORPO - HORIZONTAL PARAMETRIZADO ===');
     
     if (!ultimoCalculo) {
@@ -6524,6 +7129,93 @@ async function salvarGuardaCorpoHorizontalParametrizado() {
 }
 
 async function salvarComponentesGuardaCorpoHorizontal(produtoId, csrftoken) {
+async function salvarComponentesGuardaCorpoVertical(produtoId, csrftoken) {
+    console.log('=== SALVANDO COMPONENTES GUARDA CORPO - VERTICAL ===');
+    if (!ultimoCalculo || !ultimoCalculo.parametros || !ultimoCalculo.componentes) {
+        console.error('❌ Erro: ultimoCalculo não está disponível ou está incompleto');
+        console.error('ultimoCalculo atual:', ultimoCalculo);
+        alert('Erro: É necessário fazer um cálculo antes de salvar os componentes.');
+        return;
+    }
+    try {
+        for (const componente of ultimoCalculo.componentes) {
+            let produtoComponenteId = null;
+            // Mesma lógica do horizontal, pode ser ajustada depois
+            if (componente.nome.toLowerCase().includes('processamento') || 
+                componente.nome.toLowerCase().includes('montagem')) {
+                produtoComponenteId = 1374;
+            } else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
+                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_tubo_quad);
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('omega') || componente.nome.toLowerCase().includes('ômega')) {
+                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_omega);
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('sapata')) {
+                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_sapata);
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('corrimão') || componente.nome.toLowerCase().includes('corrimao')) {
+                produtoComponenteId = 1322;
+            } else if (componente.nome.toLowerCase().includes('rodapé') || componente.nome.toLowerCase().includes('rodape')) {
+                produtoComponenteId = 1323;
+            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304');
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304');
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x70')) {
+                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304');
+                produtoComponenteId = produto.id;
+            } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
+                const produto = await buscarProdutoPorDescricao('POR-SXT-M6-AI304');
+                produtoComponenteId = produto.id;
+            } else if (
+                componente.nome.toLowerCase().includes('paraf-aa-pn-ph-4,8x19') ||
+                componente.nome.toLowerCase().includes('paraf aa pn ph 4,8x19') ||
+                componente.nome.toLowerCase().includes('paraf-aa-pn-ph')
+            ) {
+                const produto = await buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304');
+                produtoComponenteId = produto.id;
+            }
+            if (!produtoComponenteId) {
+                console.warn(`❓ Produto componente não encontrado para: ${componente.nome}`);
+                continue;
+            }
+            const componenteData = {
+                produto_principal: produtoId,
+                produto_componente: produtoComponenteId,
+                quantidade: Math.round(componente.quantidade * 1000) / 1000,
+                observacao: JSON.stringify({
+                    nome_componente: componente.nome,
+                    custo_unitario: componente.custo_unitario,
+                    custo_total: componente.custo_total,
+                    tipo_calculo: 'guarda_corpo_vertical',
+                    unidade: componente.unidade || 'unid'
+                })
+            };
+            console.log(`💾 Salvando componente: ${componente.nome} (ID: ${produtoComponenteId})`);
+            console.log('Dados do componente:', componenteData);
+            const response = await fetch('/api/componentes/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(componenteData)
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Erro detalhado:', errorText);
+                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.statusText}. Detalhes: ${errorText}`);
+            }
+            console.log(`✅ Componente salvo: ${componente.nome}`);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao salvar componentes de guarda corpo vertical:', error);
+        throw error;
+    }
+    console.log('✅ Todos os componentes de guarda corpo vertical foram salvos com sucesso');
+}
     console.log('=== SALVANDO COMPONENTES GUARDA CORPO - HORIZONTAL ===');
     
     // Verificar se ultimoCalculo existe

@@ -6843,68 +6843,133 @@ async function salvarComponentesGuardaCorpoVertical(produtoId, csrftoken) {
         return;
     }
     
+    let componentesSalvos = 0;
+    
     try {
         // Buscar componentes existentes para este produto
         console.log('� Verificando componentes existentes para o produto:', produtoId);
         const existingResponse = await fetch(`/api/componentes/?produto_principal=${produtoId}`);
-        const existingComponents = existingResponse.ok ? await existingResponse.json() : [];
-        console.log('Componentes existentes encontrados:', existingComponents.length);
-        
-        // Criar um Set dos IDs de produtos componentes existentes para verificação rápida
-        const existingComponentIds = new Set(existingComponents.map(comp => comp.produto_componente));
-        
-        let componentesSalvos = 0;
-        let componentesIgnorados = 0;
-        for (const componente of ultimoCalculo.componentes) {
-            let produtoComponenteId = null;
-            // Mesma lógica do horizontal, pode ser ajustada depois
-            if (componente.nome.toLowerCase().includes('processamento') || 
-                componente.nome.toLowerCase().includes('montagem')) {
-                produtoComponenteId = 1374;
-            } else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
-                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_tubo_quad);
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('omega') || componente.nome.toLowerCase().includes('ômega')) {
-                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_omega);
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('sapata')) {
-                const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_sapata);
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('corrimão') || componente.nome.toLowerCase().includes('corrimao')) {
-                produtoComponenteId = 1322;
-            } else if (componente.nome.toLowerCase().includes('rodapé') || componente.nome.toLowerCase().includes('rodape')) {
-                produtoComponenteId = 1323;
-            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
-                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304');
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
-                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304');
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x70')) {
-                const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304');
-                produtoComponenteId = produto.id;
-            } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
-                const produto = await buscarProdutoPorDescricao('POR-SXT-M6-AI304');
-                produtoComponenteId = produto.id;
-            } else if (
-                componente.nome.toLowerCase().includes('paraf-aa-pn-ph-4,8x19') ||
-                componente.nome.toLowerCase().includes('paraf aa pn ph 4,8x19') ||
-                componente.nome.toLowerCase().includes('paraf-aa-pn-ph')
-            ) {
-                const produto = await buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304');
-                produtoComponenteId = produto.id;
+        if (existingResponse.ok) {
+            const existingComponents = await existingResponse.json();
+            console.log(`Encontrados ${existingComponents.length} componentes existentes`);
+            
+            // Deletar cada componente existente de forma sequencial
+            for (const component of existingComponents) {
+                try {
+                    const deleteResponse = await fetch(`/api/componentes/${component.id}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrftoken
+                        }
+                    });
+                    if (deleteResponse.ok) {
+                        console.log(`✅ Componente deletado: ID ${component.id}`);
+                    } else {
+                        console.warn(`⚠️ Erro ao deletar componente ID ${component.id}`);
+                    }
+                } catch (delError) {
+                    console.warn(`⚠️ Erro ao deletar componente ID ${component.id}:`, delError);
+                }
             }
+            
+            // Aguardar um pouco para garantir que todas as deleções foram processadas
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        console.log(`🔍 Total de componentes a processar: ${ultimoCalculo.componentes.length}`);
+        ultimoCalculo.componentes.forEach((comp, index) => {
+            console.log(`${index + 1}. ${comp.nome} - Qtd: ${comp.quantidade}`);
+        });
+        
+        for (const componente of ultimoCalculo.componentes) {
+            console.log(`\n=== PROCESSANDO COMPONENTE: ${componente.nome} ===`);
+            let produtoComponenteId = null;
+            
+            // Mesma lógica do horizontal, pode ser ajustada depois
+            try {
+                if (componente.nome.toLowerCase().includes('processamento') || 
+                    componente.nome.toLowerCase().includes('montagem')) {
+                    produtoComponenteId = 1374;
+                    console.log('✅ Mapeado para mão de obra (ID: 1374)');
+                } else if (componente.nome.toLowerCase().includes('tubo quadrado') && componente.nome.toLowerCase().includes('3mm')) {
+                    // Tubo 3mm automático deve buscar especificamente o produto 3mm
+                    console.log('🔍 Buscando tubo quadrado 3mm automático');
+                    const produto = await buscarProdutoPorDescricao('Tubo Quadrado 50 #3mm');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Tubo quadrado 3mm encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('tubo quadrado')) {
+                    console.log('🔍 Buscando tubo quadrado:', ultimoCalculo.parametros.tipo_tubo_quad);
+                    const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_tubo_quad);
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Tubo quadrado encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('tubo redondo')) {
+                    // Para tubo redondo, usar o tipo selecionado nos parâmetros
+                    if (ultimoCalculo.parametros.tipo_tubo_redondo && ultimoCalculo.parametros.tipo_tubo_redondo !== '') {
+                        console.log('🔍 Buscando tubo redondo:', ultimoCalculo.parametros.tipo_tubo_redondo);
+                        const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_tubo_redondo);
+                        produtoComponenteId = produto.id;
+                        console.log(`✅ Tubo redondo encontrado (ID: ${produtoComponenteId})`);
+                    } else {
+                        console.warn(`❓ Tubo redondo calculado mas não selecionado nos parâmetros: ${componente.nome}`);
+                        continue;
+                    }
+                } else if (componente.nome.toLowerCase().includes('omega') || componente.nome.toLowerCase().includes('ômega')) {
+                    console.log('🔍 Buscando omega:', ultimoCalculo.parametros.tipo_omega);
+                    const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_omega);
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Omega encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('sapata')) {
+                    console.log('🔍 Buscando sapata:', ultimoCalculo.parametros.tipo_sapata);
+                    const produto = await buscarProdutoPorDescricao(ultimoCalculo.parametros.tipo_sapata);
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Sapata encontrada (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('corrimão') || componente.nome.toLowerCase().includes('corrimao')) {
+                    produtoComponenteId = 1322;
+                    console.log('✅ Mapeado para corrimão (ID: 1322)');
+                } else if (componente.nome.toLowerCase().includes('rodapé') || componente.nome.toLowerCase().includes('rodape')) {
+                    produtoComponenteId = 1323;
+                    console.log('✅ Mapeado para rodapé (ID: 1323)');
+                } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x40')) {
+                    console.log('🔍 Buscando parafuso M6x40');
+                    const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Parafuso M6x40 encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x60')) {
+                    console.log('🔍 Buscando parafuso M6x60');
+                    const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Parafuso M6x60 encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('paraf-sxt-m6x70')) {
+                    console.log('🔍 Buscando parafuso M6x70');
+                    const produto = await buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Parafuso M6x70 encontrado (ID: ${produtoComponenteId})`);
+                } else if (componente.nome.toLowerCase().includes('por-sxt-m6')) {
+                    console.log('🔍 Buscando porca M6');
+                    const produto = await buscarProdutoPorDescricao('POR-SXT-M6-AI304');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Porca M6 encontrada (ID: ${produtoComponenteId})`);
+                } else if (
+                    componente.nome.toLowerCase().includes('paraf-aa-pn-ph-4,8x19') ||
+                    componente.nome.toLowerCase().includes('paraf aa pn ph 4,8x19') ||
+                    componente.nome.toLowerCase().includes('paraf-aa-pn-ph')
+                ) {
+                    console.log('🔍 Buscando parafuso AA-PN-PH-4,8x19');
+                    const produto = await buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304');
+                    produtoComponenteId = produto.id;
+                    console.log(`✅ Parafuso AA-PN-PH encontrado (ID: ${produtoComponenteId})`);
+                }
+            } catch (searchError) {
+                console.warn(`❓ Erro ao buscar produto para: ${componente.nome}`, searchError);
+                continue;
+            }
+            
             if (!produtoComponenteId) {
                 console.warn(`❓ Produto componente não encontrado para: ${componente.nome}`);
                 continue;
             }
             
-            // Verificar se este componente já existe para evitar duplicação
-            if (existingComponentIds.has(produtoComponenteId)) {
-                console.log(`⏭️ Componente já existe, ignorando: ${componente.nome} (ID: ${produtoComponenteId})`);
-                componentesIgnorados++;
-                continue;
-            }
+            // Componente será criado (não há duplicação pois deletamos os existentes)
             
             const componenteData = {
                 produto_principal: produtoId,
@@ -6918,8 +6983,12 @@ async function salvarComponentesGuardaCorpoVertical(produtoId, csrftoken) {
                     unidade: componente.unidade || 'unid'
                 })
             };
-            console.log(`💾 Salvando componente: ${componente.nome} (ID: ${produtoComponenteId})`);
+            
+            console.log(`💾 Processando componente: ${componente.nome} (ID: ${produtoComponenteId})`);
             console.log('Dados do componente:', componenteData);
+            
+            // Criar novo componente (os existentes já foram deletados no início)
+            console.log(`➕ Criando novo componente: ${componente.nome}`);
             const response = await fetch('/api/componentes/', {
                 method: 'POST',
                 headers: {
@@ -6928,19 +6997,23 @@ async function salvarComponentesGuardaCorpoVertical(produtoId, csrftoken) {
                 },
                 body: JSON.stringify(componenteData)
             });
+            
+            // Verificar resultado final
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Erro detalhado:', errorText);
-                throw new Error(`Erro ao salvar componente ${componente.nome}: ${response.statusText}. Detalhes: ${errorText}`);
+                console.warn(`⚠️ Erro ao processar componente ${componente.nome}: ${response.statusText}`);
+                continue; // Pular este componente em vez de falhar todo o processo
             }
-            console.log(`✅ Componente salvo: ${componente.nome}`);
+            
+            console.log(`✅ Componente processado com sucesso: ${componente.nome}`);
             componentesSalvos++;
         }
     } catch (error) {
         console.error('❌ Erro ao salvar componentes de guarda corpo vertical:', error);
         throw error;
     }
-    console.log(`✅ Salvamento concluído - Componentes salvos: ${componentesSalvos}, Ignorados (já existiam): ${componentesIgnorados}`);
+    console.log(`✅ Salvamento concluído - Total de componentes salvos: ${componentesSalvos}/${ultimoCalculo.componentes.length}`);
 }
 
 async function salvarComponentesGuardaCorpoHorizontal(produtoId, csrftoken) {

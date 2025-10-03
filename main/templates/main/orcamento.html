@@ -19,6 +19,28 @@
             font-weight: bold;
             color: #0d6efd;
         }
+        
+        /* Estilos da tabela de componentes (copiado do mp.html) */
+        #componentesCalculadosTable th {
+            background-color: #f8f9fa;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        #componentesCalculadosTable td {
+            vertical-align: middle;
+            font-size: 0.875rem;
+        }
+        
+        .btn-sm i {
+            font-size: 0.75rem;
+        }
+        
+        /* Destaque para linha de total */
+        #componentesCalculadosTable tr:last-child {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -132,7 +154,7 @@
         </div>
       </div>
     </div>
-    <table class="table table-bordered">
+    <table class="table table-bordered" id="tabelaOrcamento">
       <thead>
         <tr>
           <th>Descrição</th>
@@ -144,7 +166,7 @@
           <th>Ações</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="itensOrcamento">
         {% for item in itens %}
         <tr>
           <td>{{ item.descricao }}</td>
@@ -175,6 +197,20 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Total do Orçamento -->
+    <div class="row mt-3">
+      <div class="col-md-8"></div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Total do Orçamento</h5>
+            <h3 class="text-success" id="totalOrcamento">R$ 0,00</h3>
+            <small class="text-muted">Valores calculados dinamicamente</small>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal Editar Item -->
     <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
@@ -301,16 +337,18 @@
                   <table class="table table-sm">
                     <thead>
                       <tr>
-                        <th>Componente</th>
-                        <th>Produto</th>
+                        <th>Material/Serviço</th>
+                        <th>Descrição do Produto</th>
+                        <th>Fator %</th>
                         <th>Quantidade</th>
-                        <th>Custo Unit.</th>
+                        <th>Custo Unitário</th>
                         <th>Custo Total</th>
+                        <th>Ação</th>
                       </tr>
                     </thead>
                     <tbody id="componentesCalculadosTable">
                       <tr>
-                        <td colspan="5" class="text-center text-muted">Nenhum cálculo realizado</td>
+                        <td colspan="7" class="text-center text-muted">Nenhum cálculo realizado</td>
                       </tr>
                     </tbody>
                   </table>
@@ -390,6 +428,10 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.error('Elemento modal não encontrado no DOM');
     }
+    
+    // Inicializar total do orçamento
+    atualizarTotalOrcamento();
+    console.log('Total do orçamento inicializado');
 });
 
 // APIs
@@ -413,22 +455,37 @@ function carregarTemplates() {
             
             select.innerHTML = '<option value="">Escolha um template...</option>';
             
-            // Adicionar opção "Novo Perfil"
-            const novoPerfilOption = document.createElement('option');
-            novoPerfilOption.value = 'perfil_customizado';
-            novoPerfilOption.textContent = 'Novo Perfil';
-            select.appendChild(novoPerfilOption);
+            // Adicionar templates customizados do sistema FIBERMEYER
+            const templateOptions = [
+                { value: 'perfil_customizado', text: 'Novo Perfil', description: 'Criar novo perfil personalizado' },
+                { value: 'grades_customizado', text: 'Grades', description: 'Cálculo de grades estruturais' },
+                { value: 'tampa_injetada_customizado', text: 'Tampa Injetada', description: 'Tampas injetadas personalizadas' },
+                { value: 'degraus_customizado', text: 'Degraus', description: 'Degraus para estruturas' },
+                { value: 'degrau_injetado_customizado', text: 'Degrau Injetado', description: 'Degraus injetados especiais' },
+                { value: 'guarda_corpo_horizontal_customizado', text: 'Guarda Corpo - Horizontal', description: 'Guarda corpo horizontal com colunas e barras' },
+                { value: 'guarda_corpo_vertical_customizado', text: 'Guarda Corpo - Vertical', description: 'Guarda corpo vertical estrutural' },
+                { value: 'tampa_montada_customizado', text: 'Tampa Montada', description: 'Tampas montadas com componentes' }
+            ];
             
+            templateOptions.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.value;
+                option.textContent = template.text;
+                option.setAttribute('data-description', template.description);
+                select.appendChild(option);
+            });
+            
+            // Adicionar templates da API (se houver)
             templates.forEach(template => {
                 const option = document.createElement('option');
-                option.value = template.id;
-                // Usar a descrição do produto_base se disponível
+                option.value = `api_${template.id}`;
                 const nome = template.produto_base && template.produto_base.descricao 
                     ? template.produto_base.descricao 
                     : `Template ${template.id}`;
-                option.textContent = nome;
+                option.textContent = `API: ${nome}`;
                 select.appendChild(option);
             });
+            
             console.log('Templates carregados no select');
         })
         .catch(error => {
@@ -439,6 +496,8 @@ function carregarTemplates() {
 
 function carregarTemplate() {
     const templateId = document.getElementById('templateSelect').value;
+    console.log('carregarTemplate chamada com templateId:', templateId);
+    
     if (!templateId) {
         document.getElementById('templateDescription').innerHTML = '';
         document.getElementById('parametrosContainer').innerHTML = '<p class="text-muted">Selecione um template primeiro</p>';
@@ -446,39 +505,59 @@ function carregarTemplate() {
         return;
     }
     
-    // Verificar se é "Novo Perfil"
-    if (templateId === 'perfil_customizado') {
-        console.log('Carregando interface de Novo Perfil no orçamento');
-        carregarInterfaceNovoPerfilOrcamento();
+    // Templates customizados do sistema FIBERMEYER
+    const templatesCustomizados = {
+        'perfil_customizado': () => carregarInterfaceNovoPerfilOrcamento(),
+        'grades_customizado': () => carregarInterfaceGradesOrcamento(),
+        'tampa_injetada_customizado': () => carregarInterfaceTampaInjetadaOrcamento(),
+        'degraus_customizado': () => carregarInterfaceDegrausOrcamento(),
+        'degrau_injetado_customizado': () => carregarInterfaceDegrauInjetadoOrcamento(),
+        'guarda_corpo_horizontal_customizado': () => carregarInterfaceGuardaCorpoHorizontalOrcamento(),
+        'guarda_corpo_vertical_customizado': () => carregarInterfaceGuardaCorpoVerticalOrcamento(),
+        'tampa_montada_customizado': () => carregarInterfaceTampaMontadaOrcamento()
+    };
+    
+    if (templatesCustomizados[templateId]) {
+        console.log(`Carregando template customizado: ${templateId}`);
+        console.log('Função encontrada:', templatesCustomizados[templateId]);
+        templatesCustomizados[templateId]();
+        console.log('Função executada com sucesso');
         return;
     }
     
-    fetch(`/api/templates/${templateId}/`)
-        .then(res => res.json())
-        .then(template => {
-            templateAtual = template;
-            
-            // Mostrar descrição
-            const nome = template.produto_base && template.produto_base.descricao 
-                ? template.produto_base.descricao 
-                : `Template ${template.id}`;
-            const categoria = template.produto_base && template.produto_base.categoria 
-                ? template.produto_base.categoria 
-                : 'N/A';
-            
-            document.getElementById('templateDescription').innerHTML = `
-                <strong>${nome}</strong><br>
-                Template para criação de produtos parametrizados<br>
-                <small class="text-muted">Categoria: ${categoria}</small>
-            `;
-            
-            // Criar campos de parâmetros usando a nova estrutura
-            criarCamposParametrosNovo(template);
-        })
-        .catch(error => {
-            console.error('Erro ao carregar template:', error);
-            alert('Erro ao carregar detalhes do template.');
-        });
+    // Templates da API (começam com "api_")
+    if (templateId.startsWith('api_')) {
+        const realTemplateId = templateId.replace('api_', '');
+        fetch(`/api/templates/${realTemplateId}/`)
+            .then(res => res.json())
+            .then(template => {
+                templateAtual = template;
+                
+                // Mostrar descrição
+                const nome = template.produto_base && template.produto_base.descricao 
+                    ? template.produto_base.descricao 
+                    : `Template ${template.id}`;
+                const categoria = template.produto_base && template.produto_base.categoria 
+                    ? template.produto_base.categoria 
+                    : 'N/A';
+                
+                document.getElementById('templateDescription').innerHTML = `
+                    <strong>${nome}</strong><br>
+                    Template para criação de produtos parametrizados<br>
+                    <small class="text-muted">Categoria: ${categoria}</small>
+                `;
+                
+                // Criar campos de parâmetros usando a nova estrutura
+                criarCamposParametrosNovo(template);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar template:', error);
+                alert('Erro ao carregar detalhes do template.');
+            });
+        return;
+    }
+    
+    console.warn(`Template não reconhecido: ${templateId}`);
 }
 
 function criarCamposParametrosNovo(template) {
@@ -774,32 +853,149 @@ function adicionarProdutoParametrizadoAoOrcamento() {
         return;
     }
     
-    // Verificar se nome foi preenchido
-    const nomePersonalizado = document.getElementById('nomeProdutoParametrizado');
+    // Verificar se nome foi preenchido - tentar diferentes IDs dependendo do template
+    let nomePersonalizado = document.getElementById('nomeProdutoParametrizado');
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('perfil_nome'); // Para template Novo Perfil
+    }
+    
     if (!nomePersonalizado || !nomePersonalizado.value.trim()) {
         alert('Por favor, digite um nome para o produto!');
         return;
     }
     
-    // Preparar dados do produto
-    const produtoData = {
-        nome: nomePersonalizado.value.trim(),
-        preco_total: ultimoCalculo.custo_total,
-        template_id: templateAtual.id,
-        componentes: ultimoCalculo.componentes
-    };
+    console.log('✅ Nome do produto encontrado:', nomePersonalizado.value.trim());
     
-    // Criar formulário hidden para submeter
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.innerHTML = `
-        <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
-        <input type="hidden" name="produto_parametrizado" value='${JSON.stringify(produtoData)}'>
-        <input type="hidden" name="quantidade" value="1">
+    // Solicitar quantidade ao usuário
+    const quantidade = prompt('Digite a quantidade de metros lineares:', '1');
+    if (!quantidade || isNaN(quantidade) || parseFloat(quantidade) <= 0) {
+        alert('Quantidade inválida!');
+        return;
+    }
+    
+    const qtd = parseFloat(quantidade);
+    const nomeProduto = nomePersonalizado.value.trim();
+    
+    // Calcular valores baseado no último cálculo
+    let valorUnitario = 0;
+    if (ultimoCalculo.custo_total) {
+        // Se custo_total já está em reais
+        valorUnitario = ultimoCalculo.custo_total;
+    } else if (ultimoCalculo.componentes) {
+        // Se precisar calcular pela soma dos componentes
+        valorUnitario = ultimoCalculo.componentes.reduce((total, comp) => {
+            const custo = comp.custo_total / 100; // Converter centavos para reais
+            return total + custo;
+        }, 0);
+    }
+    
+    const valorTotal = qtd * valorUnitario;
+    
+    // Adicionar à tabela de orçamento
+    const tbody = document.getElementById('itensOrcamento');
+    if (!tbody) {
+        console.error('Tabela de orçamento não encontrada');
+        alert('Erro: Tabela de orçamento não encontrada');
+        return;
+    }
+    
+    const novaLinha = tbody.insertRow();
+    const itemId = Date.now(); // ID temporário único
+    
+    novaLinha.innerHTML = `
+        <td>${nomeProduto}</td>
+        <td>${qtd.toFixed(2)}</td>
+        <td>R$ ${valorUnitario.toFixed(2)}</td>
+        <td>0.00</td>
+        <td>0.00</td>
+        <td>R$ ${valorTotal.toFixed(2)}</td>
+        <td>
+            <button class="btn btn-sm btn-danger" onclick="removerItemOrcamento(this)" title="Remover">
+                <i class="fas fa-trash"></i>
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="editarItemOrcamento(this)" title="Editar">
+                <i class="fas fa-edit"></i>
+            </button>
+        </td>
     `;
     
-    document.body.appendChild(form);
-    form.submit();
+    // Adicionar dados do item para futuras referências
+    novaLinha.dataset.itemId = itemId;
+    novaLinha.dataset.descricao = nomeProduto;
+    novaLinha.dataset.valorUnitario = valorUnitario.toFixed(2);
+    
+    // Atualizar total do orçamento
+    atualizarTotalOrcamento();
+    
+    // Salvar no backend via POST
+    salvarItemNoBackend(nomeProduto, qtd, valorUnitario, valorTotal);
+    
+    alert(`Produto "${nomeProduto}" adicionado ao orçamento!\nQuantidade: ${qtd} metros\nCusto unitário: R$ ${valorUnitario.toFixed(2)}\nTotal: R$ ${valorTotal.toFixed(2)}`);
+    
+    // Remover foco do botão antes de fechar o modal para evitar warning de acessibilidade
+    const btnAdicionar = document.getElementById('adicionarProdutoBtn');
+    if (btnAdicionar) {
+        btnAdicionar.blur(); // Remove o foco
+    }
+    
+    // Fechar modal
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('produtoParametrizadoModal'));
+        if (modal) {
+            modal.hide();
+        }
+    }, 50);
+    
+    console.log('✅ Produto parametrizado adicionado ao orçamento:', {
+        produto: nomeProduto,
+        quantidade: qtd,
+        valorUnitario: valorUnitario,
+        valorTotal: valorTotal,
+        componentesOriginais: ultimoCalculo.componentes?.length || 0
+    });
+}
+
+function salvarItemNoBackend(descricao, quantidade, valorUnitario, valorTotal) {
+    console.log('💾 Salvando item no backend:', { descricao, quantidade, valorUnitario, valorTotal });
+    
+    // Preparar dados para envio como produto parametrizado
+    const produtoParametrizadoData = {
+        nome: descricao,
+        preco_total: valorUnitario // O backend multiplica pela quantidade
+    };
+    
+    // Preparar dados para envio
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('produto_parametrizado', JSON.stringify(produtoParametrizadoData));
+    formData.append('quantidade', quantidade);
+    formData.append('desconto', 0);
+    formData.append('imposto', 0);
+    
+    // Enviar via POST para o mesmo endpoint que adiciona produtos normais
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log('✅ Item salvo no backend com sucesso');
+            // Recarregar a página após um pequeno delay para ver o item persistido
+            setTimeout(() => {
+                console.log('🔄 Recarregando página para mostrar item persistido...');
+                window.location.reload();
+            }, 1000);
+        } else {
+            console.warn('⚠️ Erro ao salvar no backend:', response.status);
+            response.text().then(text => console.log('Resposta:', text));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição:', error);
+    });
 }
 
 function salvarProdutoParametrizadoNaBase() {
@@ -808,12 +1004,18 @@ function salvarProdutoParametrizadoNaBase() {
         return;
     }
     
-    // Verificar se nome foi preenchido
-    const nomePersonalizado = document.getElementById('nomeProdutoParametrizado');
+    // Verificar se nome foi preenchido - tentar diferentes IDs dependendo do template
+    let nomePersonalizado = document.getElementById('nomeProdutoParametrizado');
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('perfil_nome'); // Para template Novo Perfil
+    }
+    
     if (!nomePersonalizado || !nomePersonalizado.value.trim()) {
         alert('Por favor, digite um nome para o produto!');
         return;
     }
+    
+    console.log('✅ Nome do produto para salvar encontrado:', nomePersonalizado.value.trim());
     
     // Coletar parâmetros usados no cálculo
     const parametros = {};
@@ -1453,6 +1655,920 @@ function carregarTiposResinaOrcamento() {
         });
 }
 
+function carregarInterfaceGradesOrcamento() {
+    console.log('=== CARREGANDO INTERFACE GRADES ORÇAMENTO ===');
+    const templateContainer = document.getElementById('parametrosContainer');
+    console.log('Container encontrado:', templateContainer);
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Grades</h3>
+            
+            <form id="grades-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_grades">Comprimento (m)</label>
+                        <input type="number" id="comprimento_grades" name="comprimento" placeholder="Ex: 2.0" step="0.01" min="0" oninput="atualizarPrecoGrades()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="altura_grades">Altura (m)</label>
+                        <input type="number" id="altura_grades" name="altura" placeholder="Ex: 1.2" step="0.01" min="0" oninput="atualizarPrecoGrades()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="num_vao_grades">Número de Vãos</label>
+                        <input type="number" id="num_vao_grades" name="num_vao" value="1" min="1" oninput="atualizarPrecoGrades()">
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="espessura_chapa_grades">Espessura da Chapa (mm)</label>
+                        <select id="espessura_chapa_grades" name="espessura_chapa" onchange="atualizarPrecoGrades()">
+                            <option value="">Selecione</option>
+                            <option value="1.2">1,2 mm</option>
+                            <option value="1.5">1,5 mm</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_perfil_grades">Tipo de Perfil</label>
+                        <select id="tipo_perfil_grades" name="tipo_perfil" onchange="atualizarPrecoGrades()">
+                            <option value="">Selecione</option>
+                            <option value="25x25">25x25 mm</option>
+                            <option value="30x30">30x30 mm</option>
+                            <option value="25x38">25x38 mm</option>
+                            <option value="40x20">40x20 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_perfil_grades">Espessura do Perfil (mm)</label>
+                        <select id="espessura_perfil_grades" name="espessura_perfil" onchange="atualizarPrecoGrades()">
+                            <option value="">Selecione</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="tipo_resina_grades">Tipo de Resina</label>
+                        <select id="tipo_resina_grades" name="tipo_resina" onchange="atualizarPrecoGrades()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cor_grades">Cor</label>
+                        <select id="cor_grades" name="cor" onchange="atualizarPrecoGrades()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="grades_pintura" onchange="toggleAreaPinturaGrades(); atualizarPrecoGrades()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="grades_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="grades_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoGrades()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-grades">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarGradesOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaGrades();
+}
+
+function toggleAreaPinturaGrades() {
+    const checkbox = document.getElementById('grades_pintura');
+    const container = document.getElementById('grades_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('grades_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaGrades() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_grades');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoGrades() {
+    const comprimento = parseFloat(document.getElementById('comprimento_grades').value) || 0;
+    const altura = parseFloat(document.getElementById('altura_grades').value) || 0;
+    const num_vao = parseInt(document.getElementById('num_vao_grades').value) || 1;
+    const espessura_chapa = document.getElementById('espessura_chapa_grades').value;
+    const tipo_perfil = document.getElementById('tipo_perfil_grades').value;
+    const espessura_perfil = document.getElementById('espessura_perfil_grades').value;
+    const tipo_resina = document.getElementById('tipo_resina_grades').value;
+    const cor = document.getElementById('cor_grades').value;
+    const pintura = document.getElementById('grades_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('grades_area_pintura').value) || 0;
+
+    if (!comprimento || !altura || !espessura_chapa || !tipo_perfil || !espessura_perfil || !tipo_resina) {
+        document.getElementById('preco-total-grades').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        altura: altura,
+        num_vao: num_vao,
+        espessura_chapa: parseFloat(espessura_chapa),
+        tipo_perfil: tipo_perfil,
+        espessura_perfil: parseFloat(espessura_perfil),
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-grades/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-grades').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarGradesOrcamento() {
+    const dados = {
+        tipo_template: 'grades',
+        comprimento: parseFloat(document.getElementById('comprimento_grades').value) || 0,
+        altura: parseFloat(document.getElementById('altura_grades').value) || 0,
+        num_vao: parseInt(document.getElementById('num_vao_grades').value) || 1,
+        espessura_chapa: document.getElementById('espessura_chapa_grades').value,
+        tipo_perfil: document.getElementById('tipo_perfil_grades').value,
+        espessura_perfil: document.getElementById('espessura_perfil_grades').value,
+        tipo_resina: document.getElementById('tipo_resina_grades').value,
+        cor: document.getElementById('cor_grades').value,
+        pintura: document.getElementById('grades_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('grades_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.altura || !dados.espessura_chapa || 
+        !dados.tipo_perfil || !dados.espessura_perfil || !dados.tipo_resina) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de grades salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+function carregarInterfaceTampaInjetadaOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Tampa Injetada</h3>
+            
+            <form id="tampa-injetada-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_tampa_injetada">Comprimento (m)</label>
+                        <input type="number" id="comprimento_tampa_injetada" name="comprimento" placeholder="Ex: 2.0" step="0.01" min="0" oninput="atualizarPrecoTampaInjetada()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="largura_tampa_injetada">Largura (m)</label>
+                        <input type="number" id="largura_tampa_injetada" name="largura" placeholder="Ex: 1.0" step="0.01" min="0" oninput="atualizarPrecoTampaInjetada()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_tampa_injetada">Espessura (mm)</label>
+                        <select id="espessura_tampa_injetada" name="espessura" onchange="atualizarPrecoTampaInjetada()">
+                            <option value="">Selecione</option>
+                            <option value="25">25 mm</option>
+                            <option value="30">30 mm</option>
+                            <option value="32">32 mm</option>
+                            <option value="38">38 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="tipo_resina_tampa_injetada">Tipo de Resina</label>
+                        <select id="tipo_resina_tampa_injetada" name="tipo_resina" onchange="atualizarPrecoTampaInjetada()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cor_tampa_injetada">Cor</label>
+                        <select id="cor_tampa_injetada" name="cor" onchange="atualizarPrecoTampaInjetada()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="carga_tampa_injetada">Carga (kg/m²)</label>
+                        <input type="number" id="carga_tampa_injetada" name="carga" placeholder="Ex: 400" min="0" oninput="atualizarPrecoTampaInjetada()">
+                    </div>
+
+                    <!-- Linha 3 - Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="tampa_injetada_antiderrapante" onchange="atualizarPrecoTampaInjetada()">
+                            Superfície Antiderrapante
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="tampa_injetada_pintura" onchange="toggleAreaPinturaTampaInjetada(); atualizarPrecoTampaInjetada()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="tampa_injetada_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="tampa_injetada_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoTampaInjetada()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-tampa-injetada">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarTampaInjetadaOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaTampaInjetada();
+}
+
+function toggleAreaPinturaTampaInjetada() {
+    const checkbox = document.getElementById('tampa_injetada_pintura');
+    const container = document.getElementById('tampa_injetada_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('tampa_injetada_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaTampaInjetada() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_tampa_injetada');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoTampaInjetada() {
+    const comprimento = parseFloat(document.getElementById('comprimento_tampa_injetada').value) || 0;
+    const largura = parseFloat(document.getElementById('largura_tampa_injetada').value) || 0;
+    const espessura = document.getElementById('espessura_tampa_injetada').value;
+    const tipo_resina = document.getElementById('tipo_resina_tampa_injetada').value;
+    const cor = document.getElementById('cor_tampa_injetada').value;
+    const carga = parseFloat(document.getElementById('carga_tampa_injetada').value) || 0;
+    const antiderrapante = document.getElementById('tampa_injetada_antiderrapante').checked;
+    const pintura = document.getElementById('tampa_injetada_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('tampa_injetada_area_pintura').value) || 0;
+
+    if (!comprimento || !largura || !espessura || !tipo_resina || !carga) {
+        document.getElementById('preco-total-tampa-injetada').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        largura: largura,
+        espessura: parseInt(espessura),
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        carga: carga,
+        antiderrapante: antiderrapante,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-tampa-injetada/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-tampa-injetada').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarTampaInjetadaOrcamento() {
+    const dados = {
+        tipo_template: 'tampa_injetada',
+        comprimento: parseFloat(document.getElementById('comprimento_tampa_injetada').value) || 0,
+        largura: parseFloat(document.getElementById('largura_tampa_injetada').value) || 0,
+        espessura: document.getElementById('espessura_tampa_injetada').value,
+        tipo_resina: document.getElementById('tipo_resina_tampa_injetada').value,
+        cor: document.getElementById('cor_tampa_injetada').value,
+        carga: parseFloat(document.getElementById('carga_tampa_injetada').value) || 0,
+        antiderrapante: document.getElementById('tampa_injetada_antiderrapante').checked,
+        pintura: document.getElementById('tampa_injetada_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('tampa_injetada_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.largura || !dados.espessura || 
+        !dados.tipo_resina || !dados.carga) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de tampa injetada salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+function carregarInterfaceDegrausOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Degraus</h3>
+            
+            <form id="degraus-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_degraus">Comprimento (m)</label>
+                        <input type="number" id="comprimento_degraus" name="comprimento" placeholder="Ex: 2.0" step="0.01" min="0" oninput="atualizarPrecoDegraus()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="largura_degraus">Largura (m)</label>
+                        <input type="number" id="largura_degraus" name="largura" placeholder="Ex: 0.3" step="0.01" min="0" oninput="atualizarPrecoDegraus()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_degraus">Espessura (mm)</label>
+                        <select id="espessura_degraus" name="espessura" onchange="atualizarPrecoDegraus()">
+                            <option value="">Selecione</option>
+                            <option value="25">25 mm</option>
+                            <option value="30">30 mm</option>
+                            <option value="32">32 mm</option>
+                            <option value="38">38 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="quantidade_degraus">Quantidade</label>
+                        <input type="number" id="quantidade_degraus" name="quantidade" value="1" min="1" oninput="atualizarPrecoDegraus()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_resina_degraus">Tipo de Resina</label>
+                        <select id="tipo_resina_degraus" name="tipo_resina" onchange="atualizarPrecoDegraus()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cor_degraus">Cor</label>
+                        <select id="cor_degraus" name="cor" onchange="atualizarPrecoDegraus()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="carga_degraus">Carga (kg/m²)</label>
+                        <input type="number" id="carga_degraus" name="carga" placeholder="Ex: 500" min="0" oninput="atualizarPrecoDegraus()">
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="degraus_antiderrapante" onchange="atualizarPrecoDegraus()">
+                            Superfície Antiderrapante
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="degraus_pintura" onchange="toggleAreaPinturaDegraus(); atualizarPrecoDegraus()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="degraus_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="degraus_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoDegraus()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-degraus">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarDegrausOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaDegraus();
+}
+
+function toggleAreaPinturaDegraus() {
+    const checkbox = document.getElementById('degraus_pintura');
+    const container = document.getElementById('degraus_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('degraus_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaDegraus() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_degraus');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoDegraus() {
+    const comprimento = parseFloat(document.getElementById('comprimento_degraus').value) || 0;
+    const largura = parseFloat(document.getElementById('largura_degraus').value) || 0;
+    const espessura = document.getElementById('espessura_degraus').value;
+    const quantidade = parseInt(document.getElementById('quantidade_degraus').value) || 1;
+    const tipo_resina = document.getElementById('tipo_resina_degraus').value;
+    const cor = document.getElementById('cor_degraus').value;
+    const carga = parseFloat(document.getElementById('carga_degraus').value) || 0;
+    const antiderrapante = document.getElementById('degraus_antiderrapante').checked;
+    const pintura = document.getElementById('degraus_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('degraus_area_pintura').value) || 0;
+
+    if (!comprimento || !largura || !espessura || !tipo_resina || !carga) {
+        document.getElementById('preco-total-degraus').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        largura: largura,
+        espessura: parseInt(espessura),
+        quantidade: quantidade,
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        carga: carga,
+        antiderrapante: antiderrapante,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-degraus/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-degraus').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarDegrausOrcamento() {
+    const dados = {
+        tipo_template: 'degraus',
+        comprimento: parseFloat(document.getElementById('comprimento_degraus').value) || 0,
+        largura: parseFloat(document.getElementById('largura_degraus').value) || 0,
+        espessura: document.getElementById('espessura_degraus').value,
+        quantidade: parseInt(document.getElementById('quantidade_degraus').value) || 1,
+        tipo_resina: document.getElementById('tipo_resina_degraus').value,
+        cor: document.getElementById('cor_degraus').value,
+        carga: parseFloat(document.getElementById('carga_degraus').value) || 0,
+        antiderrapante: document.getElementById('degraus_antiderrapante').checked,
+        pintura: document.getElementById('degraus_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('degraus_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.largura || !dados.espessura || 
+        !dados.tipo_resina || !dados.carga) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de degraus salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+function carregarInterfaceDegrauInjetadoOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Degrau Injetado</h3>
+            
+            <form id="degrau-injetado-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_degrau_injetado">Comprimento (m)</label>
+                        <input type="number" id="comprimento_degrau_injetado" name="comprimento" placeholder="Ex: 2.0" step="0.01" min="0" oninput="atualizarPrecoDegrauInjetado()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="largura_degrau_injetado">Largura (m)</label>
+                        <input type="number" id="largura_degrau_injetado" name="largura" placeholder="Ex: 0.3" step="0.01" min="0" oninput="atualizarPrecoDegrauInjetado()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_degrau_injetado">Espessura (mm)</label>
+                        <select id="espessura_degrau_injetado" name="espessura" onchange="atualizarPrecoDegrauInjetado()">
+                            <option value="">Selecione</option>
+                            <option value="25">25 mm</option>
+                            <option value="30">30 mm</option>
+                            <option value="32">32 mm</option>
+                            <option value="38">38 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="quantidade_degrau_injetado">Quantidade</label>
+                        <input type="number" id="quantidade_degrau_injetado" name="quantidade" value="1" min="1" oninput="atualizarPrecoDegrauInjetado()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_resina_degrau_injetado">Tipo de Resina</label>
+                        <select id="tipo_resina_degrau_injetado" name="tipo_resina" onchange="atualizarPrecoDegrauInjetado()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cor_degrau_injetado">Cor</label>
+                        <select id="cor_degrau_injetado" name="cor" onchange="atualizarPrecoDegrauInjetado()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="carga_degrau_injetado">Carga (kg/m²)</label>
+                        <input type="number" id="carga_degrau_injetado" name="carga" placeholder="Ex: 500" min="0" oninput="atualizarPrecoDegrauInjetado()">
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="degrau_injetado_antiderrapante" onchange="atualizarPrecoDegrauInjetado()">
+                            Superfície Antiderrapante
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="degrau_injetado_pintura" onchange="toggleAreaPinturaDegrauInjetado(); atualizarPrecoDegrauInjetado()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="degrau_injetado_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="degrau_injetado_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoDegrauInjetado()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-degrau-injetado">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarDegrauInjetadoOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaDegrauInjetado();
+}
+
+function toggleAreaPinturaDegrauInjetado() {
+    const checkbox = document.getElementById('degrau_injetado_pintura');
+    const container = document.getElementById('degrau_injetado_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('degrau_injetado_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaDegrauInjetado() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_degrau_injetado');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoDegrauInjetado() {
+    const comprimento = parseFloat(document.getElementById('comprimento_degrau_injetado').value) || 0;
+    const largura = parseFloat(document.getElementById('largura_degrau_injetado').value) || 0;
+    const espessura = document.getElementById('espessura_degrau_injetado').value;
+    const quantidade = parseInt(document.getElementById('quantidade_degrau_injetado').value) || 1;
+    const tipo_resina = document.getElementById('tipo_resina_degrau_injetado').value;
+    const cor = document.getElementById('cor_degrau_injetado').value;
+    const carga = parseFloat(document.getElementById('carga_degrau_injetado').value) || 0;
+    const antiderrapante = document.getElementById('degrau_injetado_antiderrapante').checked;
+    const pintura = document.getElementById('degrau_injetado_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('degrau_injetado_area_pintura').value) || 0;
+
+    if (!comprimento || !largura || !espessura || !tipo_resina || !carga) {
+        document.getElementById('preco-total-degrau-injetado').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        largura: largura,
+        espessura: parseInt(espessura),
+        quantidade: quantidade,
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        carga: carga,
+        antiderrapante: antiderrapante,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-degrau-injetado/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-degrau-injetado').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarDegrauInjetadoOrcamento() {
+    const dados = {
+        tipo_template: 'degrau_injetado',
+        comprimento: parseFloat(document.getElementById('comprimento_degrau_injetado').value) || 0,
+        largura: parseFloat(document.getElementById('largura_degrau_injetado').value) || 0,
+        espessura: document.getElementById('espessura_degrau_injetado').value,
+        quantidade: parseInt(document.getElementById('quantidade_degrau_injetado').value) || 1,
+        tipo_resina: document.getElementById('tipo_resina_degrau_injetado').value,
+        cor: document.getElementById('cor_degrau_injetado').value,
+        carga: parseFloat(document.getElementById('carga_degrau_injetado').value) || 0,
+        antiderrapante: document.getElementById('degrau_injetado_antiderrapante').checked,
+        pintura: document.getElementById('degrau_injetado_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('degrau_injetado_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.largura || !dados.espessura || 
+        !dados.tipo_resina || !dados.carga) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de degrau injetado salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+// Função auxiliar para preencher tabela de componentes (copiada do mp.html)
+function preencherTabelaComponentes(calculo) {
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '';
+    
+    console.log('=== PREENCHENDO TABELA DE COMPONENTES ORÇAMENTO ===');
+    
+    calculo.componentes.forEach((comp, index) => {
+        const row = tbody.insertRow();
+        const isComponenteResina = ['Resina PET', 'Monômero de estireno', 'Anti UV', 'Anti OX', 'BPO', 'TBPB', 'Desmoldante', 'Antichama', 'Carga mineral', 'Pigmento'].includes(comp.nome);
+        
+        let fatorCol = '', acaoCol = '';
+        if (isComponenteResina) {
+            const fatorAtual = calculo.fatores_originais && calculo.fatores_originais[comp.nome] || 0;
+            fatorCol = `<input type="number" step="0.01" class="form-control form-control-sm fator-input" value="${fatorAtual.toFixed(2)}" data-component-index="${index}" style="width: 80px;" min="0" max="100">`;
+            acaoCol = `<button class="btn btn-sm btn-success" onclick="recalcularComponenteOrcamento(${index})" title="Recalcular"><i class="fas fa-calculator"></i></button>`;
+        } else {
+            fatorCol = '<span class="text-muted">-</span>';
+            acaoCol = '<span class="text-muted">-</span>';
+        }
+        
+        row.innerHTML = `
+            <td>${comp.nome || 'N/A'}</td>
+            <td>${comp.produto_nome || 'N/A'}</td>
+            <td>${fatorCol}</td>
+            <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
+            <td>R$ ${comp.custo_unitario ? comp.custo_unitario.toFixed(2) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total.toFixed(2)}</span></td>
+            <td>${acaoCol}</td>`;
+    });
+    
+    const totalRow = tbody.insertRow();
+    // Usar o custo total já calculado com 3% de perda, se disponível
+    const custoTotalGeral = calculo.custo_total || calculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    totalRow.innerHTML = `
+        <td colspan="5"><strong>TOTAL GERAL</strong></td>
+        <td><strong><span id="custo-total-geral">R$ ${custoTotalGeral.toFixed(2)}</span></strong></td>
+        <td>
+            <button class="btn btn-sm btn-warning" onclick="recalcularTodosComponentesOrcamento()" title="Recalcular Todos">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </td>
+    `;
+    
+    console.log('Tabela de componentes orçamento preenchida com sucesso!');
+}
+
 function toggleAreaPinturaOrcamento() {
     const checkbox = document.getElementById('perfil_pintura');
     const container = document.getElementById('perfil_area_pintura_container');
@@ -1466,6 +2582,676 @@ function toggleAreaPinturaOrcamento() {
         input.required = false;
         input.value = '';
     }
+}
+
+function carregarInterfaceGuardaCorpoHorizontalOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Guarda Corpo Horizontal</h3>
+            
+            <form id="guarda-corpo-horizontal-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_gc_horizontal">Comprimento (m)</label>
+                        <input type="number" id="comprimento_gc_horizontal" name="comprimento" placeholder="Ex: 3.0" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoHorizontal()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="altura_gc_horizontal">Altura (m)</label>
+                        <input type="number" id="altura_gc_horizontal" name="altura" placeholder="Ex: 1.2" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoHorizontal()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_chapa_gc_horizontal">Espessura da Chapa (mm)</label>
+                        <select id="espessura_chapa_gc_horizontal" name="espessura_chapa" onchange="atualizarPrecoGuardaCorpoHorizontal()">
+                            <option value="">Selecione</option>
+                            <option value="1.2">1,2 mm</option>
+                            <option value="1.5">1,5 mm</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="tipo_perfil_gc_horizontal">Tipo de Perfil</label>
+                        <select id="tipo_perfil_gc_horizontal" name="tipo_perfil" onchange="atualizarPrecoGuardaCorpoHorizontal()">
+                            <option value="">Selecione</option>
+                            <option value="25x25">25x25 mm</option>
+                            <option value="30x30">30x30 mm</option>
+                            <option value="25x38">25x38 mm</option>
+                            <option value="40x20">40x20 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_perfil_gc_horizontal">Espessura do Perfil (mm)</label>
+                        <select id="espessura_perfil_gc_horizontal" name="espessura_perfil" onchange="atualizarPrecoGuardaCorpoHorizontal()">
+                            <option value="">Selecione</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_resina_gc_horizontal">Tipo de Resina</label>
+                        <select id="tipo_resina_gc_horizontal" name="tipo_resina" onchange="atualizarPrecoGuardaCorpoHorizontal()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="cor_gc_horizontal">Cor</label>
+                        <select id="cor_gc_horizontal" name="cor" onchange="atualizarPrecoGuardaCorpoHorizontal()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="gc_horizontal_pintura" onchange="toggleAreaPinturaGuardaCorpoHorizontal(); atualizarPrecoGuardaCorpoHorizontal()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="gc_horizontal_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="gc_horizontal_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoHorizontal()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-gc-horizontal">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarGuardaCorpoHorizontalOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaGuardaCorpoHorizontal();
+}
+
+function toggleAreaPinturaGuardaCorpoHorizontal() {
+    const checkbox = document.getElementById('gc_horizontal_pintura');
+    const container = document.getElementById('gc_horizontal_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('gc_horizontal_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaGuardaCorpoHorizontal() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_gc_horizontal');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoGuardaCorpoHorizontal() {
+    const comprimento = parseFloat(document.getElementById('comprimento_gc_horizontal').value) || 0;
+    const altura = parseFloat(document.getElementById('altura_gc_horizontal').value) || 0;
+    const espessura_chapa = document.getElementById('espessura_chapa_gc_horizontal').value;
+    const tipo_perfil = document.getElementById('tipo_perfil_gc_horizontal').value;
+    const espessura_perfil = document.getElementById('espessura_perfil_gc_horizontal').value;
+    const tipo_resina = document.getElementById('tipo_resina_gc_horizontal').value;
+    const cor = document.getElementById('cor_gc_horizontal').value;
+    const pintura = document.getElementById('gc_horizontal_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('gc_horizontal_area_pintura').value) || 0;
+
+    if (!comprimento || !altura || !espessura_chapa || !tipo_perfil || !espessura_perfil || !tipo_resina) {
+        document.getElementById('preco-total-gc-horizontal').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        altura: altura,
+        espessura_chapa: parseFloat(espessura_chapa),
+        tipo_perfil: tipo_perfil,
+        espessura_perfil: parseFloat(espessura_perfil),
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-guarda-corpo-horizontal/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-gc-horizontal').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarGuardaCorpoHorizontalOrcamento() {
+    const dados = {
+        tipo_template: 'guarda_corpo_horizontal',
+        comprimento: parseFloat(document.getElementById('comprimento_gc_horizontal').value) || 0,
+        altura: parseFloat(document.getElementById('altura_gc_horizontal').value) || 0,
+        espessura_chapa: document.getElementById('espessura_chapa_gc_horizontal').value,
+        tipo_perfil: document.getElementById('tipo_perfil_gc_horizontal').value,
+        espessura_perfil: document.getElementById('espessura_perfil_gc_horizontal').value,
+        tipo_resina: document.getElementById('tipo_resina_gc_horizontal').value,
+        cor: document.getElementById('cor_gc_horizontal').value,
+        pintura: document.getElementById('gc_horizontal_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('gc_horizontal_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.altura || !dados.espessura_chapa || 
+        !dados.tipo_perfil || !dados.espessura_perfil || !dados.tipo_resina) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de guarda corpo horizontal salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+function carregarInterfaceGuardaCorpoVerticalOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Guarda Corpo Vertical</h3>
+            
+            <form id="guarda-corpo-vertical-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_gc_vertical">Comprimento (m)</label>
+                        <input type="number" id="comprimento_gc_vertical" name="comprimento" placeholder="Ex: 3.0" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoVertical()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="altura_gc_vertical">Altura (m)</label>
+                        <input type="number" id="altura_gc_vertical" name="altura" placeholder="Ex: 1.2" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoVertical()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_chapa_gc_vertical">Espessura da Chapa (mm)</label>
+                        <select id="espessura_chapa_gc_vertical" name="espessura_chapa" onchange="atualizarPrecoGuardaCorpoVertical()">
+                            <option value="">Selecione</option>
+                            <option value="1.2">1,2 mm</option>
+                            <option value="1.5">1,5 mm</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="tipo_perfil_gc_vertical">Tipo de Perfil</label>
+                        <select id="tipo_perfil_gc_vertical" name="tipo_perfil" onchange="atualizarPrecoGuardaCorpoVertical()">
+                            <option value="">Selecione</option>
+                            <option value="25x25">25x25 mm</option>
+                            <option value="30x30">30x30 mm</option>
+                            <option value="25x38">25x38 mm</option>
+                            <option value="40x20">40x20 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_perfil_gc_vertical">Espessura do Perfil (mm)</label>
+                        <select id="espessura_perfil_gc_vertical" name="espessura_perfil" onchange="atualizarPrecoGuardaCorpoVertical()">
+                            <option value="">Selecione</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_resina_gc_vertical">Tipo de Resina</label>
+                        <select id="tipo_resina_gc_vertical" name="tipo_resina" onchange="atualizarPrecoGuardaCorpoVertical()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="cor_gc_vertical">Cor</label>
+                        <select id="cor_gc_vertical" name="cor" onchange="atualizarPrecoGuardaCorpoVertical()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="gc_vertical_pintura" onchange="toggleAreaPinturaGuardaCorpoVertical(); atualizarPrecoGuardaCorpoVertical()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="gc_vertical_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="gc_vertical_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoGuardaCorpoVertical()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-gc-vertical">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarGuardaCorpoVerticalOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaGuardaCorpoVertical();
+}
+
+function toggleAreaPinturaGuardaCorpoVertical() {
+    const checkbox = document.getElementById('gc_vertical_pintura');
+    const container = document.getElementById('gc_vertical_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('gc_vertical_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaGuardaCorpoVertical() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_gc_vertical');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoGuardaCorpoVertical() {
+    const comprimento = parseFloat(document.getElementById('comprimento_gc_vertical').value) || 0;
+    const altura = parseFloat(document.getElementById('altura_gc_vertical').value) || 0;
+    const espessura_chapa = document.getElementById('espessura_chapa_gc_vertical').value;
+    const tipo_perfil = document.getElementById('tipo_perfil_gc_vertical').value;
+    const espessura_perfil = document.getElementById('espessura_perfil_gc_vertical').value;
+    const tipo_resina = document.getElementById('tipo_resina_gc_vertical').value;
+    const cor = document.getElementById('cor_gc_vertical').value;
+    const pintura = document.getElementById('gc_vertical_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('gc_vertical_area_pintura').value) || 0;
+
+    if (!comprimento || !altura || !espessura_chapa || !tipo_perfil || !espessura_perfil || !tipo_resina) {
+        document.getElementById('preco-total-gc-vertical').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        altura: altura,
+        espessura_chapa: parseFloat(espessura_chapa),
+        tipo_perfil: tipo_perfil,
+        espessura_perfil: parseFloat(espessura_perfil),
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-guarda-corpo-vertical/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-gc-vertical').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarGuardaCorpoVerticalOrcamento() {
+    const dados = {
+        tipo_template: 'guarda_corpo_vertical',
+        comprimento: parseFloat(document.getElementById('comprimento_gc_vertical').value) || 0,
+        altura: parseFloat(document.getElementById('altura_gc_vertical').value) || 0,
+        espessura_chapa: document.getElementById('espessura_chapa_gc_vertical').value,
+        tipo_perfil: document.getElementById('tipo_perfil_gc_vertical').value,
+        espessura_perfil: document.getElementById('espessura_perfil_gc_vertical').value,
+        tipo_resina: document.getElementById('tipo_resina_gc_vertical').value,
+        cor: document.getElementById('cor_gc_vertical').value,
+        pintura: document.getElementById('gc_vertical_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('gc_vertical_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.altura || !dados.espessura_chapa || 
+        !dados.tipo_perfil || !dados.espessura_perfil || !dados.tipo_resina) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de guarda corpo vertical salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
+}
+
+function carregarInterfaceTampaMontadaOrcamento() {
+    const templateContainer = document.getElementById('parametrosContainer');
+    templateContainer.innerHTML = `
+        <div class="template-config">
+            <h3>Configuração de Tampa Montada</h3>
+            
+            <form id="tampa-montada-form-orcamento">
+                <div class="form-grid">
+                    <!-- Linha 1 -->
+                    <div class="form-group">
+                        <label for="comprimento_tampa_montada">Comprimento (m)</label>
+                        <input type="number" id="comprimento_tampa_montada" name="comprimento" placeholder="Ex: 2.0" step="0.01" min="0" oninput="atualizarPrecoTampaMontada()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="largura_tampa_montada">Largura (m)</label>
+                        <input type="number" id="largura_tampa_montada" name="largura" placeholder="Ex: 1.0" step="0.01" min="0" oninput="atualizarPrecoTampaMontada()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_chapa_tampa_montada">Espessura da Chapa (mm)</label>
+                        <select id="espessura_chapa_tampa_montada" name="espessura_chapa" onchange="atualizarPrecoTampaMontada()">
+                            <option value="">Selecione</option>
+                            <option value="1.2">1,2 mm</option>
+                            <option value="1.5">1,5 mm</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="form-group">
+                        <label for="tipo_perfil_tampa_montada">Tipo de Perfil</label>
+                        <select id="tipo_perfil_tampa_montada" name="tipo_perfil" onchange="atualizarPrecoTampaMontada()">
+                            <option value="">Selecione</option>
+                            <option value="25x25">25x25 mm</option>
+                            <option value="30x30">30x30 mm</option>
+                            <option value="25x38">25x38 mm</option>
+                            <option value="40x20">40x20 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="espessura_perfil_tampa_montada">Espessura do Perfil (mm)</label>
+                        <select id="espessura_perfil_tampa_montada" name="espessura_perfil" onchange="atualizarPrecoTampaMontada()">
+                            <option value="">Selecione</option>
+                            <option value="2.0">2,0 mm</option>
+                            <option value="2.5">2,5 mm</option>
+                            <option value="3.0">3,0 mm</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_resina_tampa_montada">Tipo de Resina</label>
+                        <select id="tipo_resina_tampa_montada" name="tipo_resina" onchange="atualizarPrecoTampaMontada()">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="form-group">
+                        <label for="cor_tampa_montada">Cor</label>
+                        <select id="cor_tampa_montada" name="cor" onchange="atualizarPrecoTampaMontada()">
+                            <option value="">Selecione</option>
+                            <option value="branco">Branco</option>
+                            <option value="cinza">Cinza</option>
+                            <option value="preto">Preto</option>
+                            <option value="verde">Verde</option>
+                            <option value="amarelo">Amarelo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="carga_tampa_montada">Carga (kg/m²)</label>
+                        <input type="number" id="carga_tampa_montada" name="carga" placeholder="Ex: 400" min="0" oninput="atualizarPrecoTampaMontada()">
+                    </div>
+
+                    <!-- Opcionais -->
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="tampa_montada_antiderrapante" onchange="atualizarPrecoTampaMontada()">
+                            Superfície Antiderrapante
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="tampa_montada_pintura" onchange="toggleAreaPinturaTampaMontada(); atualizarPrecoTampaMontada()">
+                            Pintura Eletrostática
+                        </label>
+                        <div id="tampa_montada_area_pintura_container" class="area-pintura-container" style="display: none;">
+                            <input type="number" id="tampa_montada_area_pintura" placeholder="Área (m²)" step="0.01" min="0" oninput="atualizarPrecoTampaMontada()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pricing-section">
+                    <div class="price-display">
+                        <span class="price-label">Preço Total: R$</span>
+                        <span class="price-value" id="preco-total-tampa-montada">0,00</span>
+                    </div>
+                    <button type="button" class="btn-salvar" onclick="salvarTampaMontadaOrcamento()">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    carregarTiposResinaTampaMontada();
+}
+
+function toggleAreaPinturaTampaMontada() {
+    const checkbox = document.getElementById('tampa_montada_pintura');
+    const container = document.getElementById('tampa_montada_area_pintura_container');
+    
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('tampa_montada_area_pintura').value = '';
+    }
+}
+
+function carregarTiposResinaTampaMontada() {
+    fetch('/api/tipos-resina/')
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('tipo_resina_tampa_montada');
+        data.forEach(resina => {
+            const option = document.createElement('option');
+            option.value = resina.id;
+            option.textContent = resina.nome;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tipos de resina:', error);
+    });
+}
+
+function atualizarPrecoTampaMontada() {
+    const comprimento = parseFloat(document.getElementById('comprimento_tampa_montada').value) || 0;
+    const largura = parseFloat(document.getElementById('largura_tampa_montada').value) || 0;
+    const espessura_chapa = document.getElementById('espessura_chapa_tampa_montada').value;
+    const tipo_perfil = document.getElementById('tipo_perfil_tampa_montada').value;
+    const espessura_perfil = document.getElementById('espessura_perfil_tampa_montada').value;
+    const tipo_resina = document.getElementById('tipo_resina_tampa_montada').value;
+    const cor = document.getElementById('cor_tampa_montada').value;
+    const carga = parseFloat(document.getElementById('carga_tampa_montada').value) || 0;
+    const antiderrapante = document.getElementById('tampa_montada_antiderrapante').checked;
+    const pintura = document.getElementById('tampa_montada_pintura').checked;
+    const area_pintura = parseFloat(document.getElementById('tampa_montada_area_pintura').value) || 0;
+
+    if (!comprimento || !largura || !espessura_chapa || !tipo_perfil || !espessura_perfil || !tipo_resina || !carga) {
+        document.getElementById('preco-total-tampa-montada').textContent = '0,00';
+        return;
+    }
+
+    const dados = {
+        comprimento: comprimento,
+        largura: largura,
+        espessura_chapa: parseFloat(espessura_chapa),
+        tipo_perfil: tipo_perfil,
+        espessura_perfil: parseFloat(espessura_perfil),
+        tipo_resina: parseInt(tipo_resina),
+        cor: cor,
+        carga: carga,
+        antiderrapante: antiderrapante,
+        pintura: pintura,
+        area_pintura: area_pintura
+    };
+
+    fetch('/api/calcular-tampa-montada/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.preco_total !== undefined) {
+            document.getElementById('preco-total-tampa-montada').textContent = data.preco_total.toFixed(2).replace('.', ',');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao calcular preço:', error);
+    });
+}
+
+function salvarTampaMontadaOrcamento() {
+    const dados = {
+        tipo_template: 'tampa_montada',
+        comprimento: parseFloat(document.getElementById('comprimento_tampa_montada').value) || 0,
+        largura: parseFloat(document.getElementById('largura_tampa_montada').value) || 0,
+        espessura_chapa: document.getElementById('espessura_chapa_tampa_montada').value,
+        tipo_perfil: document.getElementById('tipo_perfil_tampa_montada').value,
+        espessura_perfil: document.getElementById('espessura_perfil_tampa_montada').value,
+        tipo_resina: document.getElementById('tipo_resina_tampa_montada').value,
+        cor: document.getElementById('cor_tampa_montada').value,
+        carga: parseFloat(document.getElementById('carga_tampa_montada').value) || 0,
+        antiderrapante: document.getElementById('tampa_montada_antiderrapante').checked,
+        pintura: document.getElementById('tampa_montada_pintura').checked,
+        area_pintura: parseFloat(document.getElementById('tampa_montada_area_pintura').value) || 0
+    };
+
+    // Validação
+    if (!dados.comprimento || !dados.largura || !dados.espessura_chapa || 
+        !dados.tipo_perfil || !dados.espessura_perfil || !dados.tipo_resina || !dados.carga) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+
+    fetch('/api/salvar-template/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuração de tampa montada salva com sucesso!');
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar configuração');
+    });
 }
 
 function calcularNovoPerfilOrcamento() {
@@ -1780,24 +3566,26 @@ function calcularNovoPerfilOrcamento() {
                     <p><strong>Custo Total:</strong> R$ ${custoTotal.toFixed(2)} (com 3% perda)</p>
                     <p><strong>Peso/metro:</strong> ${dados.peso_metro_kg} kg</p>
                     <p><strong>💰 Preços atualizados da base MP_Produtos + 3% perda</strong></p>
-                    <h6>Componentes:</h6>
-                    <ul class="mb-0">
+                    <div class="mt-3">
+                        <button class="btn btn-success" onclick="adicionarProdutoParametrizadoAoOrcamento()">
+                            <i class="fas fa-plus"></i> Adicionar ao Orçamento
+                        </button>
+                    </div>
+                </div>
             `;
-            
-            resultado.componentes.forEach(comp => {
-                resultadoHTML += `<li>${comp.nome}: ${comp.quantidade.toFixed(4)} x R$ ${comp.custo_unitario.toFixed(2)} = R$ ${comp.custo_total.toFixed(2)}</li>`;
-            });
-            
-            resultadoHTML += `</ul><div class="mt-3">
-                <button class="btn btn-success" onclick="adicionarNovoPerfilAoOrcamento()">
-                    <i class="fas fa-plus"></i> Adicionar ao Orçamento
-                </button>
-            </div></div>`;
             
             document.getElementById('resultadoContainer').innerHTML = resultadoHTML;
             
+            // Preencher a tabela de componentes calculados
+            preencherTabelaComponentes(resultado);
+            
             // Salvar resultado globalmente
+            ultimoCalculo = resultado;
             window.ultimoCalculoNovoPerfil = resultado;
+            
+            // Habilitar botões
+            document.getElementById('adicionarProdutoBtn').disabled = false;
+            document.getElementById('salvarProdutoBtn').disabled = false;
             
             console.log('✅ Cálculo de Novo Perfil Orçamento concluído com preços da base:', resultado);
         })
@@ -1991,45 +3779,103 @@ function calcularNovoPerfilOrcamentoComPrecosDefault(dados, temPintura) {
             <p><strong>Custo Total:</strong> R$ ${custoTotal.toFixed(2)} (com 3% perda)</p>
             <p><strong>Peso/metro:</strong> ${dados.peso_metro_kg} kg</p>
             <p><strong>⚠️ Preços padrão (erro ao carregar base MP)</strong></p>
-            <h6>Componentes:</h6>
-            <ul class="mb-0">
+            <div class="mt-3">
+                <button class="btn btn-success" onclick="adicionarProdutoParametrizadoAoOrcamento()">
+                    <i class="fas fa-plus"></i> Adicionar ao Orçamento
+                </button>
+            </div>
+        </div>
     `;
     
-    resultado.componentes.forEach(comp => {
-        resultadoHTML += `<li>${comp.nome}: ${comp.quantidade.toFixed(4)} x R$ ${comp.custo_unitario.toFixed(2)} = R$ ${comp.custo_total.toFixed(2)}</li>`;
-    });
-    
-    resultadoHTML += `</ul><div class="mt-3">
-        <button class="btn btn-success" onclick="adicionarNovoPerfilAoOrcamento()">
-            <i class="fas fa-plus"></i> Adicionar ao Orçamento
-        </button>
-    </div></div>`;
-    
     document.getElementById('resultadoContainer').innerHTML = resultadoHTML;
+    
+    // Preencher a tabela de componentes calculados
+    preencherTabelaComponentes(resultado);
+    ultimoCalculo = resultado;
     window.ultimoCalculoNovoPerfil = resultado;
+    
+    // Habilitar botões
+    document.getElementById('adicionarProdutoBtn').disabled = false;
+    document.getElementById('salvarProdutoBtn').disabled = false;
     
     console.log('⚠️ Cálculo concluído com preços padrão:', resultado);
 }
 
-function adicionarNovoPerfilAoOrcamento() {
-    if (!window.ultimoCalculoNovoPerfil) {
-        alert('Realize o cálculo primeiro!');
-        return;
+function removerItemOrcamento(botao) {
+    if (confirm('Tem certeza que deseja remover este item do orçamento?')) {
+        const linha = botao.closest('tr');
+        linha.remove();
+        atualizarTotalOrcamento();
+        console.log('Item removido do orçamento');
     }
-    
-    const resultado = window.ultimoCalculoNovoPerfil;
-    
-    // Simular adição do item ao orçamento
-    alert(`Produto "${resultado.nome_produto}" foi adicionado ao orçamento!\nCusto: R$ ${resultado.custo_total.toFixed(2)}\nPeso: ${resultado.peso_total} kg`);
-    
-    // Fechar modal (se existir)
-    const modal = bootstrap.Modal.getInstance(document.getElementById('produtoParametrizadoModal'));
-    if (modal) {
-        modal.hide();
-    }
-    
-    console.log('Novo Perfil adicionado ao orçamento:', resultado);
 }
+
+function editarItemOrcamento(botao) {
+    const linha = botao.closest('tr');
+    const descricao = linha.cells[0].textContent;
+    const quantidade = parseFloat(linha.cells[1].textContent);
+    const valorUnitario = parseFloat(linha.cells[2].textContent.replace('R$ ', '').replace(',', '.'));
+    
+    const novaQuantidade = prompt(`Editar quantidade para "${descricao}":`, quantidade);
+    if (novaQuantidade && !isNaN(novaQuantidade) && parseFloat(novaQuantidade) > 0) {
+        const qtd = parseFloat(novaQuantidade);
+        const novoTotal = qtd * valorUnitario;
+        
+        linha.cells[1].textContent = qtd.toFixed(2);
+        linha.cells[5].textContent = `R$ ${novoTotal.toFixed(2)}`;
+        
+        atualizarTotalOrcamento();
+        console.log('Item editado no orçamento:', { descricao, quantidade: qtd, valorUnitario, novoTotal });
+    }
+}
+
+function atualizarTotalOrcamento() {
+    const tbody = document.getElementById('itensOrcamento');
+    let totalGeral = 0;
+    
+    if (tbody) {
+        const linhas = tbody.querySelectorAll('tr');
+        linhas.forEach(linha => {
+            const valorTotalText = linha.cells[5].textContent.replace('R$ ', '').replace(',', '.');
+            const valorTotal = parseFloat(valorTotalText) || 0;
+            totalGeral += valorTotal;
+        });
+    }
+    
+    // Mostrar total na interface (se existir um elemento para isso)
+    const totalElement = document.getElementById('totalOrcamento');
+    if (totalElement) {
+        totalElement.textContent = `R$ ${totalGeral.toFixed(2)}`;
+    }
+    
+    console.log('Total do orçamento atualizado:', totalGeral.toFixed(2));
+    return totalGeral;
+}
+
+// Função auxiliar para verificar e habilitar botões quando há cálculo disponível
+function verificarEHabilitarBotoes() {
+    const adicionarBtn = document.getElementById('adicionarProdutoBtn');
+    const salvarBtn = document.getElementById('salvarProdutoBtn');
+    const nomeInput = document.getElementById('nomeProdutoParametrizado');
+    
+    if (ultimoCalculo && adicionarBtn && salvarBtn) {
+        // Habilitar botões se há cálculo
+        adicionarBtn.disabled = false;
+        salvarBtn.disabled = false;
+        console.log('✅ Botões habilitados - cálculo disponível');
+        
+        // Se há nome preenchido, garantir que os botões estão habilitados
+        if (nomeInput && nomeInput.value.trim()) {
+            adicionarBtn.disabled = false;
+            salvarBtn.disabled = false;
+        }
+    } else {
+        console.log('⚠️ Aguardando cálculo para habilitar botões');
+    }
+}
+
+// Verificar botões periodicamente (útil para debug)
+setInterval(verificarEHabilitarBotoes, 2000);
 </script>
 </body>
 </html>

@@ -459,7 +459,8 @@ function carregarTemplates() {
                 { value: 'perfil_customizado', text: 'Novo Perfil', description: 'Criar novo perfil personalizado' },
                 { value: 'grades_customizado', text: 'Grade Montada', description: 'Calcular estrutura de grade com perfis' },
                 { value: 'tampa_montada_customizado', text: 'Tampa Montada', description: 'Calcular tampa montada com componentes específicos' },
-                { value: 'tampa_injetada_customizado', text: 'Tampa Injetada', description: 'Calcular tampa injetada com grade injetada' }
+                { value: 'tampa_injetada_customizado', text: 'Tampa Injetada', description: 'Calcular tampa injetada com grade injetada' },
+                { value: 'degraus_customizado', text: 'Degraus', description: 'Calcular degraus com perfis I25/I38 e componentes' }
             ];
             
             templateOptions.forEach(template => {
@@ -505,7 +506,8 @@ function carregarTemplate() {
         'perfil_customizado': () => carregarInterfaceNovoPerfilOrcamento(),
         'grades_customizado': () => carregarInterfaceGradesOrcamento(),
         'tampa_montada_customizado': () => carregarInterfaceTampaMontadaOrcamento(),
-        'tampa_injetada_customizado': () => carregarInterfaceTampaInjetadaOrcamento()
+        'tampa_injetada_customizado': () => carregarInterfaceTampaInjetadaOrcamento(),
+        'degraus_customizado': () => carregarInterfaceDegrausOrcamento()
     };
     
     if (templatesCustomizados[templateId]) {
@@ -849,6 +851,18 @@ function adicionarProdutoParametrizadoAoOrcamento() {
     if (!nomePersonalizado) {
         nomePersonalizado = document.getElementById('perfil_nome'); // Para template Novo Perfil
     }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('degrau_nome'); // Para template Degraus
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('grade_nome'); // Para template Grades
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('tampa_mont_nome'); // Para template Tampa Montada
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('tampa_inj_nome'); // Para template Tampa Injetada
+    }
     
     if (!nomePersonalizado || !nomePersonalizado.value.trim()) {
         alert('Por favor, digite um nome para o produto!');
@@ -1022,6 +1036,18 @@ function salvarProdutoParametrizadoNaBase() {
     let nomePersonalizado = document.getElementById('nomeProdutoParametrizado');
     if (!nomePersonalizado) {
         nomePersonalizado = document.getElementById('perfil_nome'); // Para template Novo Perfil
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('degrau_nome'); // Para template Degraus
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('grade_nome'); // Para template Grades
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('tampa_mont_nome'); // Para template Tampa Montada
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('tampa_inj_nome'); // Para template Tampa Injetada
     }
     
     if (!nomePersonalizado || !nomePersonalizado.value.trim()) {
@@ -3680,6 +3706,332 @@ function calcularTampaInjetadaOrcamento() {
         });
 }
 
+// ===== DEGRAUS ORÇAMENTO =====
+function carregarInterfaceDegrausOrcamento() {
+    console.log('=== CARREGANDO INTERFACE DEGRAUS ORÇAMENTO ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'degraus_customizado', tipo: 'degraus' };
+    ultimoCalculo = null;
+    
+    // HTML da interface Degraus (exatamente como no MP)
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <h6 class="text-primary">Degraus</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        
+        <div class="mb-3">
+            <label for="degrau_nome" class="form-label">Nome do Degrau *</label>
+            <input type="text" class="form-control param-input" id="degrau_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_perfil" class="form-label">Tipo de Perfil *</label>
+            <select class="form-select param-input" id="degrau_perfil" name="tipo_perfil" required>
+                <option value="">Selecione o tipo de perfil...</option>
+                <option value="I25">I25mm - R$ 6,48</option>
+                <option value="I38">I38mm - R$ 7,81</option>
+            </select>
+            <div class="form-text">I25 usa reforço E (R$ 14,73), I38 usa reforço F (R$ 19,70)</div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="degrau_largura" class="form-label">Largura (mm) *</label>
+                <input type="number" step="0.1" class="form-control param-input" id="degrau_largura" name="largura" required min="0">
+                <div class="form-text">Largura do degrau em milímetros</div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="degrau_comprimento" class="form-label">Comprimento (mm) *</label>
+                <input type="number" step="0.1" class="form-control param-input" id="degrau_comprimento" name="comprimento" required min="0">
+                <div class="form-text">Comprimento do degrau em milímetros</div>
+            </div>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-tools"></i> Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="degrau_tempo_proc" class="form-label">Tempo PROC (h)</label>
+                        <input type="number" step="0.1" class="form-control param-input" id="degrau_tempo_proc" name="tempo_proc" value="1.0" min="0">
+                        <div class="form-text">Tempo de processamento em horas</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="degrau_tempo_mtg" class="form-label">Tempo MTG (h)</label>
+                        <input type="number" step="0.1" class="form-control param-input" id="degrau_tempo_mtg" name="tempo_mtg" value="1.5" min="0">
+                        <div class="form-text">Tempo de montagem em horas</div>
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <small><i class="fas fa-info-circle"></i> Mão de Obra: Processamento/Montagem - R$ 65,79/hora</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_perda" class="form-label">Percentual de Perda (%)</label>
+            <input type="number" step="0.1" class="form-control param-input" id="degrau_perda" name="percentual_perda" value="3.0" min="0" max="100">
+            <div class="form-text">Percentual de perda aplicado aos materiais (padrão: 3%)</div>
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-primary" onclick="calcularDegrausOrcamento()" id="calcularDegrausBtn">
+                <i class="fas fa-calculator"></i> Calcular Degraus
+            </button>
+        </div>
+    `;
+    
+    console.log('Interface Degraus carregada');
+}
+
+function calcularDegrausOrcamento() {
+    console.log('=== CALCULANDO DEGRAUS ORÇAMENTO ===');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('degrau_nome').value.trim();
+    const tipoPerfil = document.getElementById('degrau_perfil').value;
+    const largura = parseFloat(document.getElementById('degrau_largura').value);
+    const comprimento = parseFloat(document.getElementById('degrau_comprimento').value);
+    const tempoProc = parseFloat(document.getElementById('degrau_tempo_proc').value || '1.0');
+    const tempoMtg = parseFloat(document.getElementById('degrau_tempo_mtg').value || '1.5');
+    const percentualPerda = parseFloat(document.getElementById('degrau_perda').value || '3.0');
+    
+    // Validação
+    if (!nome) {
+        alert('Por favor, preencha o nome do degrau.');
+        return;
+    }
+    
+    if (!tipoPerfil) {
+        alert('Por favor, selecione o tipo de perfil.');
+        return;
+    }
+    
+    if (!largura || largura <= 0) {
+        alert('Por favor, preencha uma largura válida.');
+        return;
+    }
+    
+    if (!comprimento || comprimento <= 0) {
+        alert('Por favor, preencha um comprimento válido.');
+        return;
+    }
+    
+    const dados = {
+        nome_degrau: nome,
+        tipo_perfil: tipoPerfil,
+        largura: largura,
+        comprimento: comprimento,
+        tempo_proc: tempoProc,
+        tempo_mtg: tempoMtg,
+        percentual_perda: percentualPerda,
+        quantidade: 1 // Sempre 1 unidade
+    };
+    
+    console.log('🔍 Buscando produtos para degraus...');
+    
+    // Buscar produtos necessários dinamicamente (ordem exata do MP)
+    Promise.all([
+        buscarProdutoPorDescricao(tipoPerfil === 'I25' ? 'I25mm' : 'I38mm'), // Perfil principal
+        buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa 
+        buscarProdutoPorDescricao('COLA ESTRUTURAL'), // Cola
+        buscarProdutoPorDescricao(tipoPerfil === 'I25' ? 'E - 4\'x1.3/16\' #3/16\'' : 'PERFIL F 4"'), // Reforço conforme perfil
+        buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'), // Tubo quadrado
+        buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'), // Parafuso M6X40
+        buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'), // Parafuso M6X60
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304') // Porca M6
+    ]).then(([perfilPrincipal, travessa, cola, perfilReforco, tuboQuadrado, paraf40, paraf60, porca]) => {
+        
+        if (!perfilPrincipal) throw new Error(`Perfil principal ${tipoPerfil} não encontrado`);
+        if (!travessa) throw new Error('Travessa (Perfil Chaveta) não encontrada');
+        if (!cola) throw new Error('Cola estrutural não encontrada');
+        if (!perfilReforco) throw new Error(`Perfil de reforço para ${tipoPerfil} não encontrado`);
+        if (!tuboQuadrado) throw new Error('Tubo quadrado não encontrado');
+        if (!paraf40) throw new Error('Parafuso M6X40 não encontrado');
+        if (!paraf60) throw new Error('Parafuso M6X60 não encontrado');
+        if (!porca) throw new Error('Porca M6 não encontrada');
+        
+        console.log('✅ Todos os produtos encontrados');
+        console.log('Perfil Principal:', perfilPrincipal);
+        console.log('Travessa:', travessa);
+        console.log('Cola:', cola);
+        console.log('Reforço:', perfilReforco);
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Parafusos:', { paraf40, paraf60, porca });
+        
+        // APLICAR FÓRMULAS DOS DEGRAUS (exatamente como no MP)
+        
+        // Calcular dimensões e quantidades
+        const areaDegrau = (dados.largura * dados.comprimento) / 1000000; // m²
+        const alturaFixa = 150; // Altura fixa de 150mm para degraus
+        const volumeDegrau = areaDegrau * (alturaFixa / 1000); // m³
+        
+        // Calcular quantidades baseadas nas dimensões (exatamente como no MP)
+        const comprimentoPerfil = (5 * dados.comprimento) / 1000; // 5*comprimento/1000 metros
+        const quantidadeTravessas = (((dados.comprimento - 100) / 150) * dados.largura * 2) / 1000; // ((comprimento-100)/150)*largura*2/1000
+        
+        // Quantidades fixas de parafusos e porcas por degrau conforme especificação (IGUAL AO MP)
+        let quantidadeParafusos40, quantidadeParafusos60, quantidadePorcas;
+        
+        if (dados.tipo_perfil === 'I38') {
+            // Quantidades para perfil I38
+            quantidadeParafusos40 = 2; // 2 parafusos M6X40 por degrau
+            quantidadeParafusos60 = 4; // 4 parafusos M6X60 por degrau  
+            quantidadePorcas = 6; // 6 porcas M6 por degrau
+        } else {
+            // Quantidades para perfil I25 (padrão)
+            quantidadeParafusos40 = 4; // 4 parafusos M6X40 por degrau
+            quantidadeParafusos60 = 2; // 2 parafusos M6X60 por degrau  
+            quantidadePorcas = 6; // 6 porcas M6 por degrau
+        }
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Calcular custos individuais (com perda para materiais) - EXATAMENTE COMO NO MP
+        const custoPerfil = (5 * dados.comprimento * perfilPrincipal.custo_centavos / 1000 * dados.quantidade) * fatorPerda;
+        const custoTravessa = (quantidadeTravessas * travessa.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoCola = (0.05 * (dados.largura * dados.comprimento) * cola.custo_centavos / 1000000 * dados.quantidade) * fatorPerda;
+        const custoReforco = (perfilReforco && perfilReforco.id !== cola.id) ? 
+                           (2 * dados.largura * perfilReforco.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        const custoTubo = (dados.comprimento / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Total dos materiais
+        const custoTotalMateriaisCentavos = custoPerfil + custoTravessa + custoCola + custoReforco + 
+                                          custoTubo + custoParaf40 + custoParaf60 + custoPorcas;
+        
+        // Calcular mão de obra (sem perda)
+        const valorHoraMO = 65.79; // R$/hora
+        const custoMaoObraTotal = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100 * dados.quantidade;
+        
+        // Custo total
+        const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+        
+        // Criar lista de componentes (EXATAMENTE COMO NO MP)
+        const componentes = [];
+        
+        // Adicionar componentes ao resultado - mesma ordem e lógica do MP
+        componentes.push({
+            nome: `${perfilPrincipal.descricao} - ${comprimentoPerfil.toFixed(2)}m`,
+            quantidade: comprimentoPerfil.toFixed(2),
+            custo_unitario: perfilPrincipal.custo_centavos,
+            custo_total: custoPerfil,
+            unidade: 'm',
+            descricao_produto: perfilPrincipal.descricao
+        });
+        
+        componentes.push({
+            nome: `${travessa.descricao} - ${quantidadeTravessas.toFixed(2)}m`,
+            quantidade: quantidadeTravessas.toFixed(2),
+            custo_unitario: travessa.custo_centavos,
+            custo_total: custoTravessa,
+            unidade: 'm',
+            descricao_produto: travessa.descricao
+        });
+        
+        componentes.push({
+            nome: `${cola.descricao}`,
+            quantidade: (0.05 * (dados.largura * dados.comprimento) / 1000000).toFixed(3),
+            custo_unitario: cola.custo_centavos,
+            custo_total: custoCola,
+            unidade: 'kg',
+            descricao_produto: cola.descricao
+        });
+        
+        // Adicionar reforço apenas se for diferente da cola
+        if (perfilReforco && perfilReforco.id !== cola.id) {
+            componentes.push({
+                nome: `${perfilReforco.descricao} - ${(2 * dados.largura / 1000).toFixed(2)}m`,
+                quantidade: (2 * dados.largura / 1000).toFixed(2),
+                custo_unitario: perfilReforco.custo_centavos,
+                custo_total: custoReforco,
+                unidade: 'm',
+                descricao_produto: perfilReforco.descricao
+            });
+        }
+        
+        componentes.push({
+            nome: `${tuboQuadrado.descricao} - ${(dados.comprimento / 1000).toFixed(2)}m`,
+            quantidade: (dados.comprimento / 1000).toFixed(2),
+            custo_unitario: tuboQuadrado.custo_centavos,
+            custo_total: custoTubo,
+            unidade: 'm',
+            descricao_produto: tuboQuadrado.descricao
+        });
+        
+        componentes.push({
+            nome: `${paraf40.descricao}`,
+            quantidade: quantidadeParafusos40,
+            custo_unitario: paraf40.custo_centavos,
+            custo_total: custoParaf40,
+            unidade: 'unid',
+            descricao_produto: paraf40.descricao
+        });
+        
+        componentes.push({
+            nome: `${paraf60.descricao}`,
+            quantidade: quantidadeParafusos60,
+            custo_unitario: paraf60.custo_centavos,
+            custo_total: custoParaf60,
+            unidade: 'unid',
+            descricao_produto: paraf60.descricao
+        });
+        
+        componentes.push({
+            nome: `${porca.descricao}`,
+            quantidade: quantidadePorcas,
+            custo_unitario: porca.custo_centavos,
+            custo_total: custoPorcas,
+            unidade: 'unid',
+            descricao_produto: porca.descricao
+        });
+        
+        // Adicionar mão de obra se houver tempo definido
+        if (dados.tempo_proc > 0 || dados.tempo_mtg > 0) {
+            componentes.push({
+                nome: `Mão de Obra - PROC: ${dados.tempo_proc}h + MTG: ${dados.tempo_mtg}h`,
+                quantidade: (dados.tempo_proc + dados.tempo_mtg).toFixed(1),
+                custo_unitario: valorHoraMO * 100, // Converter para centavos
+                custo_total: custoMaoObraTotal,
+                unidade: 'h',
+                descricao_produto: 'Processamento/Montagem'
+            });
+        }
+        
+        // Criar resultado final
+        ultimoCalculo = {
+            nome: dados.nome_degrau,
+            categoria: 'ESTRUTURAS',
+            custo_total: custoTotalCentavos, // Manter em centavos como no MP
+            componentes: componentes,
+            dados_originais: dados
+        };
+        
+        // Mostrar componentes na tabela (função idêntica ao MP)
+        mostrarComponentesCalculados(ultimoCalculo.componentes);
+        
+        // Habilitar botão salvar (apenas se existir)
+        const salvarBtn = document.getElementById('salvarProdutoBtn');
+        if (salvarBtn) {
+            salvarBtn.disabled = false;
+        }
+        
+        console.log('✅ Cálculo de Degraus Orçamento concluído com sucesso');
+        console.log('Resultado final:', ultimoCalculo);
+    })
+    .catch(error => {
+        console.error('❌ Erro ao calcular degraus:', error);
+        alert('Erro ao calcular degraus: ' + error.message);
+    });
+}
+
 function recalcularComponenteOrcamento(index) {
     console.log('=== RECALCULAR COMPONENTE ORÇAMENTO ===');
     console.log('Índice do componente:', index);
@@ -3812,6 +4164,102 @@ function removerItemOrcamento(button) {
 function editarItemOrcamento(button) {
     console.log('Editar item:', button);
     // Implementação futura se necessário
+}
+
+// Função para mostrar componentes calculados (idêntica ao MP)
+function mostrarComponentesCalculados(componentes) {
+    console.log('=== MOSTRAR COMPONENTES ===');
+    console.log('Componentes recebidos:', componentes);
+    console.log('Tipo:', typeof componentes);
+    console.log('É array?', Array.isArray(componentes));
+    console.log('Quantidade:', componentes ? componentes.length : 'undefined');
+    
+    const tbody = document.getElementById('componentesCalculadosTable');
+    tbody.innerHTML = '';
+    
+    if (!componentes || componentes.length === 0) {
+        console.log('Nenhum componente - mostrando mensagem vazia');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum componente calculado</td></tr>';
+        return;
+    }
+    
+    console.log('Adicionando', componentes.length, 'componentes à tabela');
+    componentes.forEach((comp, index) => {
+        console.log(`Componente ${index + 1}:`, comp);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${comp.nome}</td>
+            <td>${comp.descricao_produto || comp.produto || 'N/A'}</td>
+            <td></td>
+            <td>${parseFloat(comp.quantidade).toFixed(3)}</td>
+            <td>R$ ${(comp.custo_unitario / 100).toFixed(2)}</td>
+            <td>R$ ${(comp.custo_total / 100).toFixed(2)}</td>
+            <td></td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Adicionar linha de total
+    const custoTotalGeral = componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    const totalRow = document.createElement('tr');
+    totalRow.innerHTML = `
+        <td colspan="5"><strong>TOTAL GERAL</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td></td>
+    `;
+    totalRow.style.backgroundColor = '#f8f9fa'; // Mesmo estilo da Tampa Montada
+    tbody.appendChild(totalRow);
+    
+    console.log('Tabela atualizada com', tbody.children.length, 'linhas');
+}
+
+// ===== FUNÇÕES AUXILIARES =====
+// Função auxiliar para buscar produto por descrição
+async function buscarProdutoPorDescricao(termo) {
+    try {
+        const response = await fetch('/api/produtos/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const produtos = await response.json();
+        
+        const produto = produtos.find(p => 
+            p.descricao && 
+            p.descricao.toLowerCase().includes(termo.toLowerCase())
+        );
+        
+        if (!produto) {
+            throw new Error(`Produto com termo "${termo}" não encontrado`);
+        }
+        
+        console.log(`✅ Produto encontrado para "${termo}": ID ${produto.id} - ${produto.descricao}`);
+        return produto; // Retornar o produto completo em vez de apenas o ID
+    } catch (error) {
+        console.error(`❌ Erro ao buscar produto "${termo}":`, error);
+        throw error;
+    }
+}
+
+async function buscarProdutoPorId(id) {
+    try {
+        const response = await fetch('/api/produtos/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const produtos = await response.json();
+        
+        const produto = produtos.find(p => p.id === id);
+        
+        if (!produto) {
+            throw new Error(`Produto com ID "${id}" não encontrado`);
+        }
+        
+        console.log(`✅ Produto encontrado por ID "${id}": ${produto.descricao}`);
+        return produto;
+    } catch (error) {
+        console.error(`❌ Erro ao buscar produto por ID "${id}":`, error);
+        throw error;
+    }
 }
 
 // Verificação de integridade das funções principais

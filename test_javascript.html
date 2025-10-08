@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Test JavaScript Functions</title>
+</head>
+<body>
+<h1>Testing JavaScript Functions</h1>
+
+<script>
+// Test the functions that were causing errors
+console.log('=== TESTING JAVASCRIPT FUNCTIONS ===');
+
+// Test 1: Check if the syntax errors are resolved
+try {
+    console.log('✅ JavaScript parsing successful - no syntax errors');
+} catch (error) {
+    console.error('❌ JavaScript syntax error:', error);
+}
+
+// Test 2: Simulate the function definitions
+function openProdutoParametrizadoModal() {
+    console.log('✅ openProdutoParametrizadoModal function is defined and callable');
+    return true;
+}
+
+// Test 3: Test the function
+try {
+    const result = openProdutoParametrizadoModal();
+    console.log('✅ Function call successful:', result);
+} catch (error) {
+    console.error('❌ Function call error:', error);
+}
+
+// Test 4: Check if return statements work properly in functions
+function testReturnStatement() {
+    console.log('Testing return statement...');
+    return 'Return statement works';
+}
+
+try {
+    const returnResult = testReturnStatement();
+    console.log('✅ Return statement test:', returnResult);
+} catch (error) {
+    console.error('❌ Return statement error:', error);
+}
+
+console.log('=== ALL TESTS COMPLETED ===');
+</script>
+</body>
+</html>

@@ -510,8 +510,14 @@ def orcamento(request, orcamento_id):
             if produto_parametrizado:
                 # Processar produto parametrizado
                 try:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    
                     data = json.loads(produto_parametrizado)
                     descricao = data.get('nome', 'Produto Parametrizado')
+                    
+                    logger.info(f"🔍 DEBUG - Processando produto parametrizado: {descricao}")
+                    logger.info(f"🔍 DEBUG - Data recebida: {data}")
                     
                     # Validar e converter valores
                     valor_unitario = safe_float(data.get('preco_total', 0))
@@ -519,13 +525,15 @@ def orcamento(request, orcamento_id):
                     desconto_num = safe_float(desconto)
                     imposto_num = safe_float(imposto)
                     
+                    logger.info(f"🔍 DEBUG - Valores: unitario={valor_unitario}, qtd={quantidade_valor}")
+                    
                     valor_bruto = valor_unitario * quantidade_valor
                     valor_desconto = valor_bruto * (desconto_num / 100)
                     valor_imposto = (valor_bruto - valor_desconto) * (imposto_num / 100)
                     valor_total = valor_bruto - valor_desconto + valor_imposto
                     
                     from .models import OrcamentoItem
-                    OrcamentoItem.objects.create(
+                    item = OrcamentoItem.objects.create(
                         orcamento=orcamento,
                         tipo_item='Parametrizado',
                         descricao=descricao,
@@ -536,13 +544,21 @@ def orcamento(request, orcamento_id):
                         valor_total=valor_total
                     )
                     
+                    logger.info(f"✅ Item criado com sucesso: ID={item.id}, Descrição={item.descricao}")
+                    
                     # Atualiza totais do orçamento
                     itens = list(orcamento.itens.all())
                     orcamento.total_liquido = sum([safe_float(i.valor_total) for i in itens])
                     orcamento.desconto_total = sum([safe_float(i.desconto_item) for i in itens])
                     orcamento.save()
+                    
+                    logger.info(f"✅ Orçamento atualizado com {len(itens)} itens")
                     return redirect('orcamento', orcamento_id=orcamento_id)
                 except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"❌ Erro ao processar produto parametrizado: {str(e)}")
+                    logger.exception("Detalhes do erro:")
                     # Em caso de erro, continue para o processamento normal
                     pass
             elif produto_id and quantidade:

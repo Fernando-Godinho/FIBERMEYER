@@ -2319,12 +2319,13 @@ function carregarPerfisTampa() {
         .then(produtos => {
             console.log(`✅ ${produtos.length} produtos carregados da API`);
             
-            // Filtrar perfis I25, I32, I38 e TRAV (excluir porca sextavada)
+            // Filtrar perfis I25, I32, I38 e TRAV (excluir porca sextavada e grades injetadas)
             const perfis = produtos.filter(p => {
                 const desc = p.descricao ? p.descricao.toLowerCase() : '';
                 const incluiPerfil = desc.includes('i25') || desc.includes('i32') || desc.includes('i38') || desc.includes('trav');
                 const excluirPorca = desc.includes('por-sxt') || desc.includes('travante') || desc.includes('porca');
-                return incluiPerfil && !excluirPorca;
+                const excluirGradeInjetada = desc.includes('grade') && desc.includes('injetada');
+                return incluiPerfil && !excluirPorca && !excluirGradeInjetada;
             });
             
             console.log(`✅ ${perfis.length} perfis encontrados:`, perfis.map(p => `${p.id}: ${p.descricao}`));
@@ -3527,16 +3528,12 @@ function calcularTampaMontada() {
                 }
             }
             
-            // Encontrar chapa EV (se necessário)
+            // Encontrar chapa EV (se necessário) - ID fixo 1384
             let chapaEV = null;
             if (dados.chapa_ev) {
-                chapaEV = produtos.find(p => 
-                    p.descricao && 
-                    p.descricao.toLowerCase().includes('chapa') &&
-                    p.descricao.toLowerCase().includes('ev')
-                );
+                chapaEV = produtos.find(p => p.id === 1384);
                 if (!chapaEV) {
-                    throw new Error('Chapa EV não encontrada no banco');
+                    throw new Error('Chapa EV - Res. Poliéster (ID 1384) não encontrada no banco');
                 }
             }
             
@@ -3580,14 +3577,15 @@ function calcularTampaMontada() {
             const areaChapa = (dados.vao / 1000) * (dados.comprimento / 1000); // em m²
             const pesoChapa25 = areaChapa * chapa25.peso_und;
             
-            // AJUSTE ESPECIAL: Se Chapa EV marcada, usar valor fixo R$ 277,50
+            // AJUSTE ESPECIAL: Se Chapa EV marcada, usar fórmula específica
             let custoChapa25;
             let nomeChapa, descricaoChapa;
             if (dados.chapa_ev) {
-                custoChapa25 = 27750; // R$ 277,50 em centavos (valor fixo quando EV marcada)
+                // NOVA FÓRMULA: (vão * comprimento * custo chapa EV) / 1000000
+                custoChapa25 = (dados.vao * dados.comprimento * chapaEV.custo_centavos) / 1000000;
                 nomeChapa = "Chapa EV - Res. Poliéster";
                 descricaoChapa = "Chapa EV - Res. Poliéster";
-                console.log(`🔧 CHAPA EV MARCADA: Custo da chapa alterado para R$ 277,50 (fixo)`);
+                console.log(`🔧 CHAPA EV MARCADA: Aplicando fórmula (${dados.vao} * ${dados.comprimento} * ${chapaEV.custo_centavos/100}) / 1.000.000 = R$ ${(custoChapa25/100).toFixed(2)}`);
             } else {
                 custoChapa25 = areaChapa * chapa25.custo_centavos; // Cálculo normal
                 nomeChapa = chapa25.descricao;
@@ -7131,11 +7129,7 @@ async function buscarOuCriarChapaEV(csrftoken) {
         const response = await fetch('/api/produtos/');
         const produtos = await response.json();
         
-        const chapaEV = produtos.find(p => 
-            p.descricao && 
-            p.descricao.toLowerCase().includes('chapa') &&
-            p.descricao.toLowerCase().includes('ev')
-        );
+        const chapaEV = produtos.find(p => p.id === 1384);
         
         if (chapaEV) {
             console.log(`✅ Chapa EV encontrada: ID ${chapaEV.id} - ${chapaEV.descricao}`);

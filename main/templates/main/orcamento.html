@@ -3512,14 +3512,19 @@ function calcularTampaInjetadaOrcamento() {
             
             console.log(`📐 Área calculada: ${areaM2.toFixed(4)} m²`);
             
-            // 1. Grade injetada - preço por m² fixo
+            // 1. Grade injetada - área × preço/m²
+            const pesoGrade = areaM2 * gradeSelecionada.peso_und;
             const custoGradeTotal = areaM2 * gradeSelecionada.custo_centavos;
             
             // 2. Cola - 0,1 * custo da cola
             const quantidadeCola = 0.1;
+            const pesoCola = quantidadeCola * cola.peso_und;
             const custoCola = quantidadeCola * cola.custo_centavos;
             
             // 3. Chapa 2,5mm ou Chapa EV
+            const areaChapa = areaM2; // mesma área da tampa
+            const pesoChapa25 = areaChapa * chapa25.peso_und;
+            
             let custoChapa25;
             let nomeChapa, descricaoChapa;
             if (dados.chapa_ev) {
@@ -3529,20 +3534,22 @@ function calcularTampaInjetadaOrcamento() {
                 descricaoChapa = "Chapa EV - Res. Poliéster";
                 console.log(`🔧 CHAPA EV: Fórmula (${dados.vao} * ${dados.comprimento} * ${chapaEV.custo_centavos/100}) / 1.000.000 = R$ ${(custoChapa25/100).toFixed(2)}`);
             } else {
-                custoChapa25 = areaM2 * chapa25.custo_centavos;
+                custoChapa25 = areaChapa * chapa25.custo_centavos;
                 nomeChapa = chapa25.descricao;
                 descricaoChapa = chapa25.descricao;
             }
             
             // 4. Quadro U4" - se 'sim' custo perfil u4 * 2
-            let custoU4 = 0;
+            let pesoU4 = 0, custoU4 = 0;
             if (dados.quadro_u4 && perfilU4) {
+                pesoU4 = 2 * perfilU4.peso_und;
                 custoU4 = 2 * perfilU4.custo_centavos;
             }
             
             // 5. Alça - se sim custo da alça * 2
-            let custoAlca = 0;
+            let pesoAlca = 0, custoAlca = 0;
             if (dados.alca && alca) {
+                pesoAlca = 2 * alca.peso_und;
                 custoAlca = 2 * alca.custo_centavos;
             }
             
@@ -3556,25 +3563,21 @@ function calcularTampaInjetadaOrcamento() {
             // Total dos materiais com perda já aplicada
             const custoTotalMateriaisCentavos = custoGradeComPerda + custoColaComPerda + custoChapa25ComPerda + custoU4ComPerda + custoAlcaComPerda;
             
-            // Calcular mão de obra (sem perda) - LÓGICA IGUAL À TAMPA MONTADA
+            // Calcular mão de obra (sem perda) - LÓGICA ESPECIAL PARA TAMPA INJETADA
             const valorHoraMO = 65.79; // R$/hora
             const custoMaoObraBase = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100; // custo base em centavos
             
-            // Aplicar multiplicador baseado nas opções selecionadas
-            let multiplicadorMO = 1.0;
+            // Para Tampa Injetada, mão de obra NÃO é multiplicada (sempre 1.0)
+            let multiplicadorMO = 1.0; // sempre 1.0 para Tampa Injetada
             let descricaoOpcoes = '';
             
             if (dados.quadro_u4 && dados.alca) {
-                multiplicadorMO = 2.0;
                 descricaoOpcoes = ' (com Quadro U4" + Alça)';
             } else if (!dados.quadro_u4 && dados.alca) {
-                multiplicadorMO = 1.9;
                 descricaoOpcoes = ' (com Alça)';
             } else if (dados.quadro_u4 && !dados.alca) {
-                multiplicadorMO = 1.1;
                 descricaoOpcoes = ' (com Quadro U4")';
             } else {
-                multiplicadorMO = 1.0;
                 descricaoOpcoes = ' (básico)';
             }
             
@@ -3589,8 +3592,8 @@ function calcularTampaInjetadaOrcamento() {
             // Custo total
             const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
             
-            // Peso total (grade injetada não tem peso definido, usar 0)
-            const pesoTotalKg = 0;
+            // Peso total (como no MP)
+            const pesoTotalKg = (pesoGrade + pesoCola + pesoChapa25 + pesoU4 + pesoAlca) * fatorPerda;
             
             console.log(`💰 TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m²`);
             

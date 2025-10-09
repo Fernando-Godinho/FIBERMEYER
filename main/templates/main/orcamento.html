@@ -96,8 +96,8 @@
         </div>
         <div class="card shadow-sm" style="min-width: 170px; max-width: 180px;">
           <div class="card-body py-2 px-3">
-            <div class="card-title mb-1" style="font-size: 1rem;">Total Descontos</div>
-            <div class="card-text fw-bold text-danger" style="font-size: 1.2rem;">R$ {{ total_desconto|floatformat:2 }}</div>
+            <div class="card-title mb-1" style="font-size: 1rem;">Total Lucro</div>
+            <div class="card-text fw-bold text-success" style="font-size: 1.2rem;">R$ {{ total_lucro|floatformat:2 }}</div>
           </div>
         </div>
       </div>
@@ -107,9 +107,12 @@
         <button class="btn btn-warning me-2" onclick="openProdutoParametrizadoModal()">
           <i class="fas fa-calculator"></i> Produto Parametrizado
         </button>
+        <button type="button" class="btn btn-primary me-2" onclick="gerarPDFOrcamento()">
+          <i class="fas fa-file-pdf"></i> Gerar PDF
+        </button>
         <form method="post" style="display:inline;">
           {% csrf_token %}
-          <button type="submit" name="status_action" value="enviar" class="btn btn-primary">Enviar Orçamento</button>
+          <button type="submit" name="status_action" value="enviar" class="btn btn-success">Enviar Orçamento</button>
         </form>
       </div>
     </div>
@@ -138,8 +141,8 @@
                 <input type="number" class="form-control" id="quantidade" name="quantidade" min="1" value="1" required>
               </div>
               <div class="mb-3">
-                <label for="desconto" class="form-label">Desconto (%)</label>
-                <input type="number" class="form-control" id="desconto" name="desconto" min="0" max="100" value="0">
+                <label for="lucro" class="form-label">Lucro (%)</label>
+                <input type="number" class="form-control" id="lucro" name="lucro" min="0" max="500" step="0.1" value="22.5">
               </div>
               <div class="mb-3">
                 <label for="imposto" class="form-label">Imposto (%)</label>
@@ -159,11 +162,11 @@
         <tr>
           <th>Descrição</th>
           <th>Quantidade</th>
-          <th>Valor Unitário</th>
-          <th>Desconto (%)</th>
+          <th>Custo Unitário</th>
+          <th>Lucro (%)</th>
           <th>Imposto (%)</th>
           <th>Valor Total</th>
-          <th>Ações</th>
+          <th style="width: 150px;">Ações</th>
         </tr>
       </thead>
       <tbody id="itensOrcamento">
@@ -172,9 +175,34 @@
           <td>{{ item.descricao }}</td>
           <td>{{ item.quantidade }}</td>
           <td>R$ {{ item.valor_unitario|floatformat:2 }}</td>
-          <td>{{ item.desconto_item|floatformat:2 }}</td>
+          <td>
+            {% if orcamento.status == 'Enviado' %}
+              {% if item.valor_unitario > 0 %}
+                {% widthratio item.desconto_item item.valor_unitario 100 %}%<br/>
+              {% else %}
+                0%<br/>
+              {% endif %}
+              <small class="text-muted">R$ {{ item.desconto_item|floatformat:2 }}</small>
+            {% else %}
+              <input type="number" 
+                     class="form-control form-control-sm lucro-input" 
+                     style="width: 80px; display: inline-block;"
+                     value="22.5"
+                     data-lucro-valor="{{ item.desconto_item }}"
+                     min="0" 
+                     max="500" 
+                     step="0.1"
+                     data-item-id="{{ item.id }}"
+                     data-custo="{{ item.valor_unitario }}"
+                     data-quantidade="{{ item.quantidade }}"
+                     data-imposto="{{ item.imposto_item }}"
+                     onchange="atualizarLucroItem(this)"
+                     onfocus="aplicarLucroSeZero(this)">%<br/>
+              <small class="text-muted">R$ <span id="lucro-valor-{{ item.id }}">{{ item.desconto_item|floatformat:2 }}</span></small>
+            {% endif %}
+          </td>
           <td>{{ item.imposto_item|floatformat:2 }}</td>
-          <td>R$ {{ item.valor_total|floatformat:2 }}</td>
+          <td>R$ <span id="total-{{ item.id }}">{{ item.valor_total|floatformat:2 }}</span></td>
           <td>
             {% if orcamento.status == 'Enviado' %}
               <form method="post" style="display:inline;">
@@ -182,14 +210,19 @@
                 <button type="submit" name="status_action" value="revisar" class="btn btn-sm btn-warning">Revisar</button>
               </form>
             {% else %}
-              <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editItemModal" 
+              <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editItemModal" 
                 data-id="{{ item.id }}" 
                 data-descricao="{{ item.descricao }}" 
                 data-quantidade="{{ item.quantidade }}" 
                 data-valor_unitario="{{ item.valor_unitario }}" 
                 data-desconto="{{ item.desconto_item }}" 
                 data-imposto="{{ item.imposto_item }}">
-                Editar
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn btn-sm btn-danger btn-excluir" 
+                data-item-id="{{ item.id }}" 
+                data-item-descricao="{{ item.descricao }}">
+                <i class="fas fa-trash"></i> Excluir
               </button>
             {% endif %}
           </td>
@@ -233,12 +266,12 @@
                 <input type="number" class="form-control" id="edit_quantidade" name="quantidade" step="any" required>
               </div>
               <div class="mb-3">
-                <label for="edit_valor_unitario" class="form-label">Valor Unitário</label>
+                <label for="edit_valor_unitario" class="form-label">Custo Unitário</label>
                 <input type="number" class="form-control" id="edit_valor_unitario" name="valor_unitario" step="any" required>
               </div>
               <div class="mb-3">
-                <label for="edit_desconto" class="form-label">Desconto (%)</label>
-                <input type="number" class="form-control" id="edit_desconto" name="desconto" step="any" min="0" max="100">
+                <label for="edit_lucro" class="form-label">Lucro (%)</label>
+                <input type="number" class="form-control" id="edit_lucro" name="lucro" step="0.1" min="0" max="500">
               </div>
               <div class="mb-3">
                 <label for="edit_imposto" class="form-label">Imposto (%)</label>
@@ -266,7 +299,7 @@
       document.getElementById('edit_descricao').value = button.getAttribute('data-descricao');
       document.getElementById('edit_quantidade').value = button.getAttribute('data-quantidade');
       document.getElementById('edit_valor_unitario').value = button.getAttribute('data-valor_unitario');
-      document.getElementById('edit_desconto').value = button.getAttribute('data-desconto');
+      document.getElementById('edit_lucro').value = button.getAttribute('data-desconto');
       document.getElementById('edit_imposto').value = button.getAttribute('data-imposto');
     });
     </script>
@@ -379,6 +412,34 @@ var templateAtual = null;
 var ultimoCalculo = null;
 
 // Função global SIMPLIFICADA para abrir modal - DEFINIDA IMEDIATAMENTE
+function gerarPDFOrcamento() {
+    console.log('🎯 Gerando PDF do orçamento...');
+    
+    // Pegar ID do orçamento da URL
+    const pathParts = window.location.pathname.split('/');
+    const orcamentoId = pathParts[pathParts.length - 2]; // Pega o ID antes da barra final
+    
+    if (!orcamentoId || isNaN(orcamentoId)) {
+        alert('Erro: ID do orçamento não encontrado!');
+        console.error('❌ ID do orçamento inválido:', orcamentoId);
+        return;
+    }
+    
+    console.log('📄 ID do orçamento:', orcamentoId);
+    
+    // URL para gerar PDF
+    const pdfUrl = `/orcamento/${orcamentoId}/pdf/`;
+    
+    // Abrir PDF em nova aba
+    try {
+        window.open(pdfUrl, '_blank');
+        console.log('✅ PDF sendo gerado em nova aba');
+    } catch (error) {
+        console.error('❌ Erro ao abrir PDF:', error);
+        alert('Erro ao gerar PDF. Tente novamente.');
+    }
+}
+
 function openProdutoParametrizadoModal() {
     console.log('🚀 Tentando abrir modal...');    // Verificar se o modal existe
     const modalElement = document.getElementById('produtoParametrizadoModal');
@@ -460,7 +521,10 @@ function carregarTemplates() {
                 { value: 'grades_customizado', text: 'Grade Montada', description: 'Calcular estrutura de grade com perfis' },
                 { value: 'tampa_montada_customizado', text: 'Tampa Montada', description: 'Calcular tampa montada com componentes específicos' },
                 { value: 'tampa_injetada_customizado', text: 'Tampa Injetada', description: 'Calcular tampa injetada com grade injetada' },
-                { value: 'degraus_customizado', text: 'Degraus', description: 'Calcular degraus com perfis I25/I38 e componentes' }
+                { value: 'degraus_customizado', text: 'Degraus', description: 'Calcular degraus com perfis I25/I38 e componentes' },
+                { value: 'degrau_injetado_customizado', text: 'Degrau Injetado', description: 'Calcular degrau usando grade injetada ao invés de perfil I' },
+                { value: 'guarda_corpo_horizontal_customizado', text: 'Guarda Corpo Horizontal', description: 'Estrutura horizontal com colunas e barras' },
+                { value: 'guarda_corpo_vertical_customizado', text: 'Guarda Corpo Vertical', description: 'Estrutura vertical com colunas e tubos' }
             ];
             
             templateOptions.forEach(template => {
@@ -507,7 +571,10 @@ function carregarTemplate() {
         'grades_customizado': () => carregarInterfaceGradesOrcamento(),
         'tampa_montada_customizado': () => carregarInterfaceTampaMontadaOrcamento(),
         'tampa_injetada_customizado': () => carregarInterfaceTampaInjetadaOrcamento(),
-        'degraus_customizado': () => carregarInterfaceDegrausOrcamento()
+        'degraus_customizado': () => carregarInterfaceDegrausOrcamento(),
+        'degrau_injetado_customizado': () => carregarInterfaceDegrauInjetadoOrcamento(),
+        'guarda_corpo_horizontal_customizado': () => carregarInterfaceGuardaCorpoHorizontalOrcamento(),
+        'guarda_corpo_vertical_customizado': () => carregarInterfaceGuardaCorpoVerticalOrcamento()
     };
     
     if (templatesCustomizados[templateId]) {
@@ -855,6 +922,15 @@ function adicionarProdutoParametrizadoAoOrcamento() {
         nomePersonalizado = document.getElementById('degrau_nome'); // Para template Degraus
     }
     if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('degrau_inj_nome'); // Para template Degrau Injetado
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('gc_horiz_nome'); // Para template Guarda Corpo Horizontal
+    }
+    if (!nomePersonalizado) {
+        nomePersonalizado = document.getElementById('gc_vert_nome'); // Para template Guarda Corpo Vertical
+    }
+    if (!nomePersonalizado) {
         nomePersonalizado = document.getElementById('grade_nome'); // Para template Grades
     }
     if (!nomePersonalizado) {
@@ -990,7 +1066,7 @@ function salvarItemNoBackend(descricao, quantidade, valorUnitario, valorTotal) {
     formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
     formData.append('produto_parametrizado', JSON.stringify(produtoParametrizadoData));
     formData.append('quantidade', quantidade);
-    formData.append('desconto', 0);
+    formData.append('lucro', 22.5);
     formData.append('imposto', 0);
     
     // Enviar via POST para o mesmo endpoint que adiciona produtos normais
@@ -4032,6 +4108,366 @@ function calcularDegrausOrcamento() {
     });
 }
 
+// ===== DEGRAU INJETADO ORÇAMENTO =====
+function carregarInterfaceDegrauInjetadoOrcamento() {
+    console.log('=== CARREGANDO INTERFACE DEGRAU INJETADO ORÇAMENTO ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'degrau_injetado_customizado', tipo: 'degrau_injetado' };
+    ultimoCalculo = null;
+    
+    // HTML da interface Degrau Injetado (exatamente como no MP)
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <h6 class="text-primary">Degrau Injetado</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            Cálculo de degraus usando grade injetada ao invés de perfil I. Fórmulas e componentes iguais aos degraus normais.
+        </p>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_nome" class="form-label">Nome do Degrau *</label>
+            <input type="text" class="form-control param-input" id="degrau_inj_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_grade" class="form-label">Grade Injetada *</label>
+            <select class="form-select param-input" id="degrau_inj_grade" name="grade_injetada" required>
+                <option value="">Selecione a grade injetada...</option>
+            </select>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="degrau_inj_largura" class="form-label">Largura (mm) *</label>
+                    <input type="number" class="form-control param-input" id="degrau_inj_largura" name="largura" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="degrau_inj_comprimento" class="form-label">Comprimento (mm) *</label>
+                    <input type="number" class="form-control param-input" id="degrau_inj_comprimento" name="comprimento" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-tools"></i> Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="degrau_inj_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" step="0.1" class="form-control param-input" id="degrau_inj_tempo_proc" name="tempo_proc" value="1.0" min="0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="degrau_inj_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="degrau_inj_tempo_mtg" name="tempo_mtg" step="0.1" value="1.5">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control param-input" id="degrau_inj_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-success" onclick="calcularDegrauInjetadoOrcamento()" id="calcularDegrauInjetadoBtn">
+                <i class="fas fa-calculator"></i> Calcular Degrau Injetado
+            </button>
+        </div>
+    `;
+    
+    // Carregar grades injetadas disponíveis
+    carregarGradesInjetadasOrcamento();
+    
+    console.log('Interface Degrau Injetado carregada');
+}
+
+function carregarGradesInjetadasOrcamento() {
+    console.log('=== CARREGANDO GRADES INJETADAS ORÇAMENTO ===');
+    
+    const selectGrade = document.getElementById('degrau_inj_grade');
+    if (!selectGrade) {
+        console.warn('Select de grade injetada para degrau não encontrado');
+        return;
+    }
+    
+    // Buscar grades injetadas via API
+    fetch('/api/produtos/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(produtos => {
+            console.log(`✅ ${produtos.length} produtos carregados, filtrando grades injetadas...`);
+            
+            // Filtrar grades injetadas
+            const gradesInjetadas = produtos.filter(produto => {
+                const desc = produto.descricao.toLowerCase();
+                return desc.includes('grade') && desc.includes('injetada');
+            });
+            
+            console.log(`🎯 ${gradesInjetadas.length} grades injetadas encontradas`);
+            
+            if (gradesInjetadas.length > 0) {
+                selectGrade.innerHTML = '<option value="">Selecione a grade injetada...</option>';
+                
+                gradesInjetadas.forEach(grade => {
+                    const option = document.createElement('option');
+                    option.value = grade.id;
+                    option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos / 100).toFixed(2)}`;
+                    selectGrade.appendChild(option);
+                });
+                
+                console.log(`✅ ${gradesInjetadas.length} grades carregadas no select`);
+            } else {
+                selectGrade.innerHTML = '<option value="">Nenhuma grade injetada encontrada</option>';
+                console.warn('⚠️ Nenhuma grade injetada encontrada');
+            }
+            
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar grades injetadas:', error);
+            selectGrade.innerHTML = '<option value="">Erro ao carregar</option>';
+        });
+}
+
+function calcularDegrauInjetadoOrcamento() {
+    console.log('=== CALCULANDO DEGRAU INJETADO ORÇAMENTO ===');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('degrau_inj_nome').value.trim();
+    const gradeId = parseInt(document.getElementById('degrau_inj_grade').value);
+    const largura = parseFloat(document.getElementById('degrau_inj_largura').value);
+    const comprimento = parseFloat(document.getElementById('degrau_inj_comprimento').value);
+    const tempoProc = parseFloat(document.getElementById('degrau_inj_tempo_proc').value || '1.0');
+    const tempoMtg = parseFloat(document.getElementById('degrau_inj_tempo_mtg').value || '1.5');
+    const percentualPerda = parseFloat(document.getElementById('degrau_inj_perda').value || '3.0');
+    
+    // Validação
+    if (!nome) {
+        alert('Por favor, preencha o nome do degrau injetado.');
+        return;
+    }
+    
+    if (!gradeId) {
+        alert('Por favor, selecione a grade injetada.');
+        return;
+    }
+    
+    if (!largura || largura <= 0) {
+        alert('Por favor, preencha uma largura válida.');
+        return;
+    }
+    
+    if (!comprimento || comprimento <= 0) {
+        alert('Por favor, preencha um comprimento válido.');
+        return;
+    }
+    
+    const dados = {
+        nome_degrau: nome,
+        grade_id: gradeId,
+        largura: largura,
+        comprimento: comprimento,
+        tempo_proc: tempoProc,
+        tempo_mtg: tempoMtg,
+        percentual_perda: percentualPerda,
+        quantidade: 1 // Sempre 1 unidade
+    };
+    
+    console.log('Dados coletados (Degrau Injetado):', dados);
+    
+    // Buscar produtos necessários dinamicamente (sem cola e chaveta)
+    Promise.all([
+        buscarProdutoPorId(dados.grade_id), // Grade injetada selecionada
+        buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\''), // Sempre perfil E para degrau injetado
+        buscarProdutoPorDescricao('PERFIL F 4"'), // Perfil F para grades 38mm
+        buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
+        buscarProdutoPorDescricao('PARAF-SXT-M6X60-AI304'),
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304')
+    ]).then(([gradeInjetada, perfilE, perfilF, tuboQuadrado, paraf40, paraf60, porca]) => {
+        
+        console.log('=== PRODUTOS ENCONTRADOS (DEGRAU INJETADO) ===');
+        console.log('Grade Injetada:', gradeInjetada);
+        console.log('Perfil E:', perfilE);
+        console.log('Perfil F:', perfilF);
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Parafusos:', { paraf40, paraf60, porca });
+        
+        // Verificar se é grade de 38mm (e NÃO de 25mm)
+        const isGrade38 = gradeInjetada.descricao && 
+                         gradeInjetada.descricao.toLowerCase().includes('38') && 
+                         !gradeInjetada.descricao.toLowerCase().includes('25');
+        
+        // Calcular dimensões e quantidades (igual aos degraus normais)
+        const areaDegrau = (dados.largura * dados.comprimento) / 1000000; // m²
+        const alturaFixa = 150; // Altura fixa de 150mm para degraus
+        const volumeDegrau = areaDegrau * (alturaFixa / 1000); // m³
+        
+        // Quantidades específicas para degrau injetado
+        const quantidadeParafusos40 = 4; // 4 parafusos M6X40 por degrau
+        const quantidadeParafusos60 = 4; // 4 parafusos M6X60 por degrau  
+        const quantidadePorcas = 8; // 8 porcas M6 por degrau
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Calcular custos individuais (com perda para materiais) - EXATAMENTE COMO NO MP
+        // Para grade injetada: usar área do degrau × custo/m² da grade
+        const custoGrade = (areaDegrau * gradeInjetada.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Perfil E (apenas para grades que NÃO são 38mm)
+        const custoPerfilE = !isGrade38 ? (2 * dados.largura * perfilE.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        
+        // Perfil F (apenas para grades 38mm)
+        const custoPerfilF = isGrade38 ? (2 * dados.largura * perfilF.custo_centavos / 1000 * dados.quantidade) * fatorPerda : 0;
+        
+        const custoTubo = ((dados.comprimento * 2) / 1000 * tuboQuadrado.custo_centavos * dados.quantidade) * fatorPerda; // Comprimento × 2
+        const custoParaf40 = (quantidadeParafusos40 * paraf40.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoParaf60 = (quantidadeParafusos60 * paraf60.custo_centavos * dados.quantidade) * fatorPerda;
+        const custoPorcas = (quantidadePorcas * porca.custo_centavos * dados.quantidade) * fatorPerda;
+        
+        // Total dos materiais (sem cola e travessa)
+        const custoTotalMateriaisCentavos = custoGrade + custoPerfilE + custoPerfilF + 
+                                          custoTubo + custoParaf40 + custoParaf60 + custoPorcas;
+        
+        // Calcular mão de obra (sem perda)
+        const valorHoraMO = 65.79; // R$/hora
+        const custoMaoObraTotal = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100 * dados.quantidade;
+        
+        // Custo total
+        const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+        
+        // Criar lista de componentes (EXATAMENTE COMO NO MP)
+        const componentes = [];
+        
+        // Adicionar componentes ao resultado - mesma ordem e lógica do MP
+        componentes.push({
+            nome: `${gradeInjetada.descricao} - ${areaDegrau.toFixed(4)}m²`,
+            quantidade: (areaDegrau * dados.quantidade).toFixed(4),
+            custo_unitario: gradeInjetada.custo_centavos,
+            custo_total: custoGrade,
+            unidade: 'm²',
+            descricao_produto: gradeInjetada.descricao
+        });
+        
+        // Perfil E (apenas para grades que NÃO são 38mm)
+        if (!isGrade38) {
+            const quantidadePerfilE = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+            componentes.push({
+                nome: `${perfilE.descricao} - ${quantidadePerfilE.toFixed(2)}m`,
+                quantidade: quantidadePerfilE.toFixed(2),
+                custo_unitario: perfilE.custo_centavos,
+                custo_total: custoPerfilE,
+                unidade: 'm',
+                descricao_produto: perfilE.descricao
+            });
+        }
+        
+        // Perfil F (apenas para grades 38mm)
+        if (isGrade38) {
+            const quantidadePerfilF = (2 * dados.largura / 1000) * dados.quantidade; // 2*Largura/1000
+            componentes.push({
+                nome: `${perfilF.descricao} - ${quantidadePerfilF.toFixed(2)}m`,
+                quantidade: quantidadePerfilF.toFixed(2),
+                custo_unitario: perfilF.custo_centavos,
+                custo_total: custoPerfilF,
+                unidade: 'm',
+                descricao_produto: perfilF.descricao
+            });
+        }
+        
+        // Tubo quadrado (comprimento × 2)
+        const quantidadeTubo = ((dados.comprimento * 2) / 1000) * dados.quantidade;
+        componentes.push({
+            nome: `${tuboQuadrado.descricao} - ${quantidadeTubo.toFixed(2)}m`,
+            quantidade: quantidadeTubo.toFixed(2),
+            custo_unitario: tuboQuadrado.custo_centavos,
+            custo_total: custoTubo,
+            unidade: 'm',
+            descricao_produto: tuboQuadrado.descricao
+        });
+        
+        componentes.push({
+            nome: `${paraf40.descricao}`,
+            quantidade: quantidadeParafusos40,
+            custo_unitario: paraf40.custo_centavos,
+            custo_total: custoParaf40,
+            unidade: 'unid',
+            descricao_produto: paraf40.descricao
+        });
+        
+        componentes.push({
+            nome: `${paraf60.descricao}`,
+            quantidade: quantidadeParafusos60,
+            custo_unitario: paraf60.custo_centavos,
+            custo_total: custoParaf60,
+            unidade: 'unid',
+            descricao_produto: paraf60.descricao
+        });
+        
+        componentes.push({
+            nome: `${porca.descricao}`,
+            quantidade: quantidadePorcas,
+            custo_unitario: porca.custo_centavos,
+            custo_total: custoPorcas,
+            unidade: 'unid',
+            descricao_produto: porca.descricao
+        });
+        
+        // Adicionar mão de obra se houver tempo definido
+        if (dados.tempo_proc > 0 || dados.tempo_mtg > 0) {
+            componentes.push({
+                nome: `Mão de Obra - PROC: ${dados.tempo_proc}h + MTG: ${dados.tempo_mtg}h`,
+                quantidade: (dados.tempo_proc + dados.tempo_mtg).toFixed(1),
+                custo_unitario: valorHoraMO * 100, // Converter para centavos
+                custo_total: custoMaoObraTotal,
+                unidade: 'h',
+                descricao_produto: 'Processamento/Montagem'
+            });
+        }
+        
+        // Criar resultado final
+        ultimoCalculo = {
+            nome: dados.nome_degrau,
+            categoria: 'ESTRUTURAS',
+            custo_total: custoTotalCentavos, // Manter em centavos como no MP
+            componentes: componentes,
+            dados_originais: dados
+        };
+        
+        // Mostrar componentes na tabela (função idêntica ao MP)
+        mostrarComponentesCalculados(ultimoCalculo.componentes);
+        
+        // Habilitar botão salvar (apenas se existir)
+        const salvarBtn = document.getElementById('salvarProdutoBtn');
+        if (salvarBtn) {
+            salvarBtn.disabled = false;
+        }
+        
+        console.log('✅ Cálculo de Degrau Injetado Orçamento concluído com sucesso');
+        console.log('Resultado final:', ultimoCalculo);
+    })
+    .catch(error => {
+        console.error('❌ Erro ao calcular degrau injetado:', error);
+        alert('Erro ao calcular degrau injetado: ' + error.message);
+    });
+}
+
 function recalcularComponenteOrcamento(index) {
     console.log('=== RECALCULAR COMPONENTE ORÇAMENTO ===');
     console.log('Índice do componente:', index);
@@ -4262,6 +4698,757 @@ async function buscarProdutoPorId(id) {
     }
 }
 
+// ===== GUARDA CORPO HORIZONTAL ORÇAMENTO =====
+function carregarInterfaceGuardaCorpoHorizontalOrcamento() {
+    console.log('=== CARREGANDO INTERFACE GUARDA CORPO HORIZONTAL ORÇAMENTO ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'guarda_corpo_horizontal_customizado', tipo: 'guarda_corpo_horizontal' };
+    ultimoCalculo = null;
+    
+    // HTML da interface Guarda Corpo Horizontal (igual ao MP)
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="gc_horiz_nome" class="form-label">Nome do Guarda Corpo *</label>
+            <input type="text" class="form-control param-input" id="gc_horiz_nome" name="nome_guarda_corpo" required>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_larg_modulo" class="form-label">Largura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_larg_modulo" name="larg_modulo" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_altura" class="form-label">Altura (m) *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_altura" name="altura" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_n_colunas" class="form-label">Nº Colunas *</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_n_colunas" name="n_colunas" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_horiz_n_br_intermediaria" class="form-label">Nº Brr. Intermed.*</label>
+                    <input type="number" class="form-control param-input" id="gc_horiz_n_br_intermediaria" name="n_br_intermediaria" min="0" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_tubo_quad" class="form-label">Tipo de Tubo Quadrado *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_tubo_quad" name="tipo_tubo_quad" required>
+                <option value="">Selecione o tipo de tubo quadrado...</option>
+                <option value="Tubo Quadrado 50 #6mm">Tubo Quadrado 50 #6mm</option>
+                <option value="Tubo Quadrado 50 #4mm">Tubo Quadrado 50 #4mm</option>
+                <option value="Tubo Quadrado 50 #3mm">Tubo Quadrado 50 #3mm</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_omega" class="form-label">Tipo de Ômega *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_omega" name="tipo_omega" required>
+                <option value="">Selecione o tipo de ômega...</option>
+                <option value="PERFIL OMEGA 45X20MM">PERFIL OMEGA 45X20MM</option>
+                <option value="Perfil ômega 50mm">Perfil ômega 50mm</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_tipo_sapata" class="form-label">Tipo de Sapata *</label>
+            <select class="form-select param-input" id="gc_horiz_tipo_sapata" name="tipo_sapata" required>
+                <option value="">Selecione o tipo de sapata...</option>
+                <option value="SAPATA LAMINADA">SAPATA LAMINADA</option>
+                <option value="SAPATA INOX 150#3MM">SAPATA INOX 150#3MM</option>
+            </select>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_horiz_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_horiz_tempo_proc" name="tempo_proc" step="0.1" value="2.0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gc_horiz_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="gc_horiz_tempo_mtg" name="tempo_mtg" step="0.1" value="3.0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="gc_horiz_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control param-input" id="gc_horiz_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-primary" onclick="calcularGuardaCorpoHorizontalOrcamento()" id="calcularGCHorizBtn">
+                <i class="fas fa-calculator"></i> Calcular Guarda Corpo Horizontal
+            </button>
+        </div>
+    `;
+    
+    console.log('Interface Guarda Corpo Horizontal carregada');
+}
+
+function calcularGuardaCorpoHorizontalOrcamento() {
+    console.log('=== CALCULANDO GUARDA CORPO HORIZONTAL ORÇAMENTO ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos (mesma lógica do MP)
+    const camposObrigatorios = [
+        'gc_horiz_nome', 'gc_horiz_larg_modulo', 'gc_horiz_altura', 
+        'gc_horiz_n_colunas', 'gc_horiz_n_br_intermediaria', 
+        'gc_horiz_tipo_tubo_quad', 'gc_horiz_tipo_omega', 'gc_horiz_tipo_sapata'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'gc_horiz_nome') {
+            dados.nome_guarda_corpo = valor;
+        } else {
+            const nomeLimpo = campo.replace('gc_horiz_', '');
+            if (['larg_modulo', 'altura'].includes(nomeLimpo)) {
+                dados[nomeLimpo] = parseFloat(valor);
+            } else if (['n_colunas', 'n_br_intermediaria'].includes(nomeLimpo)) {
+                dados[nomeLimpo] = parseFloat(valor); // Mudado de parseInt para parseFloat
+            } else {
+                dados[nomeLimpo] = valor;
+            }
+        }
+    });
+    
+    // Campos opcionais
+    dados.quantidade = 1; // Fixo em 1 unidade
+    dados.tempo_proc = parseFloat(document.getElementById('gc_horiz_tempo_proc')?.value || '2.0');
+    dados.tempo_mtg = parseFloat(document.getElementById('gc_horiz_tempo_mtg')?.value || '3.0');
+    dados.percentual_perda = parseFloat(document.getElementById('gc_horiz_perda')?.value || '3.0');
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+
+    console.log('Dados coletados (Guarda Corpo Horizontal):', dados);
+
+    // Buscar produtos necessários dinamicamente (mesma lógica do MP)
+    Promise.all([
+        buscarProdutoPorDescricao(dados.tipo_tubo_quad), // Tubo quadrado selecionado
+        buscarProdutoPorDescricao(dados.tipo_omega), // Perfil ômega selecionado
+        buscarProdutoPorDescricao(dados.tipo_sapata), // Sapata selecionada
+        buscarProdutoPorDescricao('Perfil Corrimão (s/ pintura) - Res. Poliéster'), // Corrimão fixo
+        buscarProdutoPorDescricao('Perfil Rodapé 200mm (s/ pintura) - Res. Poliéster'), // Rodapé fixo
+        buscarProdutoPorDescricao('PARAF-SXT-M6X70-AI304'),
+        buscarProdutoPorDescricao('POR-SXT-M6-AI304'),
+        buscarProdutoPorDescricao('PARAF-AA-PN-PH-4,8X19-AI304')
+    ]).then(([tuboQuadrado, perfilOmega, sapata, corrimao, rodape, paraf70, porca, parafAA]) => {
+        
+        console.log('=== PRODUTOS ENCONTRADOS (GUARDA CORPO - HORIZONTAL) ===');
+        console.log('Tubo Quadrado:', tuboQuadrado);
+        console.log('Perfil Ômega:', perfilOmega);
+        console.log('Sapata:', sapata);
+        console.log('Corrimão:', corrimao);
+        console.log('Rodapé:', rodape);
+        console.log('Parafusos:', { paraf70, porca, parafAA });
+
+        
+        // Aplicar fator de perda conforme definido no formulário
+        const fatorPerda = 1 + (dados.percentual_perda / 100);
+        
+        // Calcular quantidades baseadas nas especificações (MESMA LÓGICA DO MP)
+        const quantidadeTuboQuadrado = ( dados.n_colunas/dados.larg_modulo ) * dados.larg_modulo * dados.altura;
+        const metrosOmega = dados.n_br_intermediaria * dados.larg_modulo;
+        const metrosCorrimao = dados.larg_modulo;
+        const metrosRodape = dados.larg_modulo;
+        const quantidadeSapatas = dados.n_colunas * dados.quantidade;
+        const quantidadeParaf70 = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * 2;
+        const quantidadePorcas = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * 2;
+        const quantidadeParafAA = (dados.n_colunas / dados.larg_modulo) * dados.larg_modulo * (dados.n_br_intermediaria * 2 + 6);
+        
+        console.log('=== CÁLCULO GUARDA CORPO HORIZONTAL (MESMA LÓGICA MP) ===');
+        console.log(`Tubo Quadrado: ${quantidadeTuboQuadrado.toFixed(3)} m`);
+        console.log(`Perfil Ômega: ${metrosOmega.toFixed(3)} m`);
+        console.log(`Corrimão: ${metrosCorrimao.toFixed(3)} m`);
+        console.log(`Rodapé: ${metrosRodape.toFixed(3)} m`);
+        console.log(`Sapatas: ${quantidadeSapatas} unid`);
+        console.log(`Paraf M6x70: ${quantidadeParaf70.toFixed(0)} unid`);
+        console.log(`Porcas M6: ${quantidadePorcas.toFixed(0)} unid`);
+        console.log(`Paraf AA: ${quantidadeParafAA.toFixed(0)} unid`);
+        
+        // Calcular custos individuais (com perda para materiais) - MESMA LÓGICA DO MP
+        const custoTuboQuadrado = (quantidadeTuboQuadrado * tuboQuadrado.custo_centavos) * fatorPerda;
+        const custoPerfilOmega = (metrosOmega * perfilOmega.custo_centavos) * fatorPerda;
+        const custoCorrimao = (metrosCorrimao * corrimao.custo_centavos) * fatorPerda;
+        const custoRodape = (metrosRodape * rodape.custo_centavos) * fatorPerda;
+        const custoSapatas = (quantidadeSapatas * sapata.custo_centavos) * fatorPerda;
+        const custoParaf70 = (quantidadeParaf70 * paraf70.custo_centavos) * fatorPerda;
+        // VALOR FIXO: POR-SXT-M6-AI304 fixado em 41 centavos para Guarda Corpo
+        const custoPorcas = (quantidadePorcas * 41) * fatorPerda; // Valor fixo de 41 centavos
+        const custoParafAA = (quantidadeParafAA * parafAA.custo_centavos) * fatorPerda;
+        
+        // Total dos materiais
+        const custoTotalMateriaisCentavos = custoTuboQuadrado + custoPerfilOmega + custoCorrimao + custoRodape + custoSapatas + 
+                                          custoParaf70 + custoPorcas + custoParafAA;
+        
+        // Calcular mão de obra (sem perda)
+        const valorHoraMO = 65.79; // R$/hora
+        const custoMaoObraTotal = (dados.tempo_proc + dados.tempo_mtg) * valorHoraMO * 100 * dados.quantidade;
+        
+        // Custo total
+        const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
+        
+        // Criar componentes para o orçamento (mesma estrutura do MP)
+        const componentes = [];
+
+        // Adicionar componentes ao resultado
+        componentes.push({
+            nome: `${tuboQuadrado.descricao}`,
+            quantidade: quantidadeTuboQuadrado,
+            custo_unitario: tuboQuadrado.custo_centavos,
+            custo_total: custoTuboQuadrado,
+            unidade: 'm',
+            descricao_produto: tuboQuadrado.descricao
+        });
+        
+        componentes.push({
+            nome: `${perfilOmega.descricao}`,
+            quantidade: metrosOmega * dados.quantidade,
+            custo_unitario: perfilOmega.custo_centavos,
+            custo_total: custoPerfilOmega,
+            unidade: 'm',
+            descricao_produto: perfilOmega.descricao
+        });
+        
+        componentes.push({
+            nome: `${corrimao.descricao}`,
+            quantidade: metrosCorrimao * dados.quantidade,
+            custo_unitario: corrimao.custo_centavos,
+            custo_total: custoCorrimao,
+            unidade: 'm',
+            descricao_produto: corrimao.descricao
+        });
+        
+        componentes.push({
+            nome: `${rodape.descricao}`,
+            quantidade: metrosRodape * dados.quantidade,
+            custo_unitario: rodape.custo_centavos,
+            custo_total: custoRodape,
+            unidade: 'm',
+            descricao_produto: rodape.descricao
+        });
+
+        componentes.push({
+            nome: `${sapata.descricao}`,
+            quantidade: quantidadeSapatas,
+            custo_unitario: sapata.custo_centavos,
+            custo_total: custoSapatas,
+            unidade: 'unid',
+            descricao_produto: sapata.descricao
+        });
+
+        componentes.push({
+            nome: `${paraf70.descricao}`,
+            quantidade: quantidadeParaf70,
+            custo_unitario: paraf70.custo_centavos,
+            custo_total: custoParaf70,
+            unidade: 'unid',
+            descricao_produto: paraf70.descricao
+        });
+
+        componentes.push({
+            nome: `${porca.descricao}`,
+            quantidade: quantidadePorcas,
+            custo_unitario: 41, // Valor fixo de 41 centavos para GC
+            custo_total: custoPorcas,
+            unidade: 'unid',
+            descricao_produto: porca.descricao
+        });
+
+        componentes.push({
+            nome: `${parafAA.descricao}`,
+            quantidade: quantidadeParafAA,
+            custo_unitario: parafAA.custo_centavos,
+            custo_total: custoParafAA,
+            unidade: 'unid',
+            descricao_produto: parafAA.descricao
+        });
+        
+        // Adicionar mão de obra se houver
+        if (custoMaoObraTotal > 0) {
+            const maoObraDescricao = `Processamento/Montagem - ${dados.tempo_proc + dados.tempo_mtg}h`;
+            componentes.push({
+                nome: maoObraDescricao,
+                quantidade: (dados.tempo_proc + dados.tempo_mtg) * dados.quantidade,
+                custo_unitario: valorHoraMO * 100,
+                custo_total: custoMaoObraTotal,
+                unidade: 'h',
+                descricao_produto: maoObraDescricao
+            });
+        }
+
+            // Salvar resultado
+            ultimoCalculo = {
+                nome: dados.nome_guarda_corpo,
+                categoria: 'ESTRUTURAS',
+                tipo_calculo: 'guarda_corpo_horizontal',
+                custo_total: custoTotalCentavos,
+                componentes: componentes,
+                parametros: dados
+            };
+
+            console.log('=== RESULTADO FINAL (GUARDA CORPO HORIZONTAL ORÇAMENTO) ===');
+            console.log('Nome:', ultimoCalculo.nome);
+            console.log('Custo Total: R$', (custoTotalCentavos/100).toFixed(2));
+            console.log('Componentes:', ultimoCalculo.componentes.length);
+
+            // Atualizar tabela de componentes na interface
+            mostrarComponentesCalculados(componentes);
+
+            // Habilitar botões
+            verificarEHabilitarBotoes();
+
+            console.log('✅ Cálculo de guarda corpo horizontal concluído (mesma lógica do MP)');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao calcular guarda corpo horizontal:', error);
+            alert('Erro no cálculo: ' + error.message);
+        });
+}
+
+// ===== GUARDA CORPO VERTICAL ORÇAMENTO =====
+function carregarInterfaceGuardaCorpoVerticalOrcamento() {
+    console.log('=== CARREGANDO INTERFACE GUARDA CORPO VERTICAL ORÇAMENTO ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'guarda_corpo_vertical_customizado', tipo: 'guarda_corpo_vertical' };
+    ultimoCalculo = null;
+    
+    // HTML da interface Guarda Corpo Vertical (exatamente como no MP)
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <h6 class="text-primary">Guarda Corpo - Vertical</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        
+        <div class="mb-3">
+            <label for="gc_vert_nome" class="form-label">Nome do Guarda Corpo *</label>
+            <input type="text" class="form-control" id="gc_vert_nome" name="nome_guarda_corpo" placeholder="Ex: Guarda Corpo Vertical 2m x 1.2m" required>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_larg_modulo" class="form-label">Largura (m) *</label>
+                    <input type="number" class="form-control" id="gc_vert_larg_modulo" name="larg_modulo" step="0.01" placeholder="Ex: 2.0" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_altura" class="form-label">Altura (m) *</label>
+                    <input type="number" class="form-control" id="gc_vert_altura" name="altura" step="0.01" placeholder="Ex: 1.2" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_n_colunas" class="form-label">Número de Colunas *</label>
+                    <input type="number" class="form-control" id="gc_vert_n_colunas" name="n_colunas" min="1" placeholder="Ex: 3" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_vao_livre" class="form-label">Vão Livre (m)</label>
+                    <input type="number" class="form-control" id="gc_vert_vao_livre" name="vao_livre" step="0.01" placeholder="Ex: 1.5">
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_vao" class="form-label">Vão (m)</label>
+                    <input type="number" class="form-control" id="gc_vert_vao" name="vao" step="0.01" placeholder="Ex: 2.0">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_tipo_tubo_redondo" class="form-label">Tipo Tubo Redondo</label>
+                    <select class="form-select" id="gc_vert_tipo_tubo_redondo" name="tipo_tubo_redondo">
+                        <option value="">Nenhum</option>
+                        <option value="32mm">Tubo Redondo 32mm</option>
+                        <option value="38mm">Tubo Redondo 38mm</option>
+                        <option value="42mm">Tubo Redondo 42mm</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_tipo_tubo_quad" class="form-label">Tipo Tubo Quadrado *</label>
+                    <select class="form-select" id="gc_vert_tipo_tubo_quad" name="tipo_tubo_quad" required>
+                        <option value="">Selecione...</option>
+                        <option value="25x25x2">Tubo 25x25x2mm</option>
+                        <option value="30x30x2">Tubo 30x30x2mm</option>
+                        <option value="40x40x3">Tubo 40x40x3mm</option>
+                        <option value="50x50x3">Tubo 50x50x3mm</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_tipo_sapata" class="form-label">Tipo Sapata *</label>
+                    <select class="form-select" id="gc_vert_tipo_sapata" name="tipo_sapata" required>
+                        <option value="">Selecione...</option>
+                        <option value="P50">Sapata P50</option>
+                        <option value="P60">Sapata P60</option>
+                        <option value="P80">Sapata P80</option>
+                        <option value="P100">Sapata P100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                    <input type="number" class="form-control" id="gc_vert_tempo_proc" name="tempo_proc" step="0.1" value="2.0" placeholder="2.0">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="gc_vert_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                    <input type="number" class="form-control" id="gc_vert_tempo_mtg" name="tempo_mtg" step="0.1" value="3.0" placeholder="3.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="gc_vert_perda" class="form-label">Perda (%)</label>
+            <input type="number" class="form-control" id="gc_vert_perda" name="percentual_perda" step="0.1" value="3.0" min="0" placeholder="3.0">
+        </div>
+
+        <div class="mt-3 text-center">
+            <button type="button" class="btn btn-primary" onclick="calcularGuardaCorpoVerticalOrcamento()" id="calcularGCVertBtn">
+                <i class="fas fa-calculator"></i> Calcular Guarda Corpo Vertical
+            </button>
+        </div>
+    `;
+    
+    console.log('Interface Guarda Corpo Vertical carregada');
+}
+
+function calcularGuardaCorpoVerticalOrcamento() {
+    console.log('=== CALCULANDO GUARDA CORPO VERTICAL ORÇAMENTO ===');
+    
+    // Coletar dados do formulário
+    const nome = document.getElementById('gc_vert_nome').value.trim();
+    const largModulo = parseFloat(document.getElementById('gc_vert_larg_modulo').value);
+    const altura = parseFloat(document.getElementById('gc_vert_altura').value);
+    const nColunas = parseInt(document.getElementById('gc_vert_n_colunas').value);
+    const tipoTuboQuad = document.getElementById('gc_vert_tipo_tubo_quad').value;
+    const tipoSapata = document.getElementById('gc_vert_tipo_sapata').value;
+    const vaoLivre = parseFloat(document.getElementById('gc_vert_vao_livre').value || '0');
+    const vao = parseFloat(document.getElementById('gc_vert_vao').value || '0');
+    const tipoTuboRedondo = document.getElementById('gc_vert_tipo_tubo_redondo').value || '';
+    const tempoProc = parseFloat(document.getElementById('gc_vert_tempo_proc').value || '2.0');
+    const tempoMtg = parseFloat(document.getElementById('gc_vert_tempo_mtg').value || '3.0');
+    const percentualPerda = parseFloat(document.getElementById('gc_vert_perda').value || '3.0');
+
+    // Validações
+    if (!nome) {
+        alert('Por favor, preencha o nome do guarda corpo.');
+        return;
+    }
+
+    if (!largModulo || largModulo <= 0) {
+        alert('Por favor, preencha uma largura válida.');
+        return;
+    }
+
+    if (!altura || altura <= 0) {
+        alert('Por favor, preencha uma altura válida.');
+        return;
+    }
+
+    if (!nColunas || nColunas <= 0) {
+        alert('Por favor, preencha o número de colunas.');
+        return;
+    }
+
+    if (!tipoTuboQuad) {
+        alert('Por favor, selecione o tipo de tubo quadrado.');
+        return;
+    }
+
+    if (!tipoSapata) {
+        alert('Por favor, selecione o tipo de sapata.');
+        return;
+    }
+
+    const dados = {
+        nome_guarda_corpo: nome,
+        larg_modulo: largModulo,
+        altura: altura,
+        n_colunas: nColunas,
+        tipo_tubo_quad: tipoTuboQuad,
+        tipo_sapata: tipoSapata,
+        vao_livre: vaoLivre,
+        vao: vao,
+        tipo_tubo_redondo: tipoTuboRedondo,
+        tempo_proc: tempoProc,
+        tempo_mtg: tempoMtg,
+        percentual_perda: percentualPerda,
+        quantidade: 1 // Sempre 1 unidade
+    };
+
+    console.log('Dados coletados (Guarda Corpo Vertical):', dados);
+
+    // Buscar produtos necessários dinamicamente (baseado na lógica do MP)
+    fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            console.log('✅ Produtos carregados da base');
+            
+            // Encontrar produtos específicos baseado no tipo selecionado
+            const tuboQuadrado = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('tubo') &&
+                p.descricao.toLowerCase().includes('quadrado') &&
+                p.descricao.toLowerCase().includes(tipoTuboQuad.replace('x', 'x'))
+            );
+
+            const sapata = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('sapata') &&
+                p.descricao.toLowerCase().includes(tipoSapata.toLowerCase())
+            );
+
+            // Produtos fixos
+            const paraf70 = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('paraf') &&
+                p.descricao.toLowerCase().includes('m8x70')
+            );
+
+            const porca = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('porca') &&
+                p.descricao.toLowerCase().includes('m8')
+            );
+
+            const parafAA = produtos.find(p => 
+                p.descricao && 
+                p.descricao.toLowerCase().includes('paraf') &&
+                p.descricao.toLowerCase().includes('aa') &&
+                p.descricao.toLowerCase().includes('m6x25')
+            );
+
+            // Verificar se produtos foram encontrados
+            if (!tuboQuadrado) {
+                throw new Error(`Tubo quadrado ${tipoTuboQuad} não encontrado no banco`);
+            }
+            if (!sapata) {
+                throw new Error(`Sapata ${tipoSapata} não encontrada no banco`);
+            }
+            if (!paraf70) {
+                throw new Error('Parafuso M8X70 não encontrado no banco');
+            }
+            if (!porca) {
+                throw new Error('Porca M8 não encontrada no banco');
+            }
+            if (!parafAA) {
+                throw new Error('Parafuso AA M6X25 não encontrado no banco');
+            }
+
+            console.log('=== PRODUTOS ENCONTRADOS (GUARDA CORPO VERTICAL) ===');
+            console.log('Tubo Quadrado:', tuboQuadrado);
+            console.log('Sapata:', sapata);
+            console.log('Parafusos e Porcas:', { paraf70, porca, parafAA });
+
+            // Cálculos das quantidades (baseado na lógica do MP)
+            const metrosTuboQuadrado = (largModulo * 2) + (altura * nColunas);
+            const quantidadeSapatas = nColunas;
+            const quantidadeParaf70 = nColunas * 4; // 4 parafusos por coluna
+            const quantidadePorcas = quantidadeParaf70;
+            const quantidadeParafAA = nColunas * 8; // 8 parafusos AA por coluna
+
+            // Buscar tubo redondo se especificado
+            let tuboRedondo = null;
+            let metrosTuboRedondo = 0;
+            if (tipoTuboRedondo) {
+                tuboRedondo = produtos.find(p => 
+                    p.descricao && 
+                    p.descricao.toLowerCase().includes('tubo') &&
+                    p.descricao.toLowerCase().includes('redondo') &&
+                    p.descricao.toLowerCase().includes(tipoTuboRedondo.replace('mm', ''))
+                );
+                if (tuboRedondo) {
+                    metrosTuboRedondo = largModulo; // 1 metro por largura
+                }
+            }
+
+            // Calcular custos
+            const custoTuboQuadrado = Math.round(metrosTuboQuadrado * tuboQuadrado.custo_centavos);
+            const custoSapatas = Math.round(quantidadeSapatas * sapata.custo_centavos);
+            const custoParaf70 = Math.round(quantidadeParaf70 * paraf70.custo_centavos);
+            const custoPorcas = Math.round(quantidadePorcas * porca.custo_centavos);
+            const custoParafAA = Math.round(quantidadeParafAA * parafAA.custo_centavos);
+            const custoTuboRedondo = tuboRedondo ? Math.round(metrosTuboRedondo * tuboRedondo.custo_centavos) : 0;
+
+            // Mão de obra
+            const valorHoraMO = 65.79; // R$ 65,79 por hora
+            const custoMaoObraProcessamento = Math.round(tempoProc * valorHoraMO * 100);
+            const custoMaoObraMontagem = Math.round(tempoMtg * valorHoraMO * 100);
+
+            // Custo total
+            let custoTotal = custoTuboQuadrado + custoSapatas + custoParaf70 + custoPorcas + custoParafAA + custoTuboRedondo + custoMaoObraProcessamento + custoMaoObraMontagem;
+
+            // Aplicar perda
+            const custoComPerda = Math.round(custoTotal * (1 + percentualPerda / 100));
+
+            const componentes = [];
+
+            // Adicionar componentes
+            componentes.push({
+                nome: `${tuboQuadrado.descricao}`,
+                quantidade: metrosTuboQuadrado.toFixed(2),
+                custo_unitario: tuboQuadrado.custo_centavos,
+                custo_total: custoTuboQuadrado,
+                unidade: 'm',
+                descricao_produto: tuboQuadrado.descricao
+            });
+
+            componentes.push({
+                nome: `${sapata.descricao}`,
+                quantidade: quantidadeSapatas,
+                custo_unitario: sapata.custo_centavos,
+                custo_total: custoSapatas,
+                unidade: 'unid',
+                descricao_produto: sapata.descricao
+            });
+
+            componentes.push({
+                nome: `${paraf70.descricao}`,
+                quantidade: quantidadeParaf70,
+                custo_unitario: paraf70.custo_centavos,
+                custo_total: custoParaf70,
+                unidade: 'unid',
+                descricao_produto: paraf70.descricao
+            });
+
+            componentes.push({
+                nome: `${porca.descricao}`,
+                quantidade: quantidadePorcas,
+                custo_unitario: porca.custo_centavos,
+                custo_total: custoPorcas,
+                unidade: 'unid',
+                descricao_produto: porca.descricao
+            });
+
+            componentes.push({
+                nome: `${parafAA.descricao}`,
+                quantidade: quantidadeParafAA,
+                custo_unitario: parafAA.custo_centavos,
+                custo_total: custoParafAA,
+                unidade: 'unid',
+                descricao_produto: parafAA.descricao
+            });
+
+            if (tuboRedondo && metrosTuboRedondo > 0) {
+                componentes.push({
+                    nome: `${tuboRedondo.descricao}`,
+                    quantidade: metrosTuboRedondo.toFixed(2),
+                    custo_unitario: tuboRedondo.custo_centavos,
+                    custo_total: custoTuboRedondo,
+                    unidade: 'm',
+                    descricao_produto: tuboRedondo.descricao
+                });
+            }
+
+            // Adicionar mão de obra se houver tempo definido
+            if (tempoProc > 0) {
+                componentes.push({
+                    nome: `Mão de Obra - Processamento (${tempoProc}h)`,
+                    quantidade: tempoProc.toFixed(1),
+                    custo_unitario: valorHoraMO * 100,
+                    custo_total: custoMaoObraProcessamento,
+                    unidade: 'h',
+                    descricao_produto: 'Mão de obra de processamento'
+                });
+            }
+
+            if (tempoMtg > 0) {
+                componentes.push({
+                    nome: `Mão de Obra - Montagem (${tempoMtg}h)`,
+                    quantidade: tempoMtg.toFixed(1),
+                    custo_unitario: valorHoraMO * 100,
+                    custo_total: custoMaoObraMontagem,
+                    unidade: 'h',
+                    descricao_produto: 'Mão de obra de montagem'
+                });
+            }
+
+            // Salvar resultado
+            ultimoCalculo = {
+                nome: nome,
+                categoria: 'ESTRUTURAS',
+                tipo_calculo: 'guarda_corpo_vertical',
+                custo_total: custoComPerda,
+                componentes: componentes,
+                parametros: dados
+            };
+
+            console.log('=== RESULTADO FINAL (GUARDA CORPO VERTICAL) ===');
+            console.log('Nome:', ultimoCalculo.nome);
+            console.log('Custo Total: R$', (custoComPerda/100).toFixed(2));
+            console.log('Componentes:', ultimoCalculo.componentes.length);
+
+            // Atualizar tabela de componentes na interface
+            mostrarComponentesCalculados(componentes);
+
+            // Habilitar botões
+            verificarEHabilitarBotoes();
+
+            console.log('✅ Cálculo de guarda corpo vertical concluído');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao calcular guarda corpo vertical:', error);
+            alert('Erro ao calcular guarda corpo vertical: ' + error.message);
+        });
+}
+
 // Verificação de integridade das funções principais
 console.log('=== VERIFICAÇÃO DE INTEGRIDADE JAVASCRIPT ===');
 console.log('✅ openProdutoParametrizadoModal:', typeof openProdutoParametrizadoModal);
@@ -4277,6 +5464,155 @@ try {
 } catch (error) {
     console.error('❌ Erro ao expor função no window:', error);
 }
+
+// Função para aplicar lucro padrão se for zero
+function aplicarLucroSeZero(input) {
+    const lucroAtual = parseFloat(input.value) || 0;
+    if (lucroAtual === 0) {
+        input.value = 22.5;
+        atualizarLucroItem(input);
+    }
+}
+
+// Função para confirmar exclusão de item
+function confirmarExclusao(itemId, descricao) {
+    if (confirm(`Tem certeza que deseja excluir o item "${descricao}"?\n\nEsta ação não pode ser desfeita.`)) {
+        excluirItem(itemId);
+    }
+}
+
+// Event listener para botões de exclusão
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-excluir').forEach(button => {
+        button.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            const descricao = this.getAttribute('data-item-descricao');
+            confirmarExclusao(itemId, descricao);
+        });
+    });
+});
+
+// Função para excluir item
+function excluirItem(itemId) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('delete_item_id', itemId);
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Recarregar a página para atualizar a tabela
+            window.location.reload();
+        } else {
+            alert('Erro ao excluir o item. Tente novamente.');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição:', error);
+        alert('Erro de conexão ao excluir o item');
+    });
+}
+
+// Função para atualizar lucro do item em tempo real
+function atualizarLucroItem(input) {
+    const itemId = input.dataset.itemId;
+    const custoUnitario = parseFloat(input.dataset.custo);
+    const quantidade = parseFloat(input.dataset.quantidade);
+    const impostoItem = parseFloat(input.dataset.imposto);
+    const lucroPercentual = parseFloat(input.value) || 0;
+    
+    // Calcular valores
+    const valorLucroUnitario = custoUnitario * (lucroPercentual / 100);
+    const valorVendaUnitario = custoUnitario + valorLucroUnitario;
+    const valorLucroTotal = valorLucroUnitario * quantidade;
+    const valorBruto = valorVendaUnitario * quantidade;
+    const valorTotal = valorBruto + impostoItem;
+    
+    // Atualizar displays
+    document.getElementById(`lucro-valor-${itemId}`).textContent = valorLucroTotal.toFixed(2);
+    document.getElementById(`total-${itemId}`).textContent = valorTotal.toFixed(2);
+    
+    // Enviar atualização para o servidor
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('edit_item_id', itemId);
+    formData.append('lucro', lucroPercentual);
+    formData.append('ajax_update', 'true');
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Lucro atualizado com sucesso');
+            // Atualizar totais se fornecidos
+            if (data.total_lucro) {
+                const totalLucroElement = document.querySelector('.card-text.fw-bold.text-success');
+                if (totalLucroElement) {
+                    totalLucroElement.textContent = `R$ ${data.total_lucro}`;
+                }
+            }
+        } else {
+            console.error('❌ Erro ao atualizar lucro:', data.error);
+            alert('Erro ao atualizar lucro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição:', error);
+        alert('Erro de conexão ao atualizar lucro');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Função para calcular percentual de lucro correto nos campos existentes
+function calcularPercentuaisLucro() {
+    document.querySelectorAll('.lucro-input').forEach(input => {
+        const lucroValor = parseFloat(input.dataset.lucroValor) || 0;
+        const custo = parseFloat(input.dataset.custo) || 0;
+        const quantidade = parseFloat(input.dataset.quantidade) || 1;
+        
+        if (custo > 0 && lucroValor > 0) {
+            // Calcular percentual: (lucro_total / quantidade) / custo * 100
+            const lucroUnitario = lucroValor / quantidade;
+            const percentual = (lucroUnitario / custo) * 100;
+            input.value = percentual.toFixed(1);
+            
+            console.log(`Item ${input.dataset.itemId}: Lucro Total=${lucroValor}, Custo=${custo}, Qtd=${quantidade}, Percentual=${percentual.toFixed(1)}%`);
+        } else {
+            input.value = 22.5;
+        }
+    });
+}
+
+// Executar quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    calcularPercentuaisLucro();
+});
 
 </script>
 </body>

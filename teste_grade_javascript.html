@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Função calcularGrade</title>
+</head>
+<body>
+    <h1>Teste da Função calcularGrade</h1>
+    
+    <!-- Campos de entrada -->
+    <input type="text" id="grade_nome" name="nome_grade" value="GRADE TESTE 40x40">
+    <input type="number" id="grade_vao" name="vao" value="400">
+    <input type="number" id="grade_comprimento" name="comprimento" value="1000">
+    <input type="number" id="grade_eixo_i" name="eixo_i" value="40">
+    <select id="grade_perfil" name="perfil_id">
+        <option value="1328">I25mm (s/ pintura) - Res. Poliéster</option>
+    </select>
+    <input type="number" id="grade_perda" value="3">
+    <input type="number" id="grade_tempo_proc" value="1.5">
+    <input type="number" id="grade_tempo_mtg" value="0.5">
+    
+    <!-- Elementos de resultado -->
+    <div id="resultadoCalculado" style="display:none">
+        <p>Nome: <span id="nomeProdutoCalculado"></span></p>
+        <p>Custo: <span id="custoTotalCalculado"></span></p>
+        <p>Peso: <span id="pesoTotalCalculado"></span></p>
+    </div>
+    
+    <table id="componentesCalculadosTable"></table>
+    <button id="salvarProdutoBtn" disabled>Salvar</button>
+    
+    <button onclick="testarCalculo()">Testar Cálculo</button>
+    
+    <script>
+        let ultimoCalculo = null;
+        
+        function testarCalculo() {
+            console.log('=== TESTE DA FUNÇÃO calcularGrade ===');
+            
+            // Simular dados de produtos (mesmos do backend)
+            const produtos = [
+                {
+                    id: 1328,
+                    descricao: "I25mm (s/ pintura) - Res. Poliéster",
+                    custo_centavos: 648,
+                    peso_und: 0.497
+                },
+                {
+                    id: 1332,
+                    descricao: "Perfil Chaveta (s/ pintura) - Res. Poliéster",
+                    custo_centavos: 212,
+                    peso_und: 0.129
+                },
+                {
+                    id: 1183,
+                    descricao: "COLA ESTRUTURAL",
+                    custo_centavos: 8685,
+                    peso_und: 1.000
+                }
+            ];
+            
+            // Simular fetch substituindo por dados diretos
+            window.fetch = function(url) {
+                if (url === '/api/produtos/') {
+                    return Promise.resolve({
+                        json: () => Promise.resolve(produtos)
+                    });
+                }
+                return Promise.reject('URL não simulada');
+            };
+            
+            // Chamar a função
+            calcularGrade();
+        }
+        
+        function preencherTabelaComponentesGrade(resultado) {
+            console.log('Preenchendo tabela com:', resultado);
+        }
+        
+        // Copiar função calcularGrade do mp.html
+        function calcularGrade() {
+            console.log('=== CALCULANDO GRADE ===');
+            
+            // Verificar se todos os campos obrigatórios estão preenchidos
+            const camposObrigatorios = [
+                'grade_nome', 'grade_vao', 'grade_comprimento', 'grade_eixo_i', 'grade_perfil'
+            ];
+            
+            let todosCamposPreenchidos = true;
+            const dados = {};
+            
+            camposObrigatorios.forEach(campo => {
+                const elemento = document.getElementById(campo);
+                if (!elemento || !elemento.value.trim()) {
+                    todosCamposPreenchidos = false;
+                    console.warn(`Campo ${campo} não preenchido`);
+                    return;
+                }
+                
+                const valor = elemento.value.trim();
+                if (campo === 'grade_nome') {
+                    dados[elemento.name] = valor;
+                } else {
+                    dados[elemento.name] = parseFloat(valor) || 0;
+                }
+            });
+            
+            if (!todosCamposPreenchidos) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Coletar dados opcionais
+            const perdaElement = document.getElementById('grade_perda');
+            dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 3) : 3;
+            
+            const tempoProc = document.getElementById('grade_tempo_proc');
+            dados.tempo_proc = tempoProc ? (parseFloat(tempoProc.value) || 1.5) : 1.5;
+            
+            const tempoMtg = document.getElementById('grade_tempo_mtg');  
+            dados.tempo_mtg = tempoMtg ? (parseFloat(tempoMtg.value) || 0.5) : 0.5;
+            
+            console.log('Dados coletados:', dados);
+            console.log('DEBUG - Campos dos dados:', Object.keys(dados));
+            console.log('DEBUG - dados.perfil_id:', dados.perfil_id);
+            console.log('DEBUG - dados.nome_grade:', dados.nome_grade);
+            console.log('DEBUG - dados.vao:', dados.vao);
+            console.log('DEBUG - dados.comprimento:', dados.comprimento);
+            console.log('DEBUG - dados.eixo_i:', dados.eixo_i);
+            
+            // Buscar dados dos produtos
+            fetch('/api/produtos/')
+                .then(response => response.json())
+                .then(produtos => {
+                    console.log('✅ Produtos carregados da base');
+                    console.log('DEBUG - Total de produtos:', produtos.length);
+                    
+                    // Encontrar o perfil selecionado
+                    console.log('DEBUG - Procurando perfil com ID:', dados.perfil_id);
+                    const perfilSelecionado = produtos.find(p => p.id == dados.perfil_id);
+                    console.log('DEBUG - Perfil encontrado:', perfilSelecionado);
+                    if (!perfilSelecionado) {
+                        throw new Error(`Perfil ID ${dados.perfil_id} não encontrado`);
+                    }
+                    
+                    // Encontrar a chaveta (ID fixo 1332)
+                    const chaveta = produtos.find(p => p.id == 1332);
+                    if (!chaveta) {
+                        throw new Error('Perfil Chaveta (ID 1332) não encontrado no banco');
+                    }
+                    
+                    // Encontrar a cola (ID fixo 1183)
+                    const cola = produtos.find(p => p.id == 1183);
+                    if (!cola) {
+                        throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
+                    }
+                    
+                    console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
+                    console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m`);
+                    console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
+                    
+                    // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
+                    const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
+                    
+                    console.log(`Fórmula: (${dados.comprimento}/${dados.eixo_i}) * (${dados.vao}/1000) = ${metrosLinearesPorM2}`);
+                    
+                    // Calcular para o perfil
+                    const pesoPerfilKg = metrosLinearesPorM2 * perfilSelecionado.peso_und;
+                    const custoPerfilCentavos = metrosLinearesPorM2 * perfilSelecionado.custo_centavos;
+                    
+                    console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(2)}/m²`);
+                    
+                    alert(`Teste concluído! Metros lineares/m²: ${metrosLinearesPorM2.toFixed(4)}`);
+                })
+                .catch(error => {
+                    console.error('❌ Erro no cálculo:', error);
+                    alert('Erro no cálculo: ' + error.message);
+                });
+        }
+    </script>
+</body>
+</html>

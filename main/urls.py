@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from . import views_pdf
 
 
 router = DefaultRouter()
@@ -26,5 +27,7 @@ urlpatterns = [
     path('api/calcular-produto-parametrizado/', views.calcular_produto_parametrizado, name='calcular_produto_parametrizado_api'),
     path('api/tipos-resina/', views.tipos_resina, name='tipos_resina'),
     path('api/mao-obra/', views.mao_obra_lista, name='mao_obra_lista'),
+    path('orcamento/<int:orcamento_id>/pdf/', views_pdf.gerar_pdf_orcamento, name='gerar_pdf_orcamento'),
+    path('orcamento/<int:orcamento_id>/preview/', views_pdf.preview_pdf_orcamento, name='preview_pdf_orcamento'),
     path('api/', include(router.urls)),
 ]

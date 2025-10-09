@@ -2150,31 +2150,35 @@ function calcularGrade() {
         return;
     }
     
-    // Coletar dados opcionais de perda e mão de obra
+    // Coletar dados opcionais
     const perdaElement = document.getElementById('grade_perda');
-    dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 5) : 5;
+    dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 3) : 3;
     
-    const tempoProc = document.getElementById('tampa_tempo_proc');
+    const tempoProc = document.getElementById('grade_tempo_proc');
     dados.tempo_proc = tempoProc ? (parseFloat(tempoProc.value) || 1.5) : 1.5;
     
-    const tempoMtg = document.getElementById('tampa_tempo_mtg');  
+    const tempoMtg = document.getElementById('grade_tempo_mtg');  
     dados.tempo_mtg = tempoMtg ? (parseFloat(tempoMtg.value) || 0.5) : 0.5;
     
-    // Usar sempre MÃO DE OBRA Processamento/Montagem (ID 2) 
-    dados.mao_obra_id = 2;
-    
     console.log('Dados coletados:', dados);
+    console.log('DEBUG - Campos dos dados:', Object.keys(dados));
+    console.log('DEBUG - dados.perfil_id:', dados.perfil_id);
+    console.log('DEBUG - dados.nome_grade:', dados.nome_grade);
+    console.log('DEBUG - dados.vao:', dados.vao);
+    console.log('DEBUG - dados.comprimento:', dados.comprimento);
+    console.log('DEBUG - dados.eixo_i:', dados.eixo_i);
     
-    // Buscar dados do perfil selecionado
-    console.log('🔍 Buscando dados do perfil selecionado...');
-    
+    // Buscar dados dos produtos
     fetch('/api/produtos/')
         .then(response => response.json())
         .then(produtos => {
             console.log('✅ Produtos carregados da base');
+            console.log('DEBUG - Total de produtos:', produtos.length);
             
             // Encontrar o perfil selecionado
+            console.log('DEBUG - Procurando perfil com ID:', dados.perfil_id);
             const perfilSelecionado = produtos.find(p => p.id == dados.perfil_id);
+            console.log('DEBUG - Perfil encontrado:', perfilSelecionado);
             if (!perfilSelecionado) {
                 throw new Error(`Perfil ID ${dados.perfil_id} não encontrado`);
             }
@@ -2202,67 +2206,48 @@ function calcularGrade() {
             }
             
             console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
-            console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m`);
+            console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m (tipo: ${typeof perfilSelecionado.peso_und})`);
             console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
             
             console.log(`🔧 Chaveta incluída: ${chaveta.descricao}`);
-            console.log(`   • Peso: ${chaveta.peso_und} kg/m`);
+            console.log(`   • Peso: ${chaveta.peso_und} kg/m (tipo: ${typeof chaveta.peso_und})`);
             console.log(`   • Custo: R$ ${(chaveta.custo_centavos/100).toFixed(2)}/m`);
             
             console.log(`🧴 Cola incluída: ${cola.descricao}`);
-            console.log(`   • Peso: ${cola.peso_und} kg/unid`);
+            console.log(`   • Peso: ${cola.peso_und} kg/unid (tipo: ${typeof cola.peso_und})`);
             console.log(`   • Custo: R$ ${(cola.custo_centavos/100).toFixed(2)}/unid`);
             
             // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
             const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
             
-            // Calcular para o perfil
-            const pesoPerfilKg = metrosLinearesPorM2 * perfilSelecionado.peso_und;
+            // Calcular para o perfil - CONVERTER STRINGS PARA NÚMEROS
+            const pesoPerfilKg = metrosLinearesPorM2 * parseFloat(perfilSelecionado.peso_und);
             const custoPerfilCentavos = metrosLinearesPorM2 * perfilSelecionado.custo_centavos;
             
             // Calcular para a chaveta - FÓRMULA ESPECÍFICA: vão / 150 * 2 * preço do perfil
             const quantidadeChaveta = (dados.vao / 150) * 2;
-            const pesoChaveta = quantidadeChaveta * chaveta.peso_und;
+            const pesoChaveta = quantidadeChaveta * parseFloat(chaveta.peso_und);
             const custoChaveta = quantidadeChaveta * chaveta.custo_centavos;
             
             // Calcular para a cola - FÓRMULA: quantidade fixa 0.06 unid/m²
             const quantidadeCola = 0.06; // Quantidade fixa
-            const pesoCola = quantidadeCola * cola.peso_und;
+            const pesoCola = quantidadeCola * parseFloat(cola.peso_und);
             const custoCola = quantidadeCola * cola.custo_centavos;
             
-            // Aplicar perda APENAS aos custos dos materiais (individualmente)
+            // Aplicar perda aos materiais
             const fatorPerda = 1 + (dados.perda / 100);
-            const custoPerfilComPerda = custoPerfilCentavos * fatorPerda;
-            const custoChaveteComPerda = custoChaveta * fatorPerda;
-            const custoColaComPerda = custoCola * fatorPerda;
             
-            // Totais dos materiais (já com perda aplicada)
-            let pesoTotalMateriaisKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
-            let custoTotalMateriaisCentavos = custoPerfilComPerda + custoChaveteComPerda + custoColaComPerda;
-            
-            console.log(`📊 Subtotal MATERIAIS (sem perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola)/100).toFixed(2)}/m²`);
-            console.log(`📊 Subtotal MATERIAIS (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
-            
-            
-            // Calcular mão de obra se selecionada
-            console.log(`\n🔧 INÍCIO CÁLCULO MÃO DE OBRA:`);
-            console.log(`   dados.tempo_proc: ${dados.tempo_proc}h`);
-            console.log(`   dados.tempo_mtg: ${dados.tempo_mtg}h`);
-            
-            let custoMaoObraTotal = 0;
-            // Calcular mão de obra diretamente - Processamento/Montagem R$ 65.79/hora
+            // Calcular mão de obra - R$ 65.79/hora
             const valorHoraMO = 65.79; // R$/hora
             const tempoTotal = dados.tempo_proc + dados.tempo_mtg;
-            custoMaoObraTotal = tempoTotal * valorHoraMO * 100; // converter para centavos
+            const custoMaoObraTotal = tempoTotal * valorHoraMO * 100; // em centavos
             const maoObraDescricao = `Processamento/Montagem (${tempoTotal}h)`;
             
             console.log(`💼 Mão de Obra: ${maoObraDescricao} - R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
             
             // CUSTO TOTAL = Materiais com perda + Mão de obra (sem perda)
-            let pesoTotalKg = pesoTotalMateriaisKg; // Peso só dos materiais (MO não tem peso)
-            let custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
-            
-            // Continuar com os cálculos
+            let pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
+            let custoTotalCentavos = (custoPerfilCentavos + custoChaveta + custoCola) * fatorPerda + custoMaoObraTotal;
             
             console.log('\n🧮 CÁLCULO DETALHADO:');
             console.log(`Perfil - Fórmula: (${dados.comprimento}/${dados.eixo_i}) * (${dados.vao}/1000)`);
@@ -2275,7 +2260,7 @@ function calcularGrade() {
             console.log(`Cola - Quantidade: ${quantidadeCola.toFixed(4)} unid/m²`);
             console.log(`Cola - Peso: ${pesoCola.toFixed(3)} kg/m² | Custo: R$ ${(custoCola/100).toFixed(2)}/m²`);
             console.log(`\n💰 RESUMO DE CUSTOS:`);
-            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
+            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola) * fatorPerda/100).toFixed(2)}/m²`);
             console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
             console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
             
@@ -2295,52 +2280,42 @@ function calcularGrade() {
                 mao_obra_produto_id: maoObraProcessamento.id, // Adicionar ID do produto de mão de obra
                 componentes: [
                     {
-                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda no custo)`,
+                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: perfilSelecionado.descricao,
-                        quantidade: metrosLinearesPorM2,
+                        quantidade: metrosLinearesPorM2 * fatorPerda, // Quantidade COM perda para exibição
                         custo_unitario: perfilSelecionado.custo_centavos,
-                        custo_total: custoPerfilComPerda,
+                        custo_total: custoPerfilCentavos * fatorPerda,
                         unidade: 'm'
                     },
                     {
-                        nome: `${chaveta.descricao} (com ${dados.perda}% perda no custo)`,
+                        nome: `${chaveta.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: chaveta.descricao,
-                        quantidade: quantidadeChaveta,
+                        quantidade: quantidadeChaveta * fatorPerda, // Quantidade COM perda para exibição
                         custo_unitario: chaveta.custo_centavos,
-                        custo_total: custoChaveteComPerda,
+                        custo_total: custoChaveta * fatorPerda,
                         unidade: 'm'
                     },
                     {
-                        nome: `${cola.descricao} (com ${dados.perda}% perda no custo)`,
+                        nome: `${cola.descricao} (com ${dados.perda}% perda)`,
                         produto_nome: cola.descricao,
-                        quantidade: quantidadeCola,
+                        quantidade: quantidadeCola * fatorPerda, // Quantidade COM perda para exibição
                         custo_unitario: cola.custo_centavos,
-                        custo_total: custoColaComPerda,
+                        custo_total: custoCola * fatorPerda,
                         unidade: 'unid'
                     }
                 ]
             };
             
-            // Adicionar mão de obra aos componentes se selecionada
-            console.log(`🔧 DEBUG MÃO DE OBRA:`);
-            console.log(`   custoMaoObraTotal: ${custoMaoObraTotal} centavos = R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
-            console.log(`   maoObraDescricao: "${maoObraDescricao}"`);
-            console.log(`   tempo_proc: ${dados.tempo_proc}h`);
-            console.log(`   tempo_mtg: ${dados.tempo_mtg}h`);
-            console.log(`   total_tempo: ${dados.tempo_proc + dados.tempo_mtg}h`);
-            
+            // Adicionar mão de obra aos componentes
             if (custoMaoObraTotal > 0) {
-                console.log(`✅ Adicionando mão de obra aos componentes`);
                 resultado.componentes.push({
-                    nome: maoObraDescricao,
-                    produto_nome: maoObraDescricao,
-                    quantidade: dados.tempo_proc + dados.tempo_mtg,
-                    custo_unitario: valorHoraMO * 100, // R$ 65.79/hora em centavos
-                    custo_total: custoMaoObraTotal,
-                    unidade: 'h'
+                nome: maoObraDescricao,
+                produto_nome: maoObraDescricao,
+                quantidade: dados.tempo_proc + dados.tempo_mtg,
+                custo_unitario: valorHoraMO * 100, // R$ 65.79/hora em centavos
+                custo_total: custoMaoObraTotal,
+                unidade: 'h'
                 });
-            } else {
-                console.log(`❌ Mão de obra NÃO adicionada - custoMaoObraTotal = ${custoMaoObraTotal}`);
             }
             
             // Debug final: verificar soma dos componentes
@@ -3739,7 +3714,8 @@ function calcularGuardaCorpoHorizontal() {
         const custoRodape = (metrosRodape * rodape.custo_centavos) * fatorPerda;
         const custoSapatas = (quantidadeSapatas * sapata.custo_centavos) * fatorPerda;
         const custoParaf70 = (quantidadeParaf70 * paraf70.custo_centavos) * fatorPerda;
-        const custoPorcas = (quantidadePorcas * porca.custo_centavos) * fatorPerda;
+        // VALOR FIXO: POR-SXT-M6-AI304 fixado em 41 centavos para Guarda Corpo
+        const custoPorcas = (quantidadePorcas * 41) * fatorPerda; // Valor fixo de 41 centavos
         const custoParafAA = (quantidadeParafAA * parafAA.custo_centavos) * fatorPerda;
         
         // Total dos materiais
@@ -3822,7 +3798,7 @@ function calcularGuardaCorpoHorizontal() {
             nome: `${porca.descricao} - ${quantidadePorcas} unid`,
             descricao_produto: porca.descricao,
             quantidade: quantidadePorcas,
-            custo_unitario: porca.custo_centavos,
+            custo_unitario: 41, // Valor fixo de 41 centavos para GC
             custo_total: custoPorcas,
             unidade: 'unid'
         });

@@ -338,7 +338,9 @@ class OrcamentoItem(models.Model):
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     def save(self, *args, **kwargs):
-        self.valor_total = (self.quantidade * self.valor_unitario) - self.desconto_item + self.imposto_item
+        # Cálculo correto: Custo + Lucro + Imposto
+        # desconto_item agora representa o LUCRO total, não desconto
+        self.valor_total = (self.quantidade * self.valor_unitario) + self.desconto_item + self.imposto_item
         super().save(*args, **kwargs)
 
     def __str__(self):

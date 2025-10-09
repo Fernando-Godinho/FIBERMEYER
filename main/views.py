@@ -459,21 +459,26 @@ def orcamento(request, orcamento_id):
             item = OrcamentoItem.objects.get(id=edit_item_id)
             item.quantidade = request.POST.get('quantidade', item.quantidade)
             item.valor_unitario = request.POST.get('valor_unitario', item.valor_unitario)
-            item.desconto_item = request.POST.get('desconto', item.desconto_item)
+            # Agora usamos 'lucro' em vez de 'desconto'
+            lucro_percentual = safe_float(request.POST.get('lucro', 0))
             item.imposto_item = request.POST.get('imposto', item.imposto_item)
             # Recalcula valores se necessário
             try:
                 # Validar e converter todos os valores
-                valor_unitario = safe_float(item.valor_unitario)
+                custo_unitario = safe_float(item.valor_unitario)  # agora é custo
                 quantidade = safe_float(item.quantidade, 1.0)
-                desconto = safe_float(request.POST.get('desconto', item.desconto_item))
                 imposto = safe_float(request.POST.get('imposto', item.imposto_item))
                 
-                valor_bruto = valor_unitario * quantidade
-                valor_desconto = valor_bruto * (desconto / 100)
-                valor_imposto = (valor_bruto - valor_desconto) * (imposto / 100)
-                valor_total = valor_bruto - valor_desconto + valor_imposto
-                item.desconto_item = valor_desconto
+                # Calcular valor de venda baseado no lucro sobre o custo
+                valor_lucro_unitario = custo_unitario * (lucro_percentual / 100)
+                valor_venda_unitario = custo_unitario + valor_lucro_unitario
+                
+                valor_bruto = valor_venda_unitario * quantidade
+                valor_imposto = valor_bruto * (imposto / 100)
+                valor_total = valor_bruto + valor_imposto
+                
+                # Guardar o valor do lucro em valor monetário no campo desconto_item para compatibilidade
+                item.desconto_item = valor_lucro_unitario * quantidade
                 item.imposto_item = valor_imposto
                 item.valor_total = valor_total
             except Exception:
@@ -484,6 +489,18 @@ def orcamento(request, orcamento_id):
             orcamento.total_liquido = sum([safe_float(i.valor_total) for i in itens])
             orcamento.desconto_total = sum([safe_float(i.desconto_item) for i in itens])
             orcamento.save()
+            
+            # Se for uma requisição AJAX, retornar JSON
+            if request.POST.get('ajax_update'):
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'total_lucro': f"{orcamento.desconto_total:.2f}",
+                    'total_liquido': f"{orcamento.total_liquido:.2f}",
+                    'item_total': f"{item.valor_total:.2f}",
+                    'item_lucro': f"{item.desconto_item:.2f}"
+                })
+            
             return redirect('orcamento', orcamento_id=orcamento_id)
         delete_item_id = request.POST.get('delete_item_id')
         if delete_item_id:
@@ -496,16 +513,30 @@ def orcamento(request, orcamento_id):
                 orcamento.total_liquido = sum([safe_float(i.valor_total) for i in itens])
                 orcamento.desconto_total = sum([safe_float(i.desconto_item) for i in itens])
                 orcamento.save()
+                
+                # Se for uma requisição AJAX, retornar JSON
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({'success': True, 'message': 'Item excluído com sucesso'})
+                
+                return redirect('orcamento', orcamento_id=orcamento_id)
             except OrcamentoItem.DoesNotExist:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({'success': False, 'error': 'Item não encontrado'})
                 pass
-            # Não faz redirect, apenas segue para o render abaixo
         else:
             # Adição de novo item
             produto_id = request.POST.get('produto_id')
             produto_parametrizado = request.POST.get('produto_parametrizado')
             quantidade = request.POST.get('quantidade')
-            desconto = request.POST.get('desconto') or 0
+            lucro = request.POST.get('lucro') or 22.5  # padrão 22,5% de lucro
             imposto = request.POST.get('imposto') or 0
+            
+            # Debug para verificar o valor do lucro recebido
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🔍 DEBUG - Lucro recebido: '{request.POST.get('lucro')}' -> convertido: {lucro}")
             
             if produto_parametrizado:
                 # Processar produto parametrizado
@@ -520,17 +551,23 @@ def orcamento(request, orcamento_id):
                     logger.info(f"🔍 DEBUG - Data recebida: {data}")
                     
                     # Validar e converter valores
-                    valor_unitario = safe_float(data.get('preco_total', 0))
+                    custo_unitario = safe_float(data.get('preco_total', 0))  # agora é custo
                     quantidade_valor = safe_float(quantidade, 1.0)
-                    desconto_num = safe_float(desconto)
+                    lucro_num = safe_float(lucro)
                     imposto_num = safe_float(imposto)
                     
-                    logger.info(f"🔍 DEBUG - Valores: unitario={valor_unitario}, qtd={quantidade_valor}")
+                    logger.info(f"🔍 DEBUG - Valores: custo={custo_unitario}, qtd={quantidade_valor}, lucro={lucro_num}%")
                     
-                    valor_bruto = valor_unitario * quantidade_valor
-                    valor_desconto = valor_bruto * (desconto_num / 100)
-                    valor_imposto = (valor_bruto - valor_desconto) * (imposto_num / 100)
-                    valor_total = valor_bruto - valor_desconto + valor_imposto
+                    # Calcular valor de venda baseado no lucro sobre o custo
+                    valor_lucro_unitario = custo_unitario * (lucro_num / 100)
+                    valor_venda_unitario = custo_unitario + valor_lucro_unitario
+                    
+                    valor_bruto = valor_venda_unitario * quantidade_valor
+                    valor_imposto = valor_bruto * (imposto_num / 100)
+                    valor_total = valor_bruto + valor_imposto
+                    
+                    # Guardar lucro total no campo desconto_item para compatibilidade
+                    valor_lucro_total = valor_lucro_unitario * quantidade_valor
                     
                     from .models import OrcamentoItem
                     item = OrcamentoItem.objects.create(
@@ -538,8 +575,8 @@ def orcamento(request, orcamento_id):
                         tipo_item='Parametrizado',
                         descricao=descricao,
                         quantidade=quantidade_valor,
-                        valor_unitario=valor_unitario,
-                        desconto_item=valor_desconto,
+                        valor_unitario=custo_unitario,  # guarda o custo unitário
+                        desconto_item=valor_lucro_total,  # guarda o lucro total
                         imposto_item=valor_imposto,
                         valor_total=valor_total
                     )
@@ -563,29 +600,36 @@ def orcamento(request, orcamento_id):
                     pass
             elif produto_id and quantidade:
                 produto = MP_Produtos.objects.get(id=produto_id)
-                valor_unitario = produto.custo_centavos / 100.0
+                custo_unitario = produto.custo_centavos / 100.0
                 
                 # Validar e converter quantidade
                 quantidade_num = safe_float(quantidade, 1.0)
                 
-                # Validar e converter desconto
-                desconto_num = safe_float(desconto)
+                # Validar e converter lucro
+                lucro_num = safe_float(request.POST.get('lucro', 22.5))  # padrão 22,5%
                 
                 # Validar e converter imposto
                 imposto_num = safe_float(imposto)
                 
-                valor_bruto = valor_unitario * quantidade_num
-                valor_desconto = valor_bruto * (desconto_num / 100)
-                valor_imposto = (valor_bruto - valor_desconto) * (imposto_num / 100)
-                valor_total = valor_bruto - valor_desconto + valor_imposto
+                # Calcular valor de venda baseado no lucro sobre o custo
+                valor_lucro_unitario = custo_unitario * (lucro_num / 100)
+                valor_venda_unitario = custo_unitario + valor_lucro_unitario
+                
+                valor_bruto = valor_venda_unitario * quantidade_num
+                valor_imposto = valor_bruto * (imposto_num / 100)
+                valor_total = valor_bruto + valor_imposto
+                
+                # Lucro total
+                valor_lucro_total = valor_lucro_unitario * quantidade_num
+                
                 from .models import OrcamentoItem
                 OrcamentoItem.objects.create(
                     orcamento=orcamento,
                     tipo_item='Produto',
                     descricao=produto.descricao,
                     quantidade=quantidade_num,
-                    valor_unitario=valor_unitario,
-                    desconto_item=valor_desconto,
+                    valor_unitario=custo_unitario,  # guardar custo
+                    desconto_item=valor_lucro_total,  # guardar lucro
                     imposto_item=valor_imposto,
                     valor_total=valor_total
                 )
@@ -596,16 +640,16 @@ def orcamento(request, orcamento_id):
                 orcamento.save()
                 return redirect('orcamento', orcamento_id=orcamento_id)
 
-    # Calcula total_liquido e total_desconto dos itens
+    # Calcula total_liquido e total_lucro dos itens
     total_liquido = sum([safe_float(item.valor_total) for item in itens])
-    total_desconto = sum([safe_float(item.desconto_item) for item in itens])
+    total_lucro = sum([safe_float(item.desconto_item) for item in itens])  # agora representa lucro
 
     return render(request, 'main/orcamento.html', {
         'orcamento': orcamento,
         'itens': itens,
         'produtos': produtos,
         'total_liquido': total_liquido,
-        'total_desconto': total_desconto
+        'total_lucro': total_lucro
     })
 
 

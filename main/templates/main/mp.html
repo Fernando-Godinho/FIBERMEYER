@@ -44,6 +44,45 @@
             background-color: #e3f2fd;
             font-weight: bold;
         }
+        
+        /* Estilos para busca de componentes */
+        #listaProdutosComponente {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            background-color: #fff;
+        }
+        
+        #listaProdutosComponente .dropdown-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f3f5;
+            transition: background-color 0.15s ease-in-out;
+        }
+        
+        #listaProdutosComponente .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        #listaProdutosComponente .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        #listaProdutosComponente .dropdown-item:active {
+            background-color: #e9ecef;
+        }
+        
+        #searchComponenteProduto:focus + input + #listaProdutosComponente {
+            display: block !important;
+        }
+        
+        .produto-selecionado-feedback {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
 </style>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -417,9 +456,24 @@
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label for="componenteProduto" class="form-label">Produto</label>
-                  <select class="form-select" id="componenteProduto">
-                    <option value="">Selecione um produto...</option>
-                  </select>
+                  <div class="position-relative">
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                      </span>
+                      <input type="text" class="form-control" id="searchComponenteProduto" 
+                             placeholder="Digite o nome ou ID do produto..." autocomplete="off"
+                             onkeyup="filtrarProdutosComponente()" onfocus="mostrarListaProdutos()"
+                             onblur="setTimeout(ocultarListaProdutos, 200)">
+                    </div>
+                    <input type="hidden" id="componenteProduto" value="">
+                    <div id="listaProdutosComponente" class="dropdown-menu position-absolute w-100" 
+                         style="max-height: 200px; overflow-y: auto; display: none; z-index: 1000; top: 100%;">
+                    </div>
+                    <div class="form-text" id="produtoSelecionado" style="display: none;">
+                      <i class="fas fa-check-circle text-success"></i> <span id="produtoSelecionadoTexto"></span>
+                    </div>
+                  </div>
                 </div>
                 <div class="col-md-3">
                   <label for="componenteQuantidade" class="form-label">Quantidade</label>
@@ -826,17 +880,165 @@ function closeProdutoCompostoModal() {
 }
 
 function carregarProdutosParaSelect() {
-    const select = document.getElementById('componenteProduto');
-    select.innerHTML = '<option value="">Selecione um produto...</option>';
+    // Função mantida para compatibilidade, mas agora usa o sistema de busca dinâmica
+    filtrarProdutosComponente();
+}
+
+// Variáveis globais para controle da busca de componentes
+let produtosDisponiveis = [];
+let produtoSelecionadoComponente = null;
+
+function inicializarProdutosComponente() {
+    produtosDisponiveis = allProductsOriginal
+        .filter(produto => produto.tipo_produto === 'simples') // Apenas produtos simples como componentes
+        .map(produto => ({
+            id: produto.id,
+            descricao: produto.descricao,
+            custo: produto.custo_centavos / 100,
+            searchText: produto.descricao.toLowerCase()
+        }));
+}
+
+function filtrarProdutosComponente() {
+    const input = document.getElementById('searchComponenteProduto');
+    const lista = document.getElementById('listaProdutosComponente');
+    const termo = input.value.toLowerCase().trim();
     
-    allProductsOriginal
-        .filter(produto => produto.tipo === 'Simples') // Apenas produtos simples como componentes
-        .forEach(produto => {
-            const option = document.createElement('option');
-            option.value = produto.id;
-            option.textContent = `${produto.descricao} - R$ ${(produto.custo_centavos / 100).toFixed(2)}`;
-            select.appendChild(option);
+    if (!produtosDisponiveis.length) {
+        inicializarProdutosComponente();
+    }
+    
+    lista.innerHTML = '';
+    
+    if (termo === '') {
+        // Mostrar todos os produtos quando não há filtro
+        const produtosFiltrados = produtosDisponiveis.slice(0, 20); // Limitar a 20 itens
+        mostrarProdutosFiltrados(produtosFiltrados);
+    } else {
+        // Filtrar produtos baseado no termo
+        const produtosFiltrados = produtosDisponiveis
+            .filter(produto => 
+                produto.searchText.includes(termo) ||
+                produto.id.toString().includes(termo)
+            )
+            .slice(0, 20); // Limitar a 20 resultados
+            
+        mostrarProdutosFiltrados(produtosFiltrados);
+    }
+    
+    if (lista.children.length > 0) {
+        lista.style.display = 'block';
+    } else {
+        lista.innerHTML = '<div class="dropdown-item text-muted">Nenhum produto encontrado</div>';
+        lista.style.display = 'block';
+    }
+}
+
+// Adicionar eventos de teclado para navegação
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedIndex = -1;
+    
+    document.addEventListener('keydown', function(e) {
+        const input = document.getElementById('searchComponenteProduto');
+        const lista = document.getElementById('listaProdutosComponente');
+        
+        if (input && input === document.activeElement && lista.style.display === 'block') {
+            const items = lista.querySelectorAll('.dropdown-item:not(.text-muted)');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    items[selectedIndex].click();
+                }
+            } else if (e.key === 'Escape') {
+                ocultarListaProdutos();
+                selectedIndex = -1;
+            }
+        }
+    });
+    
+    function updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === selectedIndex) {
+                item.style.backgroundColor = '#0d6efd';
+                item.style.color = '#fff';
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.style.backgroundColor = '';
+                item.style.color = '';
+            }
         });
+    }
+});
+
+function mostrarProdutosFiltrados(produtos) {
+    const lista = document.getElementById('listaProdutosComponente');
+    
+    produtos.forEach(produto => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.style.cursor = 'pointer';
+        item.innerHTML = `
+            <div>
+                <strong>${produto.descricao}</strong>
+                <small class="text-muted d-block">ID: ${produto.id} - R$ ${produto.custo.toFixed(2)}</small>
+            </div>
+        `;
+        
+        item.onclick = () => selecionarProdutoComponente(produto);
+        lista.appendChild(item);
+    });
+}
+
+function selecionarProdutoComponente(produto) {
+    produtoSelecionadoComponente = produto;
+    
+    // Atualizar campos
+    document.getElementById('searchComponenteProduto').value = produto.descricao;
+    document.getElementById('componenteProduto').value = produto.id;
+    
+    // Mostrar feedback visual com animação
+    const feedbackDiv = document.getElementById('produtoSelecionado');
+    const feedbackTexto = document.getElementById('produtoSelecionadoTexto');
+    feedbackTexto.textContent = `${produto.descricao} - R$ ${produto.custo.toFixed(2)}`;
+    
+    feedbackDiv.className = 'form-text produto-selecionado-feedback';
+    feedbackDiv.style.display = 'block';
+    
+    // Ocultar lista
+    ocultarListaProdutos();
+    
+    // Focar no campo quantidade
+    setTimeout(() => {
+        document.getElementById('componenteQuantidade').focus();
+    }, 100);
+}
+
+function mostrarListaProdutos() {
+    setTimeout(() => {
+        filtrarProdutosComponente();
+    }, 100);
+}
+
+function ocultarListaProdutos() {
+    const lista = document.getElementById('listaProdutosComponente');
+    lista.style.display = 'none';
+}
+
+function limparSelecaoComponente() {
+    produtoSelecionadoComponente = null;
+    document.getElementById('searchComponenteProduto').value = '';
+    document.getElementById('componenteProduto').value = '';
+    document.getElementById('produtoSelecionado').style.display = 'none';
+    ocultarListaProdutos();
 }
 
 function adicionarComponente() {
@@ -854,31 +1056,39 @@ function adicionarComponente() {
         return;
     }
     
-    const produto = allProductsOriginal.find(p => p.id == produtoId);
+    const produto = produtoSelecionadoComponente || allProductsOriginal.find(p => p.id == produtoId);
     if (!produto) {
         alert('Produto não encontrado!');
         return;
     }
     
+    const custo_unitario = produto.custo || (produto.custo_centavos / 100);
+    
     const componente = {
         produto_id: produtoId,
         produto_descricao: produto.descricao,
         quantidade: quantidade,
-        custo_unitario: produto.custo_centavos / 100,
-        custo_total: (produto.custo_centavos / 100) * quantidade
+        custo_unitario: custo_unitario,
+        custo_total: custo_unitario * quantidade
     };
     
     componentesTemp.push(componente);
     atualizarTabelaComponentes();
+    calcularCustoTotalComposto();
     
-    // Limpar campos
-    document.getElementById('componenteProduto').value = '';
+    // Limpar formulário
+    limparFormularioComponente();
+}
+
+function limparFormularioComponente() {
     document.getElementById('componenteQuantidade').value = '';
+    limparSelecaoComponente();
 }
 
 function removerComponente(index) {
     componentesTemp.splice(index, 1);
     atualizarTabelaComponentes();
+    calcularCustoTotalComposto();
 }
 
 function atualizarTabelaComponentes() {
@@ -4512,7 +4722,7 @@ function salvarPerfilParametrizado() {
         peso_und: dadosPerfil.peso_metro_kg.toFixed(3),
         unidade: 'M', // Metro linear
         referencia: gerarReferenciaPerfil(dadosPerfil.nome_perfil),
-        tipo: 'Perfil',
+        tipo_produto: 'composto', // CORREÇÃO: Definir como composto
         categoria: 'Perfis',
         subcategoria: 'Pultrusão',
         data_revisao: new Date().toISOString(),
@@ -4538,8 +4748,14 @@ function salvarPerfilParametrizado() {
         return response.json();
     })
     .then(produto => {
-        console.log('Perfil salvo:', produto);
-        alert(`Perfil "${dadosPerfil.nome_perfil}" criado com sucesso!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
+        console.log('✅ Perfil principal salvo:', produto);
+        
+        // Agora salvar os componentes calculados
+        return salvarComponentesPerfil(produto.id).then(() => produto);
+    })
+    .then(produto => {
+        console.log('✅ Perfil e componentes salvos com sucesso');
+        alert(`Perfil "${dadosPerfil.nome_perfil}" criado com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
         
         // Fechar modal
         closeProdutoParametrizadoModal();
@@ -4551,6 +4767,135 @@ function salvarPerfilParametrizado() {
         console.error('Erro ao salvar perfil:', error);
         alert('Erro ao salvar perfil: ' + error.message);
     });
+}
+
+function salvarComponentesPerfil(produtoId) {
+    console.log('=== SALVANDO COMPONENTES DO PERFIL ===');
+    console.log('Produto ID:', produtoId);
+    console.log('Último cálculo:', ultimoCalculo);
+    
+    if (!ultimoCalculo || !ultimoCalculo.componentes) {
+        console.warn('Nenhum componente para salvar');
+        return Promise.resolve();
+    }
+    
+    // Primeiro, buscar todos os produtos para mapear nomes para IDs
+    return fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            console.log('✅ Produtos carregados para mapeamento:', produtos.length);
+            
+            // Criar mapa de produto_nome para ID
+            const mapaProdutos = {};
+            produtos.forEach(produto => {
+                const desc = produto.descricao.toLowerCase();
+                
+                // Mapear os nomes dos componentes para IDs dos produtos
+                if (desc.includes('roving') && desc.includes('4400')) {
+                    mapaProdutos['roving 4400 kg'] = produto.id;
+                } else if (desc.includes('manta') && desc.includes('300')) {
+                    mapaProdutos['manta 300 kg'] = produto.id;
+                } else if (desc.includes('véu') || desc.includes('veu')) {
+                    mapaProdutos['véu kg'] = produto.id;
+                } else if (desc.includes('resina') && (desc.includes('pet') || desc.includes('poliéster'))) {
+                    mapaProdutos['resina pet'] = produto.id;
+                } else if (desc.includes('monômero') || desc.includes('estireno')) {
+                    mapaProdutos['monômero de estireno'] = produto.id;
+                } else if (desc.includes('anti') && desc.includes('uv')) {
+                    mapaProdutos['anti uv'] = produto.id;
+                } else if (desc.includes('anti') && desc.includes('ox')) {
+                    mapaProdutos['anti ox'] = produto.id;
+                } else if (desc.includes('bpo')) {
+                    mapaProdutos['bpo'] = produto.id;
+                } else if (desc.includes('tbpb')) {
+                    mapaProdutos['tbpb'] = produto.id;
+                } else if (desc.includes('desmoldante')) {
+                    mapaProdutos['desmoldante'] = produto.id;
+                } else if (desc.includes('antichama')) {
+                    mapaProdutos['antichama'] = produto.id;
+                } else if (desc.includes('carga') && desc.includes('mineral')) {
+                    mapaProdutos['carga mineral'] = produto.id;
+                } else if (desc.includes('pigmento')) {
+                    mapaProdutos['pigmento'] = produto.id;
+                } else if (desc.includes('pintura')) {
+                    mapaProdutos['área pintura (m²)'] = produto.id;
+                } else if (desc.includes('mão') && desc.includes('obra')) {
+                    mapaProdutos['mão de obra - pultrusão'] = produto.id;
+                }
+            });
+            
+            console.log('📋 Mapa de produtos criado:', mapaProdutos);
+            
+            // Criar promessas para salvar componentes
+            const componentesPromises = ultimoCalculo.componentes.map((comp, index) => {
+                const nomeComponenteLower = comp.nome.toLowerCase();
+                let produtoComponenteId = mapaProdutos[nomeComponenteLower];
+                
+                if (!produtoComponenteId) {
+                    console.warn(`⚠️ ID não encontrado para componente: ${comp.nome}`);
+                    // Tentar encontrar por correspondência parcial
+                    const chaves = Object.keys(mapaProdutos);
+                    const chaveEncontrada = chaves.find(chave => 
+                        nomeComponenteLower.includes(chave) || chave.includes(nomeComponenteLower)
+                    );
+                    
+                    if (chaveEncontrada) {
+                        produtoComponenteId = mapaProdutos[chaveEncontrada];
+                        console.log(`✅ Correspondência encontrada: ${comp.nome} → ${chaveEncontrada} (ID: ${produtoComponenteId})`);
+                    } else {
+                        console.error(`❌ Não foi possível mapear componente: ${comp.nome}`);
+                        return Promise.resolve(null); // Pular este componente
+                    }
+                }
+                
+                const componenteData = {
+                    produto_principal: produtoId,
+                    produto_componente: produtoComponenteId,
+                    quantidade: parseFloat(comp.quantidade.toFixed(3)), // Limitar a 3 casas decimais
+                    observacao: JSON.stringify({
+                        nome_componente: comp.nome,
+                        custo_unitario: Math.round(comp.custo_unitario * 100), // em centavos
+                        custo_total: Math.round(comp.custo_total * 100), // em centavos
+                        origem: 'perfil_parametrizado',
+                        ordem: index + 1
+                    })
+                };
+                
+                console.log(`Salvando componente ${index + 1}:`, componenteData);
+                
+                return fetch('/api/componentes/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(componenteData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Erro ao salvar componente ${comp.nome}: HTTP ${response.status} - ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(componenteSalvo => {
+                    console.log(`✅ Componente ${comp.nome} salvo:`, componenteSalvo);
+                    return componenteSalvo;
+                });
+            });
+            
+            return Promise.all(componentesPromises.filter(p => p !== null));
+        })
+        .then(componentesSalvos => {
+            const salvosComSucesso = componentesSalvos.filter(c => c !== null);
+            console.log(`✅ ${salvosComSucesso.length} de ${ultimoCalculo.componentes.length} componentes do perfil foram salvos`);
+            return salvosComSucesso;
+        })
+        .catch(error => {
+            console.error('❌ Erro ao salvar componentes:', error);
+            throw error;
+        });
 }
 
 // Funções para produtos parametrizáveis
@@ -7236,6 +7581,10 @@ async function buscarProdutoPorId(id) {
 
 window.onload = function() {
     fetchProdutos();
+    // Adicionar um delay para garantir que os produtos foram carregados
+    setTimeout(() => {
+        inicializarProdutosComponente();
+    }, 500);
 };
 </script>
 </body>

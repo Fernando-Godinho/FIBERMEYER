@@ -21,6 +21,7 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('orcamento/', views.orcamentos, name='orcamentos'),
     path('orcamento_form/', views.orcamento_form, name='orcamento_form'),
+    path('orcamento/<int:orcamento_id>/edit/', views.orcamento_edit, name='orcamento_edit'),
     path('orcamento/<int:orcamento_id>/', views.orcamento, name='orcamento'),
     path('calcular-produto/', views.calcular_produto_parametrizado, name='calcular_produto'),
     path('impostos/', views.impostos, name='impostos'),

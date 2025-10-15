@@ -227,9 +227,8 @@ INSTALACAO_CHOICES = [
 
 # Choices para Venda Destinada
 VENDA_DESTINADA_CHOICES = [
-    ('REVENDA', 'REVENDA'),
-    ('CONSUMO_PROPRIO', 'CONSUMO PRÓPRIO'),
-    ('EXPORTACAO', 'EXPORTAÇÃO'),
+    ('INDUSTRIALIZACAO', 'INDUSTRIALIZAÇÃO'),
+    ('USO_CONSUMO', 'USO/CONSUMO'),
 ]
 
 # Choices para Contribuinte ICMS
@@ -300,7 +299,7 @@ class Orcamento(models.Model):
     instalacao = models.CharField(max_length=20, choices=INSTALACAO_CHOICES, default='NAO_INCLUSA')
     
     # Campos de venda e contribuinte como choices
-    venda_destinada = models.CharField(max_length=50, choices=VENDA_DESTINADA_CHOICES, default='REVENDA')
+    venda_destinada = models.CharField(max_length=50, choices=VENDA_DESTINADA_CHOICES, default='INDUSTRIALIZACAO')
     cliente_contrib_icms = models.CharField(max_length=20, choices=CONTRIBUINTE_ICMS_CHOICES, default='CONTRIBUINTE')
     
     cnpj_faturamento = models.CharField(max_length=20, blank=True)

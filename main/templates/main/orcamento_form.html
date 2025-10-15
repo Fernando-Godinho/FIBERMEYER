@@ -89,7 +89,7 @@
                     <div class="card-header text-white">
                         <div class="d-flex justify-content-between align-items-center">
                             <h4 class="mb-0">
-                                <i class="fas fa-file-invoice me-2"></i>Novo Orçamento
+                                <i class="fas fa-file-invoice me-2"></i>{% if editing %}Editar Orçamento{% else %}Novo Orçamento{% endif %}
                             </h4>
                             <small>Sistema FIBERMEYER</small>
                         </div>
@@ -199,7 +199,10 @@
                                             {{ form.icms }}
                                             <span class="input-group-text">%</span>
                                         </div>
-                                        <small class="form-text text-muted">ICMS será calculado automaticamente baseado na UF e tipo de cliente</small>
+                                        <small class="form-text text-muted">
+                            ICMS será calculado automaticamente baseado na UF, tipo de venda e contribuinte.<br>
+                            <strong>Lógica:</strong> Revenda/Contribuinte = Interno | Revenda/Não Contribuinte = Interestadual | Consumo Próprio = Consumo | Exportação = 0%
+                        </small>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">{{ form.comissao.label }}</label>
@@ -224,14 +227,14 @@
 
                             <!-- Botões de Ação -->
                             <div class="d-flex justify-content-end gap-3 mt-4">
-                                <a href="/orcamento/" class="btn btn-outline-secondary px-4">
+                                <a href="{% if editing %}{% url 'orcamento' orcamento.id %}{% else %}/orcamento/{% endif %}" class="btn btn-outline-secondary px-4">
                                     <i class="fas fa-arrow-left me-2"></i>Voltar
                                 </a>
                                 <button type="button" class="btn btn-outline-primary px-4" onclick="previewForm()">
                                     <i class="fas fa-eye me-2"></i>Prévia
                                 </button>
                                 <button type="submit" class="btn btn-save px-4">
-                                    <i class="fas fa-save me-2"></i>Salvar Orçamento
+                                    <i class="fas fa-save me-2"></i>{% if editing %}Atualizar Orçamento{% else %}Salvar Orçamento{% endif %}
                                 </button>
                             </div>
                         </form>
@@ -278,95 +281,73 @@ async function carregarImpostos() {
         const response = await fetch('/api/impostos/');
         const impostos = await response.json();
         
-        console.log('=== ANÁLISE DOS IMPOSTOS ===');
+        console.log('=== CARREGANDO IMPOSTOS DA BASE ===');
         console.log('Total de impostos encontrados:', impostos.length);
         
-        // Mostrar alguns exemplos para análise
-        impostos.slice(0, 10).forEach(imposto => {
-            console.log(`Nome: "${imposto.nome}" | Alíquota: ${imposto.aliquota}%`);
-        });
-        
-        // Organizar impostos por estado - melhorando a lógica de parsing
+        // Organizar impostos por estado com base no novo padrão: "ICMS UF - Tipo"
         impostos.forEach(imposto => {
-            // Tentar diferentes padrões de nomenclatura
-            let match = null;
-            let estado = null;
-            let tipo = null;
+            console.log(`Processando: "${imposto.nome}" | Alíquota: ${imposto.aliquota}%`);
             
-            // Padrão 1: "BA - ICMS Interno" (novo padrão de teste)
-            match = imposto.nome.match(/^(\w{2})\s*[-–]\s*ICMS\s*(Interno|Interestadual|Consumo)/i);
+            // Novo padrão da base: "ICMS SP - Contribuinte Industrialização", etc.
+            const match = imposto.nome.match(/^ICMS\s+(\w{2})\s+-\s+(.*)/i);
+            
             if (match) {
-                estado = match[1];
-                tipo = match[2].toLowerCase();
+                const estado = match[1].toUpperCase();
+                const tipoCompleto = match[2].toLowerCase();
                 
                 if (!impostosCache[estado]) {
                     impostosCache[estado] = {};
                 }
                 
-                if (tipo === 'interno') {
-                    impostosCache[estado].interno = imposto.aliquota;
-                } else if (tipo === 'interestadual') {
-                    impostosCache[estado].interestadual = imposto.aliquota;
-                } else if (tipo === 'consumo') {
-                    impostosCache[estado].consumo = imposto.aliquota;
+                // Mapear tipos para nomes mais simples
+                let tipoSimples = '';
+                if (tipoCompleto.startsWith('contribuinte industrialização')) {
+                    tipoSimples = 'contrib_industrializacao';
+                } else if (tipoCompleto.startsWith('contribuinte uso')) {
+                    tipoSimples = 'contrib_uso_consumo';
+                } else if (tipoCompleto.startsWith('não contribuinte industrialização')) {
+                    tipoSimples = 'nao_contrib_industrializacao';
+                } else if (tipoCompleto.startsWith('não contribuinte uso')) {
+                    tipoSimples = 'nao_contrib_uso_consumo';
                 }
                 
-                console.log(`✅ Mapeado (Padrão 1): ${estado} - ${tipo} = ${imposto.aliquota}%`);
-                return;
+                if (tipoSimples) {
+                    impostosCache[estado][tipoSimples] = parseFloat(imposto.aliquota);
+                    console.log(`✅ Mapeado: ${estado} - ${tipoSimples} = ${imposto.aliquota}%`);
+                } else {
+                    console.log(`⚠️ Tipo não mapeado: "${tipoCompleto}"`);
+                }
+            } else {
+                console.log(`❌ Padrão não reconhecido: "${imposto.nome}"`);
             }
-            
-            // Padrão 2: "SP - ICMS Interno" ou "SP-ICMS Interno" (antigo padrão)
-            match = imposto.nome.match(/^(\w{2})\s*[-–]\s*ICMS\s*(Interno|Interestadual|DIFAL)/i);
-            if (match) {
-                estado = match[1];
-                tipo = match[2].toLowerCase();
-                
-                if (!impostosCache[estado]) {
-                    impostosCache[estado] = {};
-                }
-                
-                if (tipo === 'interno') {
-                    impostosCache[estado].interno = imposto.aliquota;
-                } else if (tipo === 'interestadual') {
-                    impostosCache[estado].interestadual = imposto.aliquota;
-                } else if (tipo === 'difal') {
-                    impostosCache[estado].difal = imposto.aliquota;
-                }
-                
-                console.log(`✅ Mapeado (Padrão 2): ${estado} - ${tipo} = ${imposto.aliquota}%`);
-                return;
-            }
-            
-            // Padrão 3: "ICMS SP Interno" ou "ICMS-SP-Interno"
-            match = imposto.nome.match(/ICMS[-\s]*(\w{2})[-\s]*(Interno|Interestadual|DIFAL)/i);
-            if (match) {
-                estado = match[1];
-                tipo = match[2].toLowerCase();
-                
-                if (!impostosCache[estado]) {
-                    impostosCache[estado] = {};
-                }
-                
-                if (tipo === 'interno') {
-                    impostosCache[estado].interno = imposto.aliquota;
-                } else if (tipo === 'interestadual') {
-                    impostosCache[estado].interestadual = imposto.aliquota;
-                } else if (tipo === 'difal') {
-                    impostosCache[estado].difal = imposto.aliquota;
-                }
-                
-                console.log(`✅ Mapeado (Padrão 3): ${estado} - ${tipo} = ${imposto.aliquota}%`);
-                return;
-            }
-            
-            // Se não conseguiu mapear, log para debug
-            console.log(`❌ Não mapeado: "${imposto.nome}"`);
         });
         
-        console.log('=== CACHE FINAL DE IMPOSTOS ===');
-        console.log(impostosCache);
+        console.log('=== CACHE FINAL DE IMPOSTOS POR ESTADO ===');
+        Object.keys(impostosCache).sort().forEach(estado => {
+            console.log(`${estado}:`, impostosCache[estado]);
+        });
+        
+        // Validar se temos impostos para os principais estados
+        const estadosImportantes = ['BA', 'SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
+        estadosImportantes.forEach(estado => {
+            if (impostosCache[estado]) {
+                const impostos = impostosCache[estado];
+                console.log(`✅ ${estado}: Contrib.Indust=${impostos.contrib_industrializacao}%, Contrib.Uso=${impostos.contrib_uso_consumo}%, NãoContrib.Indust=${impostos.nao_contrib_industrializacao}%, NãoContrib.Uso=${impostos.nao_contrib_uso_consumo}%`);
+            } else {
+                console.log(`⚠️  ${estado}: Não encontrado na base`);
+            }
+        });
+        
     } catch (error) {
-        console.error('Erro ao carregar impostos:', error);
+        console.error('❌ Erro ao carregar impostos:', error);
+        // Em caso de erro, usar apenas BA como fallback com novos tipos
+        impostosCache['BA'] = {
+            contrib_industrializacao: 7.00,
+            contrib_uso_consumo: 7.20,
+            nao_contrib_industrializacao: 21.17,
+            nao_contrib_uso_consumo: 7.20
+        };
+        console.log('Usando impostos de fallback para BA com novos tipos');
     }
 }
 
@@ -389,83 +370,96 @@ document.addEventListener('DOMContentLoaded', function() {
         const contribuinte = clienteContribField.value;
         const vendaDestinada = vendaDestinadaField.value;
         
-        console.log(`=== CÁLCULO ICMS ===`);
+        console.log(`=== CÁLCULO ICMS BASEADO NA BASE DE DADOS ===`);
         console.log(`UF: ${uf}, Contribuinte: ${contribuinte}, Venda: ${vendaDestinada}`);
-        console.log(`Frete: ${freteField.value}, Instalação: ${instalacaoField.value}`);
-        console.log(`Tipo Resina: ${tipoResinaField.value}, Tipo Inox: ${tipoInoxField.value}`);
+        console.log(`Cache de impostos disponível:`, Object.keys(impostosCache));
         
         if (!uf) {
-            icmsField.value = '7.2';
-            console.log('UF não selecionada, usando padrão 7.2%');
+            icmsField.value = '7.00';
+            console.log('UF não selecionada, usando padrão 7.00%');
             return;
         }
         
         let aliquota = 0;
+        let tipoImposto = '';
+        let impostoEncontrado = null;
         
-        // Buscar impostos específicos do estado
+        // Buscar impostos específicos do estado no cache
         const impostos = impostosCache[uf];
         console.log(`Impostos encontrados para ${uf}:`, impostos);
         
-        // Lógica tributária brasileira para ICMS
-        if (vendaDestinada === 'EXPORTACAO') {
-            // Exportação = sempre isento (0%)
-            aliquota = 0;
-            console.log('Exportação: ICMS = 0%');
-        } else if (vendaDestinada === 'REVENDA') {
+        // Determinar o tipo de imposto baseado na lógica tributária simplificada
+        if (vendaDestinada === 'INDUSTRIALIZACAO') {
+            // Industrialização = alíquotas de industrialização
             if (contribuinte === 'CONTRIBUINTE') {
-                // Revenda para contribuinte = alíquota reduzida (interno)
-                aliquota = impostos?.interno || (uf === 'BA' ? 7.2 : 7.0);
-                console.log(`Revenda p/ Contribuinte: ICMS = ${aliquota}% (${impostos?.interno ? 'da base' : 'padrão'})`);
+                aliquota = impostos?.contrib_industrializacao || 7.00;
+                tipoImposto = 'Contribuinte Industrialização';
+                impostoEncontrado = impostos ? `ICMS ${uf} - Contribuinte Industrialização` : 'Padrão';
+                console.log(`Industrialização p/ Contribuinte: ${tipoImposto} = ${aliquota}%`);
             } else {
-                // Revenda para não contribuinte = substituição tributária (alíquota maior)
-                aliquota = impostos?.interno || (uf === 'BA' ? 12.0 : 12.0);
-                console.log(`Revenda p/ Não Contribuinte: ICMS = ${aliquota}% (${impostos?.interno ? 'da base' : 'padrão'})`);
+                aliquota = impostos?.nao_contrib_industrializacao || 18.00;
+                tipoImposto = 'Não Contribuinte Industrialização';
+                impostoEncontrado = impostos ? `ICMS ${uf} - Não Contribuinte Industrialização` : 'Padrão';
+                console.log(`Industrialização p/ Não Contribuinte: ${tipoImposto} = ${aliquota}%`);
             }
-        } else if (vendaDestinada === 'CONSUMO_PROPRIO') {
-            // Consumo próprio = usar alíquota específica de consumo ou alíquota cheia
+        } else if (vendaDestinada === 'USO_CONSUMO') {
+            // Uso/Consumo = alíquotas de uso/consumo
             if (contribuinte === 'CONTRIBUINTE') {
-                aliquota = impostos?.consumo || impostos?.interno || (uf === 'BA' ? 18.0 : 18.0);
-                console.log(`Consumo Próprio p/ Contribuinte: ICMS = ${aliquota}% (${impostos?.consumo ? 'consumo da base' : impostos?.interno ? 'interno da base' : 'padrão'})`);
+                aliquota = impostos?.contrib_uso_consumo || 7.20;
+                tipoImposto = 'Contribuinte Uso/Consumo';
+                impostoEncontrado = impostos ? `ICMS ${uf} - Contribuinte Uso/Consumo` : 'Padrão';
+                console.log(`Uso/Consumo p/ Contribuinte: ${tipoImposto} = ${aliquota}%`);
             } else {
-                // Não contribuinte = pode ter substituição tributária
-                aliquota = impostos?.consumo || impostos?.interno || (uf === 'BA' ? 18.0 : 18.0);
-                console.log(`Consumo Próprio p/ Não Contribuinte: ICMS = ${aliquota}% (${impostos?.consumo ? 'consumo da base' : impostos?.interno ? 'interno da base' : 'padrão'})`);
+                aliquota = impostos?.nao_contrib_uso_consumo || 18.00;
+                tipoImposto = 'Não Contribuinte Uso/Consumo';
+                impostoEncontrado = impostos ? `ICMS ${uf} - Não Contribuinte Uso/Consumo` : 'Padrão';
+                console.log(`Uso/Consumo p/ Não Contribuinte: ${tipoImposto} = ${aliquota}%`);
             }
         } else {
-            // Padrão - revenda para contribuinte
-            aliquota = impostos?.interno || 7.2;
-            console.log(`Caso padrão: ICMS = ${aliquota}%`);
+            // Padrão - industrialização para contribuinte
+            aliquota = impostos?.contrib_industrializacao || 7.00;
+            tipoImposto = 'Contribuinte Industrialização (Padrão)';
+            impostoEncontrado = impostos ? `ICMS ${uf} - Contribuinte Industrialização` : 'Padrão';
+            console.log(`Caso padrão: ${tipoImposto} = ${aliquota}%`);
         }
         
         icmsField.value = aliquota.toFixed(2);
         console.log(`ICMS final aplicado: ${aliquota.toFixed(2)}%`);
+        console.log(`Imposto usado: ${impostoEncontrado}`);
         
         // Feedback visual melhorado
-        icmsField.style.background = '#d4edda';
-        icmsField.style.borderColor = '#28a745';
+        icmsField.style.background = impostos ? '#d4edda' : '#fff3cd';
+        icmsField.style.borderColor = impostos ? '#28a745' : '#ffc107';
         icmsField.style.fontWeight = 'bold';
-        icmsField.style.color = '#155724';
+        icmsField.style.color = impostos ? '#155724' : '#856404';
         
-        // Mostrar notificação visual de recálculo
+        // Mostrar notificação visual de recálculo com mais detalhes
         const notification = document.createElement('div');
         notification.innerHTML = `
-            <div class="alert alert-success alert-dismissible fade show position-fixed" 
-                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                <strong>ICMS Recalculado!</strong><br>
-                ${uf} - ${vendaDestinada} - ${contribuinte}<br>
-                Nova alíquota: <strong>${aliquota.toFixed(2)}%</strong>
+            <div class="alert ${impostos ? 'alert-success' : 'alert-warning'} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 350px;">
+                <strong>ICMS ${impostos ? 'Encontrado' : 'Padrão'}!</strong><br>
+                <small>
+                    Estado: <strong>${uf}</strong><br>
+                    Venda: <strong>${vendaDestinada}</strong><br>
+                    Cliente: <strong>${contribuinte}</strong><br>
+                    Tipo: <strong>${tipoImposto}</strong><br>
+                    ${impostoEncontrado ? `Base: <strong>${impostoEncontrado}</strong><br>` : ''}
+                    Alíquota: <strong>${aliquota.toFixed(2)}%</strong>
+                </small>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;
         document.body.appendChild(notification);
         
-        // Remover notificação após 4 segundos
+        // Remover notificação após 5 segundos
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.remove();
             }
-        }, 4000);
+        }, 5000);
         
+        // Remover destaque visual após 3 segundos
         setTimeout(() => {
             icmsField.style.background = '';
             icmsField.style.borderColor = '';
@@ -530,9 +524,8 @@ function previewForm() {
         'INCLUSA': 'INCLUSA'
     };
     const vendaOptions = {
-        'REVENDA': 'REVENDA',
-        'CONSUMO_PROPRIO': 'CONSUMO PRÓPRIO',
-        'EXPORTACAO': 'EXPORTAÇÃO'
+        'INDUSTRIALIZACAO': 'INDUSTRIALIZAÇÃO',
+        'USO_CONSUMO': 'USO/CONSUMO'
     };
     const contribuinteOptions = {
         'CONTRIBUINTE': 'CONTRIBUINTE',

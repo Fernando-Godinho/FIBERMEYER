@@ -126,39 +126,6 @@
       </div>
     </div>
 
-    <!-- Tabela Detalhada dos Estados -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-table"></i> Tabela ICMS por Estado - Brasil 2024</h5>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-striped tax-table" id="estados-table">
-            <thead>
-              <tr>
-                <th rowspan="2">ESTADO</th>
-                <th rowspan="2">ALÍQUOTA INTERNO (%)</th>
-                <th colspan="4">ALÍQUOTA CONTRIBUINTE</th>
-                <th colspan="2">NÃO CONTRIBUINTE</th>
-                <th rowspan="2">DIFAL (%)</th>
-              </tr>
-              <tr>
-                <th>INDUSTRIALIZAÇÃO</th>
-                <th>USO/CONSUMO</th>
-                <th>REVENDA</th>
-                <th>% na NF</th>
-                <th>% cálculo</th>
-                <th>% na NF</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Dados serão carregados via JavaScript -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
     <!-- Tabela de Todos os Impostos -->
     <div class="card">
       <div class="card-header">
@@ -296,43 +263,6 @@
   </div>
 </div>
 
-<!-- Modal Imposto -->
-<div class="modal" tabindex="-1" id="impostoModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalTitleImposto">Adicionar Imposto</h5>
-        <button type="button" class="btn-close" onclick="closeImpostoModal()"></button>
-      </div>
-      <div class="modal-body">
-        <form id="impostoForm">
-          <input type="hidden" id="impostoId">
-          <div class="mb-3">
-            <label for="nomeImposto" class="form-label">Nome</label>
-            <input type="text" class="form-control" id="nomeImposto" required>
-          </div>
-          <div class="mb-3">
-            <label for="descricaoImposto" class="form-label">Descrição</label>
-            <textarea class="form-control" id="descricaoImposto"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="aliquotaImposto" class="form-label">Alíquota (%)</label>
-            <input type="number" step="0.01" class="form-control" id="aliquotaImposto" required>
-          </div>
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="ativoImposto" checked>
-            <label class="form-check-label" for="ativoImposto">Ativo</label>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeImpostoModal()">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="submitImpostoForm()">Salvar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const apiImpostos = '/api/impostos/';
@@ -344,60 +274,8 @@ let filteredImpostos = [];
 if(document.getElementById('impostoModal')) impostoModal = new bootstrap.Modal(document.getElementById('impostoModal'));
 if(document.getElementById('massUpdateModal')) massUpdateModal = new bootstrap.Modal(document.getElementById('massUpdateModal'));
 
-// Dados da tabela ICMS por estado
-const estadosICMS = [
-  {estado: 'AC', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
-  {estado: 'AL', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'AM', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'AP', interno: 18.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 18.6, nao_contrib_nf: 7.0, difal: 11},
-  {estado: 'BA', interno: 20.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.2, nao_contrib_nf: 7.0, difal: 14},
-  {estado: 'CE', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'DF', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'ES', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
-  {estado: 'GO', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
-  {estado: 'MA', interno: 22.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 22.7, nao_contrib_nf: 7.0, difal: 15},
-  {estado: 'MT', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
-  {estado: 'MS', interno: 17.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 17.6, nao_contrib_nf: 7.0, difal: 10},
-  {estado: 'MG', interno: 18.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 18.6, nao_contrib_nf: 12.0, difal: 6},
-  {estado: 'PA', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'PB', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'PR', interno: 19.5, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 20.1, nao_contrib_nf: 12.0, difal: 8},
-  {estado: 'PE', interno: 20.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.2, nao_contrib_nf: 7.0, difal: 14},
-  {estado: 'PI', interno: 21.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 21.7, nao_contrib_nf: 7.0, difal: 14},
-  {estado: 'RN', interno: 18.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 18.6, nao_contrib_nf: 7.0, difal: 11},
-  {estado: 'RS', interno: 17.0, industrializacao: 12.0, uso: 17.6, revenda: 12.0, nao_contrib_calc: 17.6, nao_contrib_nf: 17.0, difal: 5},
-  {estado: 'RJ', interno: 20.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 20.7, nao_contrib_nf: 12.0, difal: 8},
-  {estado: 'RO', interno: 19.5, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.1, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'RR', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13},
-  {estado: 'SC', interno: 17.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 17.6, nao_contrib_nf: 12.0, difal: 5},
-  {estado: 'SP', interno: 18.0, industrializacao: 12.0, uso: 12.4, revenda: 12.0, nao_contrib_calc: 18.6, nao_contrib_nf: 12.0, difal: 6},
-  {estado: 'SE', interno: 19.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 19.6, nao_contrib_nf: 7.0, difal: 12},
-  {estado: 'TO', interno: 20.0, industrializacao: 7.0, uso: 7.2, revenda: 7.0, nao_contrib_calc: 20.7, nao_contrib_nf: 7.0, difal: 13}
-];
-
-function loadEstadosTable() {
-  const tbody = document.querySelector('#estados-table tbody');
-  tbody.innerHTML = '';
-  
-  estadosICMS.forEach(estado => {
-    const row = `
-      <tr>
-        <td class="fw-bold">${estado.estado}</td>
-        <td class="text-center">${estado.interno.toFixed(1)}%</td>
-        <td class="text-center">${estado.industrializacao.toFixed(1)}%</td>
-        <td class="text-center">${estado.uso.toFixed(1)}%</td>
-        <td class="text-center">${estado.revenda.toFixed(1)}%</td>
-        <td class="text-center">${estado.nao_contrib_nf.toFixed(1)}%</td>
-        <td class="text-center">${estado.nao_contrib_calc.toFixed(1)}%</td>
-        <td class="text-center">${estado.difal}%</td>
-      </tr>
-    `;
-    tbody.innerHTML += row;
-  });
-}
-
 function populateEstadoFilters() {
-  const estados = [...new Set(estadosICMS.map(e => e.estado))].sort();
+  const estados = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RN', 'RS', 'RJ', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
   const selects = ['#filterEstado', '#massUpdateEstado'];
   
   selects.forEach(selectId => {
@@ -689,6 +567,125 @@ document.addEventListener('DOMContentLoaded', function() {
   var parametrosLink = document.querySelector('[href="#parametrosSubmenu"]');
   var parametrosSubmenu = document.getElementById('parametrosSubmenu');
   var caret = parametrosLink.querySelector('.caret-indicator');
+  
+  parametrosSubmenu.addEventListener('show.bs.collapse', function () {
+    caret.style.transform = 'rotate(180deg)';
+  });
+  
+  parametrosSubmenu.addEventListener('hide.bs.collapse', function () {
+    caret.style.transform = 'rotate(0deg)';
+  });
+});
+
+// Dados ICMS 2025 atualizados para importação
+const icmsData2024 = [
+  {estado: 'AC', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 19.62, nao_contrib_uso: 7.2},
+  {estado: 'AL', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 19.62, nao_contrib_uso: 7.2},
+  {estado: 'AM', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'AP', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 18.59, nao_contrib_uso: 7.2},
+  {estado: 'BA', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 21.17, nao_contrib_uso: 7.2},
+  {estado: 'CE', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'DF', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'ES', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 17.55, nao_contrib_uso: 7.2},
+  {estado: 'GO', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 19.62, nao_contrib_uso: 7.2},
+  {estado: 'MA', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 22.72, nao_contrib_uso: 7.2},
+  {estado: 'MT', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 17.55, nao_contrib_uso: 7.2},
+  {estado: 'MS', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 17.55, nao_contrib_uso: 7.2},
+  {estado: 'MG', contrib_industrializacao: 12.0, contrib_uso: 12.4, nao_contrib_industrializacao: 18.59, nao_contrib_uso: 12.4},
+  {estado: 'PA', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'PB', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'PR', contrib_industrializacao: 12.0, contrib_uso: 12.4, nao_contrib_industrializacao: 20.13, nao_contrib_uso: 12.4},
+  {estado: 'PE', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 21.17, nao_contrib_uso: 7.2},
+  {estado: 'PI', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 21.68, nao_contrib_uso: 7.2},
+  {estado: 'RN', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 18.59, nao_contrib_uso: 7.2},
+  {estado: 'RS', contrib_industrializacao: 12.0, contrib_uso: null, nao_contrib_industrializacao: 17.55, nao_contrib_uso: null},
+  {estado: 'RJ', contrib_industrializacao: 12.0, contrib_uso: 12.4, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 12.4},
+  {estado: 'RO', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.13, nao_contrib_uso: 7.2},
+  {estado: 'RR', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2},
+  {estado: 'SC', contrib_industrializacao: 12.0, contrib_uso: 12.4, nao_contrib_industrializacao: 17.55, nao_contrib_uso: 12.4},
+  {estado: 'SP', contrib_industrializacao: 12.0, contrib_uso: 12.4, nao_contrib_industrializacao: 18.59, nao_contrib_uso: 12.4},
+  {estado: 'SE', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 19.62, nao_contrib_uso: 7.2},
+  {estado: 'TO', contrib_industrializacao: 7.0, contrib_uso: 7.2, nao_contrib_industrializacao: 20.65, nao_contrib_uso: 7.2}
+];
+
+function importIcmsData() {
+  if (!confirm('Isso irá importar todos os impostos ICMS de 2024. Deseja continuar?')) {
+    return;
+  }
+  
+  let totalImported = 0;
+  let promises = [];
+  
+  icmsData2024.forEach(data => {
+    const impostos = [
+      {
+        nome: `ICMS ${data.estado} - Contribuinte Industrialização`,
+        descricao: `ICMS para ${data.estado} - Contribuinte para Industrialização`,
+        aliquota: data.contrib_industrializacao,
+        ativo: true
+      },
+      {
+        nome: `ICMS ${data.estado} - Contribuinte Uso/Consumo`,
+        descricao: `ICMS para ${data.estado} - Contribuinte para Uso/Consumo`,
+        aliquota: data.contrib_uso,
+        ativo: data.contrib_uso !== null
+      },
+      {
+        nome: `ICMS ${data.estado} - Não Contribuinte Industrialização`,
+        descricao: `ICMS para ${data.estado} - Não Contribuinte para Industrialização`,
+        aliquota: data.nao_contrib_industrializacao,
+        ativo: true
+      },
+      {
+        nome: `ICMS ${data.estado} - Não Contribuinte Uso/Consumo`,
+        descricao: `ICMS para ${data.estado} - Não Contribuinte para Uso/Consumo`,
+        aliquota: data.nao_contrib_uso,
+        ativo: data.nao_contrib_uso !== null
+      }
+    ];
+    
+    impostos.forEach(imposto => {
+      if (imposto.aliquota !== null) {
+        promises.push(
+          fetch(apiImpostos, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(imposto)
+          })
+          .then(res => {
+            if (res.ok) {
+              totalImported++;
+            } else {
+              console.error(`Erro ao importar: ${imposto.nome}`);
+            }
+            return res;
+          })
+          .catch(err => {
+            console.error(`Erro ao importar: ${imposto.nome}`, err);
+          })
+        );
+      }
+    });
+  });
+  
+  Promise.all(promises)
+    .then(() => {
+      alert(`Importação concluída! ${totalImported} impostos foram importados com sucesso.`);
+      fetchImpostos();
+    })
+    .catch(err => {
+      alert('Erro durante a importação. Verifique o console para detalhes.');
+      console.error('Erro na importação:', err);
+    });
+}
+
+window.onload = function() {
+  populateEstadoFilters();
+  fetchImpostos();
+};
+</script>
+</body>
+</html>
   
   parametrosSubmenu.addEventListener('show.bs.collapse', function () {
     caret.style.transform = 'rotate(180deg)';

@@ -41,6 +41,8 @@
             background-color: #e3f2fd;
             font-weight: bold;
         }
+        
+
     </style>
 </head>
 <body>
@@ -84,6 +86,9 @@
     <div class="mb-3"><strong>Telefone:</strong> {{ orcamento.telefone }}</div>
     <div class="mb-3"><strong>Email:</strong> {{ orcamento.email }}</div>
     <div class="mb-3"><strong>UF:</strong> {{ orcamento.uf }}</div>
+    <div class="mb-3"><strong>ICMS:</strong> <span class="badge bg-info">{{ orcamento.icms|floatformat:2 }}%</span></div>
+    <div class="mb-3"><strong>Comissão:</strong> <span class="badge bg-secondary">{{ orcamento.comissao|floatformat:2 }}%</span></div>
+    <div class="mb-3"><strong>Comissão + Impostos:</strong> <span class="badge bg-primary" id="total-impostos-detalhes">-</span></div>
     <div class="mb-3"><strong>Status:</strong> <span class="badge bg-warning">{{ orcamento.status }}</span></div>
 
     <div class="row mb-3">
@@ -91,7 +96,7 @@
         <div class="card shadow-sm" style="min-width: 170px; max-width: 180px;">
           <div class="card-body py-2 px-3">
             <div class="card-title mb-1" style="font-size: 1rem;">Total Orçamento</div>
-            <div class="card-text fw-bold" style="font-size: 1.2rem;">R$ {{ total_liquido|floatformat:2 }}</div>
+            <div class="card-text fw-bold" style="font-size: 1.2rem;" id="total-orcamento-display">R$ {{ total_liquido|floatformat:2 }}</div>
           </div>
         </div>
         <div class="card shadow-sm" style="min-width: 170px; max-width: 180px;">
@@ -102,7 +107,7 @@
         </div>
       </div>
       <div class="col-md-8 d-flex justify-content-end align-items-start">
-        <a href="/orcamento_form/" class="btn btn-primary me-2">Editar Orçamento</a>
+        <a href="{% url 'orcamento_edit' orcamento.id %}" class="btn btn-primary me-2">Editar Orçamento</a>
         <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addProdutoModal">Adicionar Produto</button>
         <button class="btn btn-warning me-2" onclick="openProdutoParametrizadoModal()">
           <i class="fas fa-calculator"></i> Produto Parametrizado
@@ -144,10 +149,7 @@
                 <label for="lucro" class="form-label">Lucro (%)</label>
                 <input type="number" class="form-control" id="lucro" name="lucro" min="0" max="500" step="0.1" value="22.5">
               </div>
-              <div class="mb-3">
-                <label for="imposto" class="form-label">Imposto (%)</label>
-                <input type="number" class="form-control" id="imposto" name="imposto" min="0" max="100" value="0">
-              </div>
+
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -157,6 +159,7 @@
         </div>
       </div>
     </div>
+
     <table class="table table-bordered" id="tabelaOrcamento">
       <thead>
         <tr>
@@ -164,7 +167,6 @@
           <th>Quantidade</th>
           <th>Custo Unitário</th>
           <th>Lucro (%)</th>
-          <th>Imposto (%)</th>
           <th>Valor Total</th>
           <th style="width: 150px;">Ações</th>
         </tr>
@@ -174,7 +176,9 @@
         <tr>
           <td>{{ item.descricao }}</td>
           <td>{{ item.quantidade }}</td>
-          <td>R$ {{ item.valor_unitario|floatformat:2 }}</td>
+          <td>
+            <strong class="text-primary" id="valor-unitario-final-{{ item.id }}">R$ {{ item.valor_unitario|floatformat:2 }}</strong>
+          </td>
           <td>
             {% if orcamento.status == 'Enviado' %}
               {% if item.valor_unitario > 0 %}
@@ -201,7 +205,6 @@
               <small class="text-muted">R$ <span id="lucro-valor-{{ item.id }}">{{ item.desconto_item|floatformat:2 }}</span></small>
             {% endif %}
           </td>
-          <td>{{ item.imposto_item|floatformat:2 }}</td>
           <td>R$ <span id="total-{{ item.id }}">{{ item.valor_total|floatformat:2 }}</span></td>
           <td>
             {% if orcamento.status == 'Enviado' %}
@@ -231,20 +234,6 @@
       </tbody>
     </table>
 
-    <!-- Total do Orçamento -->
-    <div class="row mt-3">
-      <div class="col-md-8"></div>
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Total do Orçamento</h5>
-            <h3 class="text-success" id="totalOrcamento">R$ 0,00</h3>
-            <small class="text-muted">Valores calculados dinamicamente</small>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal Editar Item -->
     <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -273,10 +262,7 @@
                 <label for="edit_lucro" class="form-label">Lucro (%)</label>
                 <input type="number" class="form-control" id="edit_lucro" name="lucro" step="0.1" min="0" max="500">
               </div>
-              <div class="mb-3">
-                <label for="edit_imposto" class="form-label">Imposto (%)</label>
-                <input type="number" class="form-control" id="edit_imposto" name="imposto" step="any" min="0" max="100">
-              </div>
+
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -300,8 +286,192 @@
       document.getElementById('edit_quantidade').value = button.getAttribute('data-quantidade');
       document.getElementById('edit_valor_unitario').value = button.getAttribute('data-valor_unitario');
       document.getElementById('edit_lucro').value = button.getAttribute('data-desconto');
-      document.getElementById('edit_imposto').value = button.getAttribute('data-imposto');
     });
+
+    // Calcular total de impostos (Comissão + Outros Impostos)
+    function calcularTotalImpostos() {
+      const icmsOriginal = parseFloat("{{ orcamento.icms|default:0 }}");
+      const comissao = parseFloat("{{ orcamento.comissao|default:0 }}");
+      
+      // Calcular outros impostos usando o ICMS real do orçamento
+      const simplesISS = icmsOriginal; // Usar o ICMS real do orçamento
+      const pisConfins = 3.65;
+      const irCSocial = 2.28; // Valor correto do IR/C.Social
+      const embalagem = 1.0;
+      const frete = 0.0;
+      const despFinanc = 1.5;
+      const despAdm = 18.0;
+      
+      const outrosImpostos = simplesISS + pisConfins + irCSocial + embalagem + frete + despFinanc + despAdm;
+      const totalImpostos = comissao + outrosImpostos;
+      
+      console.log('=== DEBUG IMPOSTOS DETALHADOS ===');
+      console.log('ICMS original do orçamento:', icmsOriginal + '%');
+      console.log('Comissão do orçamento:', comissao + '%');
+      console.log('Breakdown dos outros impostos:');
+      console.log('  - ICMS/Simples/ISS: ' + icmsOriginal.toFixed(2) + '%');
+      console.log('  - PIS/COFINS: ' + pisConfins.toFixed(2) + '%');
+      console.log('  - IR/C.Social: ' + irCSocial.toFixed(2) + '%');
+      console.log('  - Embalagem: ' + embalagem.toFixed(2) + '%');
+      console.log('  - Frete: ' + frete.toFixed(2) + '%');
+      console.log('  - Desp.Financ.: ' + despFinanc.toFixed(2) + '%');
+      console.log('  - Desp.Adm.: ' + despAdm.toFixed(2) + '%');
+      console.log('Total outros impostos:', outrosImpostos.toFixed(2) + '%');
+      console.log('Total final (Comissão + Outros):', totalImpostos.toFixed(2) + '%');
+      console.log('=== FIM DEBUG IMPOSTOS ===');
+      
+      // Atualizar todos os elementos de total de impostos
+      const elementos = document.querySelectorAll('[id^="total-impostos-"]');
+      elementos.forEach(elemento => {
+        elemento.textContent = `Total: ${totalImpostos.toFixed(2)}%`;
+      });
+      
+      // Atualizar também o campo nos detalhes do orçamento
+      const totalImpostosDetalhes = document.getElementById('total-impostos-detalhes');
+      if (totalImpostosDetalhes) {
+        totalImpostosDetalhes.textContent = `${totalImpostos.toFixed(2)}%`;
+      }
+    }
+
+    // Calcular quando a página carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      // Pequeno delay para garantir que elementos estejam prontos
+      setTimeout(function() {
+        calcularTotalImpostos();
+        calcularValoresTotais();
+      }, 100);
+    });
+
+    // Nova função para calcular valor unitário final: Custo Unit × Impostos × Lucro
+    function calcularValoresTotais() {
+      const icmsOriginal = parseFloat("{{ orcamento.icms|default:0 }}");
+      const comissao = parseFloat("{{ orcamento.comissao|default:0 }}");
+      
+      // Calcular percentual total de impostos (mesmo cálculo da função anterior)
+      const simplesISS = icmsOriginal;
+      const pisConfins = 3.65;
+      const irCSocial = 2.28;
+      const embalagem = 1.0;
+      const frete = 0.0;
+      const despFinanc = 1.5;
+      const despAdm = 18.0;
+      
+      const outrosImpostos = simplesISS + pisConfins + irCSocial + embalagem + frete + despFinanc + despAdm;
+      const totalImpostosPercent = comissao + outrosImpostos;
+      
+      console.log('=== CÁLCULO VALORES UNITÁRIOS E TOTAIS ===');
+      console.log('Percentual total de impostos:', totalImpostosPercent.toFixed(2) + '%');
+      
+      // Buscar todos os itens da tabela e calcular valores
+      const linhas = document.querySelectorAll('#itensOrcamento tr');
+      linhas.forEach((linha, index) => {
+        try {
+          // Extrair dados da linha de forma mais precisa
+          const quantidadeText = linha.cells[1]?.textContent?.trim();
+          const custoUnitText = linha.cells[2]?.textContent?.replace('R$', '').replace(',', '.').trim();
+          
+          // Buscar o input de lucro ou o texto se estiver no modo "Enviado"
+          const inputLucro = linha.querySelector('.lucro-input');
+          let lucroPercent = 22.5; // valor padrão
+          
+          if (inputLucro) {
+            lucroPercent = parseFloat(inputLucro.value) || 22.5;
+          } else {
+            // Se não tem input, tentar extrair do texto (modo "Enviado")
+            const cellaLucro = linha.cells[3];
+            if (cellaLucro) {
+              const lucroMatch = cellaLucro.textContent.match(/([\d,\.]+)%/);
+              if (lucroMatch) {
+                lucroPercent = parseFloat(lucroMatch[1].replace(',', '.')) || 22.5;
+              }
+            }
+          }
+          
+          const quantidade = parseFloat(quantidadeText) || 0;
+          const custoUnit = parseFloat(custoUnitText) || 0;
+          
+          if (quantidade > 0 && custoUnit > 0) {
+            // Nova fórmula: Custo Unit / (1 - (impostos + lucro))
+            // Primeiro converter percentuais para decimais
+            const impostosDecimal = totalImpostosPercent / 100;
+            const lucroDecimal = lucroPercent / 100;
+            
+            // Denominador = 1 - (impostos + lucro)
+            const denominador = 1 - (impostosDecimal + lucroDecimal);
+            
+            // Verificar se o denominador é válido (não pode ser zero ou negativo)
+            if (denominador <= 0) {
+              console.warn(`Denominador inválido para item ${index + 1}: ${denominador}`);
+              return;
+            }
+            
+            // Valor Unitário Final = Custo Unit / (1 - (impostos + lucro))
+            const valorUnitarioFinal = custoUnit / denominador;
+            
+            // Valor Total = Quantidade × Valor Unitário Final
+            const valorTotal = quantidade * valorUnitarioFinal;
+            
+            // Atualizar o valor na tabela
+            const spanTotal = linha.querySelector('span[id^="total-"]');
+            const spanValorUnitarioFinal = linha.querySelector('strong[id^="valor-unitario-final-"]');
+            
+            if (spanTotal) {
+              spanTotal.textContent = valorTotal.toFixed(2);
+            }
+            
+            if (spanValorUnitarioFinal) {
+              spanValorUnitarioFinal.textContent = `R$ ${valorUnitarioFinal.toFixed(2)}`;
+            }
+            
+            console.log(`Item ${index + 1}:`);
+            console.log(`  Custo unitário original: R$${custoUnit.toFixed(2)}`);
+            console.log(`  Impostos: ${totalImpostosPercent.toFixed(2)}% (${impostosDecimal.toFixed(4)})`);
+            console.log(`  Lucro: ${lucroPercent}% (${lucroDecimal.toFixed(4)})`);
+            console.log(`  Denominador: 1 - (${impostosDecimal.toFixed(4)} + ${lucroDecimal.toFixed(4)}) = ${denominador.toFixed(4)}`);
+            console.log(`  Fórmula: R$${custoUnit.toFixed(2)} / ${denominador.toFixed(4)} = R$${valorUnitarioFinal.toFixed(2)}`);
+            console.log(`  × Quantidade (${quantidade}): R$${valorTotal.toFixed(2)}`);
+            console.log('');
+          }
+        } catch (error) {
+          console.error('Erro ao calcular valor do item:', error);
+        }
+      });
+      
+      // Calcular e atualizar o total geral do orçamento
+      atualizarTotalOrcamento();
+      
+      console.log('=== FIM CÁLCULO VALORES ===');
+    }
+
+    // Função para somar todos os valores da tabela e atualizar o total
+    function atualizarTotalOrcamento() {
+      console.log('🔄 INICIANDO atualizarTotalOrcamento()');
+      let totalGeral = 0;
+      
+      // Buscar todos os spans de total dos itens
+      const spansTotal = document.querySelectorAll('span[id^="total-"]');
+      console.log(`📋 Encontrados ${spansTotal.length} spans de total`);
+      
+      spansTotal.forEach((span, index) => {
+        const textoValor = span.textContent;
+        const valor = parseFloat(textoValor) || 0;
+        totalGeral += valor;
+        console.log(`📦 Item ${index + 1}: "${textoValor}" = R$ ${valor.toFixed(2)}`);
+      });
+      
+      // Buscar especificamente o elemento do Total Orçamento pelo ID
+      const elementoTotalLiquido = document.getElementById('total-orcamento-display');
+      if (elementoTotalLiquido) {
+        const valorAnterior = elementoTotalLiquido.textContent;
+        elementoTotalLiquido.textContent = `R$ ${totalGeral.toFixed(2)}`;
+        console.log(`✅ Total atualizado: "${valorAnterior}" → "R$ ${totalGeral.toFixed(2)}"`);
+      } else {
+        console.warn('❌ Elemento total-orcamento-display não encontrado!');
+      }
+      
+      console.log('=== SOMA TOTAL ===');
+      console.log(`💰 Total de ${spansTotal.length} itens: R$ ${totalGeral.toFixed(2)}`);
+    }
     </script>
   </div>
 </div>
@@ -2310,202 +2480,6 @@ function calcularNovoPerfilOrcamento() {
         .catch(error => {
             console.error('❌ Erro ao calcular perfil:', error);
             alert('Erro ao calcular perfil: ' + error.message);
-        });
-}
-
-function calcularGradeOrcamento() {
-    console.log('=== CALCULANDO GRADE ORÇAMENTO ===');
-    
-    // Verificar se todos os campos obrigatórios estão preenchidos
-    const nomeGradeElement = document.getElementById('nome_grade');
-    const vaoElement = document.getElementById('vao');
-    const comprimentoElement = document.getElementById('comprimento');
-    const eixoIElement = document.getElementById('eixo_i');
-    const perfilSelect = document.getElementById('perfil_grade');
-    
-    if (!nomeGradeElement || !nomeGradeElement.value.trim()) {
-        alert('Por favor, preencha o nome da grade.');
-        return;
-    }
-    
-    if (!vaoElement || !vaoElement.value.trim()) {
-        alert('Por favor, preencha o vão.');
-        return;
-    }
-    
-    if (!comprimentoElement || !comprimentoElement.value.trim()) {
-        alert('Por favor, preencha o comprimento.');
-        return;
-    }
-    
-    if (!eixoIElement || !eixoIElement.value.trim()) {
-        alert('Por favor, preencha o eixo i.');
-        return;
-    }
-    
-    if (!perfilSelect || !perfilSelect.value) {
-        alert('Por favor, selecione um perfil.');
-        return;
-    }
-    
-    // Coletar dados dos campos
-    const dados = {
-        nome_grade: nomeGradeElement.value.trim(),
-        vao: parseFloat(vaoElement.value) || 0,
-        comprimento: parseFloat(comprimentoElement.value) || 0,
-        eixo_i: parseFloat(eixoIElement.value) || 0,
-        perfil_id: parseInt(perfilSelect.value) || 0
-    };
-    
-    // Coletar dados opcionais de perda e mão de obra
-    const perdaElement = document.getElementById('perda_grade');
-    dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 10) : 10;
-    
-    const tempoProcElement = document.getElementById('tempo_proc');
-    dados.tempo_proc = tempoProcElement ? (parseFloat(tempoProcElement.value) || 0.7) : 0.7;
-    
-    const tempoMtgElement = document.getElementById('tempo_mtg');  
-    dados.tempo_mtg = tempoMtgElement ? (parseFloat(tempoMtgElement.value) || 0.3) : 0.3;
-    
-    console.log('Dados coletados:', dados);
-    
-    // Buscar dados do perfil selecionado
-    console.log('🔍 Buscando dados do perfil selecionado...');
-    
-    fetch('/api/produtos/')
-        .then(response => response.json())
-        .then(produtos => {
-            console.log('✅ Produtos carregados da base');
-            
-            // Encontrar o perfil selecionado
-            const perfilSelecionado = produtos.find(p => p.id == dados.perfil_id);
-            if (!perfilSelecionado) {
-                throw new Error(`Perfil ID ${dados.perfil_id} não encontrado`);
-            }
-            
-            // Encontrar a chaveta (ID fixo 1332)
-            const chaveta = produtos.find(p => p.id == 1332);
-            if (!chaveta) {
-                throw new Error('Perfil Chaveta (ID 1332) não encontrado no banco');
-            }
-            
-            // Encontrar a cola (ID fixo 1183)
-            const cola = produtos.find(p => p.id == 1183);
-            if (!cola) {
-                throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
-            }
-            
-            console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
-            console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m`);
-            console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
-            
-            console.log(`🔧 Chaveta incluída: ${chaveta.descricao}`);
-            console.log(`   • Peso: ${chaveta.peso_und} kg/m`);
-            console.log(`   • Custo: R$ ${(chaveta.custo_centavos/100).toFixed(2)}/m`);
-            
-            console.log(`🧴 Cola incluída: ${cola.descricao}`);
-            console.log(`   • Peso: ${cola.peso_und} kg/unid`);
-            console.log(`   • Custo: R$ ${(cola.custo_centavos/100).toFixed(2)}/unid`);
-            
-            // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
-            const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
-            
-            // Calcular para o perfil
-            const pesoPerfilKg = metrosLinearesPorM2 * perfilSelecionado.peso_und;
-            const custoPerfilCentavos = metrosLinearesPorM2 * perfilSelecionado.custo_centavos;
-            
-            // Calcular para a chaveta - FÓRMULA ESPECÍFICA: vão / 150 * 2 * preço do perfil
-            const quantidadeChaveta = (dados.vao / 150) * 2;
-            const pesoChaveta = quantidadeChaveta * chaveta.peso_und;
-            const custoChaveta = quantidadeChaveta * chaveta.custo_centavos;
-            
-            // Calcular para a cola - FÓRMULA: quantidade fixa 0.06 unid/m²
-            const quantidadeCola = 0.06; // Quantidade fixa
-            const pesoCola = quantidadeCola * cola.peso_und;
-            const custoCola = quantidadeCola * cola.custo_centavos;
-            
-            // Aplicar perda APENAS aos custos dos materiais (individualmente)
-            const fatorPerda = 1 + (dados.perda / 100);
-            const custoPerfilComPerda = custoPerfilCentavos * fatorPerda;
-            const custoChaveteComPerda = custoChaveta * fatorPerda;
-            const custoColaComPerda = custoCola * fatorPerda;
-            
-            // Totais dos materiais (já com perda aplicada)
-            let pesoTotalMateriaisKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
-            let custoTotalMateriaisCentavos = custoPerfilComPerda + custoChaveteComPerda + custoColaComPerda;
-            
-            console.log(`📊 Subtotal MATERIAIS (sem perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola)/100).toFixed(2)}/m²`);
-            console.log(`📊 Subtotal MATERIAIS (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
-            
-            // Calcular mão de obra - Processamento/Montagem R$ 65.79/hora
-            const valorHoraMO = 65.79; // R$/hora
-            const tempoTotal = dados.tempo_proc + dados.tempo_mtg;
-            const custoMaoObraTotal = tempoTotal * valorHoraMO * 100; // converter para centavos
-            const maoObraDescricao = `Processamento/Montagem (${tempoTotal}h)`;
-            
-            console.log(`💼 Mão de Obra: ${maoObraDescricao} - R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
-            
-            // CUSTO TOTAL = Materiais com perda + Mão de obra (sem perda)
-            let pesoTotalKg = pesoTotalMateriaisKg; // Peso só dos materiais (MO não tem peso)
-            let custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
-            
-            console.log(`💰 TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
-            
-            // Criar componentes
-            const componentes = [
-                {
-                    nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda)`,
-                    produto: perfilSelecionado.descricao,
-                    descricao_produto: perfilSelecionado.descricao,
-                    quantidade: metrosLinearesPorM2,
-                    custo_unitario: perfilSelecionado.custo_centavos,
-                    custo_total: custoPerfilComPerda
-                },
-                {
-                    nome: `${chaveta.descricao} (com ${dados.perda}% perda)`,
-                    produto: chaveta.descricao,
-                    descricao_produto: chaveta.descricao,
-                    quantidade: quantidadeChaveta,
-                    custo_unitario: chaveta.custo_centavos,
-                    custo_total: custoChaveteComPerda
-                },
-                {
-                    nome: `${cola.descricao} (com ${dados.perda}% perda)`,
-                    produto: cola.descricao,
-                    descricao_produto: cola.descricao,
-                    quantidade: quantidadeCola,
-                    custo_unitario: cola.custo_centavos,
-                    custo_total: custoColaComPerda
-                },
-                {
-                    nome: maoObraDescricao,
-                    produto: 'Mão de Obra Industrial',
-                    descricao_produto: maoObraDescricao,
-                    quantidade: tempoTotal,
-                    custo_unitario: valorHoraMO * 100,
-                    custo_total: custoMaoObraTotal
-                }
-            ];
-            
-            // Criar resultado final
-            ultimoCalculo = {
-                success: true,
-                nome_produto: dados.nome_grade,
-                custo_total: custoTotalCentavos,
-                peso_total: pesoTotalKg,
-                metros_lineares_por_m2: metrosLinearesPorM2,
-                componentes: componentes,
-                dados_originais: dados
-            };
-            
-            // Mostrar resultado
-            mostrarResultadoCalculoOrcamento(ultimoCalculo);
-            
-            console.log('✅ Cálculo de grade concluído');
-        })
-        .catch(error => {
-            console.error('❌ Erro ao calcular grade:', error);
-            alert('Erro ao calcular grade: ' + error.message);
         });
 }
 
@@ -5527,16 +5501,71 @@ function atualizarLucroItem(input) {
     const impostoItem = parseFloat(input.dataset.imposto);
     const lucroPercentual = parseFloat(input.value) || 0;
     
-    // Calcular valores
-    const valorLucroUnitario = custoUnitario * (lucroPercentual / 100);
-    const valorVendaUnitario = custoUnitario + valorLucroUnitario;
+    // Obter percentual total de impostos do orçamento
+    const icmsOriginal = parseFloat("{{ orcamento.icms|default:0 }}");
+    const comissao = parseFloat("{{ orcamento.comissao|default:0 }}");
+    
+    const simplesISS = icmsOriginal;
+    const pisConfins = 3.65;
+    const irCSocial = 2.28;
+    const embalagem = 1.0;
+    const frete = 0.0;
+    const despFinanc = 1.5;
+    const despAdm = 18.0;
+    
+    const outrosImpostos = simplesISS + pisConfins + irCSocial + embalagem + frete + despFinanc + despAdm;
+    const totalImpostosPercent = comissao + outrosImpostos;
+    
+    // Nova fórmula: Custo Unit / (1 - (impostos + lucro))
+    // Converter percentuais para decimais
+    const impostosDecimal = totalImpostosPercent / 100;
+    const lucroDecimal = lucroPercentual / 100;
+    
+    // Denominador = 1 - (impostos + lucro)
+    const denominador = 1 - (impostosDecimal + lucroDecimal);
+    
+    // Verificar se o denominador é válido
+    if (denominador <= 0) {
+        console.warn(`Denominador inválido para item ${itemId}: ${denominador}`);
+        return;
+    }
+    
+    // Valor Unitário Final = Custo Unit / (1 - (impostos + lucro))
+    const valorUnitarioFinal = custoUnitario / denominador;
+    
+    // Valor Total = Quantidade × Valor Unitário Final
+    const valorTotal = quantidade * valorUnitarioFinal;
+    
+    // Calcular valor do lucro para exibição (parte do lucro no valor unitário)
+    const valorUnitarioComImpostos = custoUnitario * multiplicadorImpostos;
+    const valorLucroUnitario = valorUnitarioFinal - valorUnitarioComImpostos;
     const valorLucroTotal = valorLucroUnitario * quantidade;
-    const valorBruto = valorVendaUnitario * quantidade;
-    const valorTotal = valorBruto + impostoItem;
+    
+    console.log(`Atualizando item ${itemId}:`);
+    console.log(`  Custo unitário: R$${custoUnitario.toFixed(2)}`);
+    console.log(`  × Impostos (${totalImpostosPercent.toFixed(2)}%): ${multiplicadorImpostos.toFixed(4)}`);
+    console.log(`  × Lucro (${lucroPercentual}%): ${multiplicadorLucro.toFixed(4)}`);
+    console.log(`  = Valor unitário final: R$${valorUnitarioFinal.toFixed(2)}`);
+    console.log(`  × Quantidade (${quantidade}): R$${valorTotal.toFixed(2)}`);
     
     // Atualizar displays
     document.getElementById(`lucro-valor-${itemId}`).textContent = valorLucroTotal.toFixed(2);
     document.getElementById(`total-${itemId}`).textContent = valorTotal.toFixed(2);
+    
+    // Atualizar valor unitário final
+    const spanValorUnitarioFinal = document.getElementById(`valor-unitario-final-${itemId}`);
+    if (spanValorUnitarioFinal) {
+        spanValorUnitarioFinal.textContent = `R$ ${valorUnitarioFinal.toFixed(2)}`;
+    }
+    
+    // Atualizar também o percentual de impostos na linha
+    const totalImpostosSpan = document.querySelector(`#total-impostos-${itemId}`);
+    if (totalImpostosSpan) {
+        totalImpostosSpan.textContent = `Total: ${totalImpostosPercent.toFixed(2)}%`;
+    }
+    
+    // Atualizar o total geral do orçamento
+    atualizarTotalOrcamento();
     
     // Enviar atualização para o servidor
     const formData = new FormData();
@@ -5612,7 +5641,298 @@ function calcularPercentuaisLucro() {
 // Executar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
     calcularPercentuaisLucro();
+    carregarPerfisGrade(); // Carregar perfis para o modal de grade
 });
+
+// ========== FUNÇÕES PARA MODAL DE GRADE ==========
+
+var ultimoCalculoGrade = null;
+
+// Carregar perfis no select do modal de grade
+function carregarPerfisGrade() {
+    fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            const selectPerfil = document.getElementById('grade_perfil_orc');
+            selectPerfil.innerHTML = '<option value="">Selecione um perfil...</option>';
+            
+            // Filtrar apenas perfis I (I25, I32, I38)
+            const perfis = produtos.filter(p => 
+                p.descricao && 
+                (p.descricao.includes('I25') || p.descricao.includes('I32') || p.descricao.includes('I38')) &&
+                p.descricao.includes('(s/ pintura)')
+            );
+            
+            perfis.forEach(perfil => {
+                const option = document.createElement('option');
+                option.value = perfil.id;
+                option.textContent = `${perfil.descricao} - R$ ${(perfil.custo_centavos/100).toFixed(2)}/m`;
+                selectPerfil.appendChild(option);
+            });
+            
+            console.log(`✅ Carregados ${perfis.length} perfis para o modal de grade`);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar perfis:', error);
+        });
+}
+
+// Calcular grade no orçamento
+function calcularGradeOrcamento() {
+    console.log('=== CALCULANDO GRADE NO ORÇAMENTO ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = [
+        'grade_nome_orc', 'grade_vao_orc', 'grade_comprimento_orc', 'grade_eixo_i_orc', 'grade_perfil_orc'
+    ];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        const valor = elemento.value.trim();
+        if (campo === 'grade_nome_orc') {
+            dados.nome_grade = valor;
+        } else if (campo === 'grade_vao_orc') {
+            dados.vao = parseFloat(valor) || 0;
+        } else if (campo === 'grade_comprimento_orc') {
+            dados.comprimento = parseFloat(valor) || 0;
+        } else if (campo === 'grade_eixo_i_orc') {
+            dados.eixo_i = parseFloat(valor) || 0;
+        } else if (campo === 'grade_perfil_orc') {
+            dados.perfil_id = parseInt(valor) || 0;
+        }
+    });
+    
+    if (!todosCamposPreenchidos) {
+        mostrarErroGrade('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    // Coletar dados opcionais
+    const perdaElement = document.getElementById('grade_perda_orc');
+    dados.perda = perdaElement ? (parseFloat(perdaElement.value) || 3) : 3;
+    
+    const tempoProc = document.getElementById('grade_tempo_proc_orc');
+    dados.tempo_proc = tempoProc ? (parseFloat(tempoProc.value) || 1.5) : 1.5;
+    
+    const tempoMtg = document.getElementById('grade_tempo_mtg_orc');  
+    dados.tempo_mtg = tempoMtg ? (parseFloat(tempoMtg.value) || 0.5) : 0.5;
+    
+    console.log('Dados coletados:', dados);
+    
+    // Ocultar resultado anterior e erro
+    document.getElementById('resultadoGradeOrcamento').style.display = 'none';
+    document.getElementById('erroGradeOrcamento').style.display = 'none';
+    document.getElementById('adicionarGradeBtn').disabled = true;
+    
+    // Buscar dados dos produtos
+    fetch('/api/produtos/')
+        .then(response => response.json())
+        .then(produtos => {
+            console.log('✅ Produtos carregados da base');
+            
+            // Encontrar o perfil selecionado
+            const perfilSelecionado = produtos.find(p => p.id == dados.perfil_id);
+            if (!perfilSelecionado) {
+                throw new Error(`Perfil ID ${dados.perfil_id} não encontrado`);
+            }
+            
+            // Encontrar a chaveta (ID fixo 1332)
+            const chaveta = produtos.find(p => p.id == 1332);
+            if (!chaveta) {
+                throw new Error('Perfil Chaveta (ID 1332) não encontrado no banco');
+            }
+            
+            // Encontrar a cola (ID fixo 1183)
+            const cola = produtos.find(p => p.id == 1183);
+            if (!cola) {
+                throw new Error('COLA ESTRUTURAL 4500 A/B (ID 1183) não encontrada no banco');
+            }
+            
+            console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
+            
+            // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
+            const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
+            
+            // Calcular para o perfil - CONVERTER STRINGS PARA NÚMEROS
+            const pesoPerfilKg = metrosLinearesPorM2 * parseFloat(perfilSelecionado.peso_und);
+            const custoPerfilCentavos = metrosLinearesPorM2 * perfilSelecionado.custo_centavos;
+            
+            // Calcular para a chaveta - FÓRMULA ESPECÍFICA: vão / 150 * 2 * preço do perfil
+            const quantidadeChaveta = (dados.vao / 150) * 2;
+            const pesoChaveta = quantidadeChaveta * parseFloat(chaveta.peso_und);
+            const custoChaveta = quantidadeChaveta * chaveta.custo_centavos;
+            
+            // Calcular para a cola - FÓRMULA: quantidade fixa 0.06 unid/m²
+            const quantidadeCola = 0.06; // Quantidade fixa
+            const pesoCola = quantidadeCola * parseFloat(cola.peso_und);
+            const custoCola = quantidadeCola * cola.custo_centavos;
+            
+            // Aplicar perda aos materiais
+            const fatorPerda = 1 + (dados.perda / 100);
+            
+            // Calcular mão de obra - R$ 65.79/hora
+            const valorHoraMO = 65.79; // R$/hora
+            const tempoTotal = dados.tempo_proc + dados.tempo_mtg;
+            const custoMaoObraTotal = tempoTotal * valorHoraMO * 100; // em centavos
+            const maoObraDescricao = `Processamento/Montagem (${tempoTotal}h)`;
+            
+            // CUSTO TOTAL = Materiais com perda + Mão de obra (sem perda)
+            let pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
+            let custoTotalCentavos = (custoPerfilCentavos + custoChaveta + custoCola) * fatorPerda + custoMaoObraTotal;
+            
+            // Criar resultado final
+            const resultado = {
+                success: true,
+                nome_produto: dados.nome_grade,
+                custo_total: custoTotalCentavos,
+                peso_total: pesoTotalKg,
+                metros_lineares_por_m2: metrosLinearesPorM2,
+                componentes: [
+                    {
+                        nome: `${perfilSelecionado.descricao} (com ${dados.perda}% perda)`,
+                        produto_nome: perfilSelecionado.descricao,
+                        quantidade: metrosLinearesPorM2 * fatorPerda,
+                        custo_unitario: perfilSelecionado.custo_centavos,
+                        custo_total: custoPerfilCentavos * fatorPerda,
+                        unidade: 'm'
+                    },
+                    {
+                        nome: `${chaveta.descricao} (com ${dados.perda}% perda)`,
+                        produto_nome: chaveta.descricao,
+                        quantidade: quantidadeChaveta * fatorPerda,
+                        custo_unitario: chaveta.custo_centavos,
+                        custo_total: custoChaveta * fatorPerda,
+                        unidade: 'm'
+                    },
+                    {
+                        nome: `${cola.descricao} (com ${dados.perda}% perda)`,
+                        produto_nome: cola.descricao,
+                        quantidade: quantidadeCola * fatorPerda,
+                        custo_unitario: cola.custo_centavos,
+                        custo_total: custoCola * fatorPerda,
+                        unidade: 'unid'
+                    }
+                ]
+            };
+            
+            // Adicionar mão de obra aos componentes
+            if (custoMaoObraTotal > 0) {
+                resultado.componentes.push({
+                    nome: maoObraDescricao,
+                    produto_nome: maoObraDescricao,
+                    quantidade: dados.tempo_proc + dados.tempo_mtg,
+                    custo_unitario: valorHoraMO * 100, // R$ 65.79/hora em centavos
+                    custo_total: custoMaoObraTotal,
+                    unidade: 'h'
+                });
+            }
+            
+            // Salvar resultado globalmente
+            ultimoCalculoGrade = resultado;
+            
+            // Mostrar resultado na interface
+            mostrarResultadoGrade(resultado);
+            
+            console.log('✅ Cálculo de grade concluído:', resultado);
+        })
+        .catch(error => {
+            console.error('❌ Erro no cálculo:', error);
+            mostrarErroGrade('Erro no cálculo: ' + error.message);
+        });
+}
+
+// Mostrar resultado do cálculo
+function mostrarResultadoGrade(resultado) {
+    document.getElementById('nomeGradeCalculada').textContent = resultado.nome_produto;
+    document.getElementById('custoGradeCalculada').textContent = `R$ ${(resultado.custo_total / 100).toFixed(2)}/m²`;
+    document.getElementById('pesoGradeCalculada').textContent = `${resultado.peso_total.toFixed(3)} kg/m²`;
+    
+    // Preencher tabela de componentes
+    const tbody = document.getElementById('componentesGradeOrcamento');
+    tbody.innerHTML = '';
+    
+    resultado.componentes.forEach(comp => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td>${comp.nome}</td>
+            <td>${comp.quantidade.toFixed(4)} ${comp.unidade}</td>
+            <td>R$ ${(comp.custo_total / 100).toFixed(2)}</td>
+        `;
+    });
+    
+    // Adicionar linha de total
+    const totalRow = tbody.insertRow();
+    totalRow.innerHTML = `
+        <td><strong>TOTAL GERAL</strong></td>
+        <td></td>
+        <td><strong>R$ ${(resultado.custo_total / 100).toFixed(2)}</strong></td>
+    `;
+    totalRow.style.backgroundColor = '#e3f2fd';
+    
+    document.getElementById('resultadoGradeOrcamento').style.display = 'block';
+    document.getElementById('adicionarGradeBtn').disabled = false;
+}
+
+// Mostrar erro no cálculo
+function mostrarErroGrade(mensagem) {
+    document.getElementById('mensagemErroGrade').textContent = mensagem;
+    document.getElementById('erroGradeOrcamento').style.display = 'block';
+    document.getElementById('resultadoGradeOrcamento').style.display = 'none';
+    document.getElementById('adicionarGradeBtn').disabled = true;
+}
+
+// Adicionar grade ao orçamento
+function adicionarGradeAoOrcamento() {
+    if (!ultimoCalculoGrade) {
+        alert('Calcule a grade primeiro!');
+        return;
+    }
+    
+    console.log('Adicionando grade ao orçamento:', ultimoCalculoGrade);
+    
+    // Preparar dados para envio
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('descricao', ultimoCalculoGrade.nome_produto);
+    formData.append('quantidade', '1'); // Grades são vendidas por m²
+    formData.append('valor_unitario', (ultimoCalculoGrade.custo_total / 100).toFixed(2)); // Converter centavos para reais
+    formData.append('lucro', '22.5'); // Lucro padrão
+    formData.append('imposto', '0'); // Sem imposto por padrão
+    
+    // Enviar para o servidor
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Fechar modal e recarregar página
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addGradeModal'));
+            modal.hide();
+            
+            alert('Grade adicionada ao orçamento com sucesso!');
+            window.location.reload();
+        } else {
+            alert('Erro ao adicionar grade ao orçamento. Tente novamente.');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao adicionar grade:', error);
+        alert('Erro ao adicionar grade ao orçamento.');
+    });
+}
 
 </script>
 </body>

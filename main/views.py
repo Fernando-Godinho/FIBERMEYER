@@ -323,8 +323,9 @@ def orcamentos(request):
 
 # View para tela de cadastro de orçamento
 from .models import Orcamento
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django import forms
+from django.contrib import messages
 
 class OrcamentoForm(forms.ModelForm):
     class Meta:
@@ -421,6 +422,26 @@ def orcamento_form(request):
     else:
         form = OrcamentoForm()
     return render(request, 'main/orcamento_form.html', {'form': form})
+
+def orcamento_edit(request, orcamento_id):
+    """View para editar um orçamento existente"""
+    orcamento = get_object_or_404(Orcamento, id=orcamento_id)
+    
+    if request.method == 'POST':
+        form = OrcamentoForm(request.POST, instance=orcamento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Orçamento {orcamento.numero_orcamento} atualizado com sucesso!')
+            return redirect('orcamento', orcamento_id=orcamento.id)
+    else:
+        form = OrcamentoForm(instance=orcamento)
+    
+    context = {
+        'form': form,
+        'orcamento': orcamento,
+        'editing': True
+    }
+    return render(request, 'main/orcamento_form.html', context)
 
 # View para tela de detalhes do orçamento
 from .models import MP_Produtos

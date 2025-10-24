@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Produto 1469</title>
+</head>
+<body>
+    <h1>Teste de Busca do Produto 1469</h1>
+    <button onclick="testarProduto()">Testar Busca Produto 1469</button>
+    <div id="resultado"></div>
+
+    <script>
+        async function buscarProdutoPorId(id) {
+            try {
+                const response = await fetch('/api/produtos/');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const produtos = await response.json();
+                
+                // Converter ID para número para garantir comparação correta
+                const idNumerico = parseInt(id, 10);
+                const produto = produtos.find(p => p.id === idNumerico);
+                
+                if (!produto) {
+                    throw new Error(`Produto com ID "${id}" não encontrado`);
+                }
+                
+                console.log(`✅ Produto encontrado por ID "${id}": ${produto.descricao}`);
+                return produto;
+            } catch (error) {
+                console.error(`❌ Erro ao buscar produto por ID "${id}":`, error);
+                throw error;
+            }
+        }
+
+        async function testarProduto() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = 'Testando...';
+            
+            try {
+                // Testar com string (como vem do select)
+                const produtoString = await buscarProdutoPorId('1469');
+                console.log('Teste com string:', produtoString);
+                
+                // Testar com número
+                const produtoNumero = await buscarProdutoPorId(1469);
+                console.log('Teste com número:', produtoNumero);
+                
+                resultado.innerHTML = `
+                    <h2>✅ Sucesso!</h2>
+                    <p><strong>Teste com string '1469':</strong> ${produtoString.descricao}</p>
+                    <p><strong>Teste com número 1469:</strong> ${produtoNumero.descricao}</p>
+                `;
+            } catch (error) {
+                resultado.innerHTML = `<h2>❌ Erro:</h2><p>${error.message}</p>`;
+                console.error('Erro no teste:', error);
+            }
+        }
+    </script>
+</body>
+</html>

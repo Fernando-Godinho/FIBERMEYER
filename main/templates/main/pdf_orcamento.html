@@ -146,6 +146,95 @@
         .col-ipi { width: 8%; }
         .col-ncm { width: 12%; }
         .col-obs { width: 15%; }
+        
+        /* Estilos para a página 2 */
+        .page-break {
+            page-break-before: always;
+            margin-top: 40px;
+        }
+        
+        .header-page2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1.2;
+            margin: 0;
+        }
+        
+        .company-details {
+            font-size: 11px;
+            margin-top: 15px;
+            line-height: 1.4;
+        }
+        
+        .company-details a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        .client-info-page2 {
+            margin-bottom: 20px;
+        }
+        
+        .client-info-page2 table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .client-info-page2 td {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+        
+        .client-info-page2 td:first-child {
+            width: 40%;
+        }
+        
+        .client-info-page2 td:nth-child(2) {
+            width: 20%;
+        }
+        
+        .client-info-page2 td:nth-child(3) {
+            width: 20%;
+        }
+        
+        .client-info-page2 td:nth-child(4) {
+            width: 20%;
+        }
+        
+        .divider {
+            border: none;
+            border-top: 2px solid #333;
+            margin: 20px 0;
+        }
+        
+        .conditions {
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .conditions p {
+            margin: 5px 0;
+            text-align: justify;
+        }
+        
+        .conditions p em {
+            font-style: italic;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -251,6 +340,97 @@
     <div class="footer-info">
         <p>Este orçamento foi gerado automaticamente pelo sistema FIBERMEYER em {{ data_atual }}</p>
         <p>Válido por 30 dias a partir da data de emissão</p>
+    </div>
+
+    <!-- PÁGINA 2 - CONDIÇÕES GERAIS -->
+    <div class="page-break"></div>
+    
+    <div class="header-page2">
+        <div class="company-name">FIBERMEYER IND E COM</div>
+        <div class="company-name">DE ARTEFATOS</div>
+        <div class="company-name">DE FIBERMES/ASST.TDA</div>
+        <div class="company-details">
+            CNPJ: 86.613.815/0001-75 | IE: 123/0016433<br>
+            Fone/WhatsApp: (51) 3451-6619<br>
+            <a href="mailto:comercial@fibermeyer.com.br">comercial@fibermeyer.com.br</a><br>
+            Rodovia RS 118 nº 161 - Sapuciais do Sul/RS<br>
+            CEP: 93230-390
+        </div>
+    </div>
+    
+    <div class="client-info-page2">
+        <table>
+            <tr>
+                <td><strong>Cliente:</strong> {{ cliente.nome|default:"A DEFINIR" }}</td>
+                <td><strong>UF:</strong> {{ cliente.uf|default:"--" }}</td>
+                <td><strong>Proposta nº</strong></td>
+                <td>{{ proposta_numero }}</td>
+            </tr>
+            <tr>
+                <td><strong>Contato:</strong> {{ cliente.contato|default:"A DEFINIR" }}</td>
+                <td></td>
+                <td><strong>Revisão</strong></td>
+                <td>0</td>
+            </tr>
+            <tr>
+                <td><strong>Telefone:</strong> {{ cliente.telefone|default:"A DEFINIR" }}</td>
+                <td></td>
+                <td><strong>Data</strong></td>
+                <td>{{ data_atual }}</td>
+            </tr>
+            <tr>
+                <td><strong>Email:</strong> {{ cliente.email|default:"A DEFINIR" }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><strong>CNPJ:</strong> {{ cliente.cnpj|default:"00.000.000/0000-00" }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+    </div>
+    
+    <hr class="divider">
+    
+    <div class="conditions">
+        <div class="section-title">CONDIÇÕES GERAIS DE FORNECIMENTO</div>
+        
+        <div class="section-title">Condições de Pagamento:</div>
+        <p>- A COMBINAR</p>
+        <p><em>Crédito sujeito à aprovação.</em></p>
+        
+        <div class="section-title">Prazo de Entrega:</div>
+        <p>- A COMBINAR</p>
+        <p><em>Prazos de entrega são reflexos da carteira atual, podendo sofrer alterações na data de fechamento do pedido.</em></p>
+        
+        <div class="section-title">Validade da proposta:</div>
+        <p>- 30 dias a partir da emissão</p>
+        <p>- <strong>Frete:</strong> FOB - RETIRADA NAS NOSSAS DEPENDÊNCIAS</p>
+        <p>- <strong>Instalação:</strong> CONFORME COMBINADO</p>
+        
+        <div class="section-title">Venda Destinada a:</div>
+        <p>- INDUSTRIALIZAÇÃO</p>
+        
+        <div class="section-title">Cliente Contribuinte de ICMS:</div>
+        <p>- CONFORME DADOS INFORMADOS</p>
+        <p>- <strong>ICMS:</strong> Conforme legislação vigente</p>
+        
+        <p>A precificação depende da correta classificação fiscal do cliente e destinação do material. Quaisquer dados divergentes dos apontados nesta proposta podem acarretar revisão das alíquotas de impostos e consequentemente dos valores apresentados.</p>
+        <p>Todo e qualquer isenção fiscal deverá ser informada no ato do pedido.</p>
+        
+        <div class="section-title">Garantia:</div>
+        <p>- 12 MESES</p>
+        <p>A durabilidade dos equipamentos e demais serviços de instalação e revestimento é válida desde que os mesmos sejam aplicados rigorosamente para o fim que se destinam. A Fibermeyer se resguardará de responsabilidade sobre danos oriundos de imperícia, negligência, ou abusos no seu manuseio e operação (arraste, impacto e queda de objetos pesados e/ou cortantes), bem como na hipótese de ocorrer casos que alterem total ou parcialmente as condições normais de operação no ato da contratação. Danos oriundos de fenômenos naturais não são cobertos por garantia.</p>
+        
+        <div class="section-title">Outras observações:</div>
+        <p>1. A menos que explícito neste documento, a presente proposta não inclui quaisquer serviços relacionados ao projeto ou instalação de materiais, tais como posicionamento de layout, cálculos estruturais ou emissão de ARTs.</p>
+        <p>2. Para produtos customizados, caberá ao cliente informar todas as medidas solicitadas pela Fibermeyer, as quais poderão ser solicitadas previamente ou posteriormente à aprovação da proposta.</p>
+        <p>3. Desenhos técnicos personalizados não estão incluídos na precificação desta proposta. Caso haja necessidade de desenhos personalizados ou medição em campo, os serviços adicionais serão negociados e cobrados à parte.</p>
+        <p>4. Salvo quando a instalação for de responsabilidade da Fibermeyer, não nos responsabilizamos pelo sistema de fixação dos produtos.</p>
+        <p>5. Para serviços de revestimento, por ocasião da aplicação de produtos químicos, poderá ocorrer propagação de odores, causando desconforto a algumas pessoas. Caso isso ocorra, caberá à contratante o fornecimento de EPIs adequados a estas pessoas (máscara para vapores orgânicos).</p>
     </div>
 </body>
 </html>

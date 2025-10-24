@@ -435,14 +435,26 @@
           
           <!-- Informações básicas do produto -->
           <div class="row mb-3">
-            <div class="col-md-8">
+            <div class="col-md-6">
               <label for="descricaoComposto" class="form-label">Descrição do Produto Composto *</label>
               <input type="text" class="form-control" id="descricaoComposto" required 
                      placeholder="Ex: Kit de Montagem de Estrutura Completa">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label for="referenciaComposto" class="form-label">Referência</label>
               <input type="text" class="form-control" id="referenciaComposto" placeholder="Referência personalizada">
+            </div>
+            <div class="col-md-3">
+              <label for="percentualPerdaComposto" class="form-label">% Perda</label>
+              <div class="input-group">
+                <input type="number" step="0.01" class="form-control" id="percentualPerdaComposto" 
+                       min="0" max="100" value="0" placeholder="0.00" 
+                       onchange="validarPercentualPerda(); calcularCustoTotalComposto();"
+                       oninput="validarPercentualPerda();">
+                <span class="input-group-text">%</span>
+              </div>
+              <div class="form-text">Percentual de perda aplicado ao custo total</div>
+              <div class="invalid-feedback" id="feedbackPercentualPerda" style="display: none;"></div>
             </div>
           </div>
           
@@ -511,11 +523,11 @@
               <div class="row mt-3">
                 <div class="col-md-6 offset-md-6">
                   <div class="card">
+                    <div class="card-header">
+                      <h6 class="mb-0">💰 Resumo de Custos</h6>
+                    </div>
                     <div class="card-body">
-                      <div class="row">
-                        <div class="col-6"><strong>Custo Total:</strong></div>
-                        <div class="col-6 text-end"><span id="custoTotalComposto">R$ 0,00</span></div>
-                      </div>
+                      <div id="custoTotalComposto">R$ 0,00</div>
                     </div>
                   </div>
                 </div>
@@ -1122,12 +1134,105 @@ function atualizarTabelaComponentes() {
     });
     
     tbody.innerHTML = html;
-    document.getElementById('custoTotalComposto').textContent = `R$ ${custoTotal.toFixed(2)}`;
+    calcularCustoTotalComposto(custoTotal);
+}
+
+function calcularCustoTotalComposto(custoBase = null) {
+    // Se não foi passado custo base, recalcular
+    if (custoBase === null) {
+        custoBase = componentesTemp.reduce((total, comp) => total + comp.custo_total, 0);
+    }
+    
+    // Obter percentual de perda
+    const percentualPerda = parseFloat(document.getElementById('percentualPerdaComposto').value) || 0;
+    
+    // Debug
+    console.log('=== DEBUG CALCULO ===');
+    console.log('Custo Base:', custoBase);
+    console.log('Percentual Perda input value:', document.getElementById('percentualPerdaComposto').value);
+    console.log('Percentual Perda parseado:', percentualPerda);
+    
+    // Calcular valor da perda
+    const valorPerda = custoBase * (percentualPerda / 100);
+    
+    // Custo total final com perda
+    const custoTotalFinal = custoBase + valorPerda;
+    
+    console.log('Valor Perda:', valorPerda);
+    console.log('Custo Total Final:', custoTotalFinal);
+    
+    // Atualizar display
+    const elementoCustoTotal = document.getElementById('custoTotalComposto');
+    if (percentualPerda > 0) {
+        elementoCustoTotal.innerHTML = `
+            <div class="row">
+                <div class="col-6">Subtotal:</div>
+                <div class="col-6 text-end">R$ ${custoBase.toFixed(2)}</div>
+            </div>
+            <div class="row text-muted small">
+                <div class="col-6">Perda (${percentualPerda}%):</div>
+                <div class="col-6 text-end">R$ ${valorPerda.toFixed(2)}</div>
+            </div>
+            <hr class="my-2">
+            <div class="row">
+                <div class="col-6"><strong>Total Final:</strong></div>
+                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(2)}</strong></div>
+            </div>
+        `;
+    } else {
+        elementoCustoTotal.innerHTML = `
+            <div class="row">
+                <div class="col-6"><strong>Total:</strong></div>
+                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(2)}</strong></div>
+            </div>
+        `;
+    }
+    
+    return custoTotalFinal;
+}
+
+function validarPercentualPerda() {
+    const input = document.getElementById('percentualPerdaComposto');
+    const feedback = document.getElementById('feedbackPercentualPerda');
+    const valor = parseFloat(input.value);
+    
+    // Remover classes de validação anteriores
+    input.classList.remove('is-valid', 'is-invalid');
+    feedback.style.display = 'none';
+    
+    if (isNaN(valor)) {
+        input.value = 0;
+        return true;
+    }
+    
+    if (valor < 0) {
+        input.classList.add('is-invalid');
+        feedback.textContent = 'O percentual não pode ser negativo';
+        feedback.style.display = 'block';
+        input.value = 0;
+        return false;
+    }
+    
+    if (valor > 100) {
+        input.classList.add('is-invalid');
+        feedback.textContent = 'O percentual não pode ser maior que 100%';
+        feedback.style.display = 'block';
+        input.value = 100;
+        return false;
+    }
+    
+    if (valor >= 0 && valor <= 100) {
+        input.classList.add('is-valid');
+        return true;
+    }
+    
+    return true;
 }
 
 function salvarProdutoComposto() {
     const descricao = document.getElementById('descricaoComposto').value;
     const referencia = document.getElementById('referenciaComposto').value;
+    const percentualPerda = parseFloat(document.getElementById('percentualPerdaComposto').value) || 0;
     
     if (!descricao.trim()) {
         alert('Informe a descrição do produto composto!');
@@ -1139,24 +1244,42 @@ function salvarProdutoComposto() {
         return;
     }
     
-  // Calcular custo total em centavos
-  const custoTotal = componentesTemp.reduce((total, comp) => total + comp.custo_total, 0);
-  const custoCentavos = Math.round(custoTotal * 100);
+    // Validar percentual de perda
+    if (percentualPerda < 0 || percentualPerda > 100) {
+        alert('O percentual de perda deve estar entre 0% e 100%!');
+        return;
+    }
+    
+    // Calcular custo total com perda
+    const custoBase = componentesTemp.reduce((total, comp) => total + comp.custo_total, 0);
+    const valorPerda = custoBase * (percentualPerda / 100);
+    const custoTotalFinal = custoBase + valorPerda;
+    const custoCentavos = Math.round(custoTotalFinal * 100);
 
-  // Gerar data de revisão no formato ISO
-  const now = new Date();
-  const data_revisao = now.toISOString();
+    // Debug: mostrar os cálculos
+    console.log('🔍 SALVAMENTO - Custo Base:', custoBase.toFixed(2));
+    console.log('🔍 SALVAMENTO - Percentual:', percentualPerda + '%');
+    console.log('🔍 SALVAMENTO - Valor Perda:', valorPerda.toFixed(2));
+    console.log('🔍 SALVAMENTO - Total Final:', custoTotalFinal.toFixed(2));
+    console.log('🔍 SALVAMENTO - Centavos:', custoCentavos);
 
-  const produtoId = document.getElementById('produtoCompostoId').value;
-  const produtoData = {
-    descricao: descricao,
-    custo_centavos: custoCentavos,
-    peso_und: 0, // Peso pode ser calculado se necessário
-    unidade: 'UN', // Padrão para produtos compostos
-    referencia: referencia || '',
-    data_revisao: data_revisao,
-    tipo_produto: 'composto'
-  };
+    // Gerar data de revisão no formato ISO
+    const now = new Date();
+    const data_revisao = now.toISOString();
+
+    const produtoId = document.getElementById('produtoCompostoId').value;
+    const produtoData = {
+        descricao: descricao,
+        custo_centavos: custoCentavos,
+        peso_und: 0, // Peso pode ser calculado se necessário
+        unidade: 'UN', // Padrão para produtos compostos
+        referencia: referencia || '',
+        data_revisao: data_revisao,
+        tipo_produto: 'composto'
+    };
+
+    // Debug: mostrar dados que serão enviados
+    console.log('📤 DADOS ENVIADOS:', produtoData);
 
   let method = 'POST';
   let url = apiProdutos;
@@ -2150,6 +2273,177 @@ function carregarInterfaceGuardaCorpoHorizontal() {
     `;
     
     console.log('Interface Guarda Corpo - Horizontal carregada');
+}
+
+function carregarInterfaceEscada() {
+    console.log('=== CARREGANDO INTERFACE ESCADA ===');
+    
+    // Limpar estado anterior
+    templateAtual = { id: 'escada_customizado', tipo: 'escada' };
+    ultimoCalculo = null;
+    
+    // Definir valor do select
+    document.getElementById('templateSelect').value = 'escada_customizado';
+    
+    // Mostrar descrição
+    document.getElementById('templateDescription').innerHTML = `
+        <h6 class="text-primary">Escada</h6>
+        <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <p class="mt-2 text-info small">
+            Cálculo de escada com componentes customizáveis incluindo arcos, saída para piscina, portinhola e túnel.
+        </p>
+    `;
+    
+    // Criar campos específicos para escada
+    const parametrosContainer = document.getElementById('parametrosContainer');
+    parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="escada_nome" class="form-label">Nome da Escada *</label>
+            <input type="text" class="form-control param-input" id="escada_nome" name="nome_escada" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="escada_comprimento" class="form-label">Comprimento da Escada (m) *</label>
+            <input type="number" class="form-control param-input" id="escada_comprimento" name="comprimento_escada" step="0.01" min="0.1" required>
+            <div class="form-text">Comprimento total da escada em metros</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="escada_arco_guarda_corpo" class="form-label">Arco de Guarda Corpo</label>
+            <select class="form-select param-input" id="escada_arco_guarda_corpo" name="arco_guarda_corpo">
+                <option value="">Selecione um arco (opcional)...</option>
+            </select>
+            <div class="form-text">Arcos disponíveis serão carregados automaticamente</div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input param-input" type="checkbox" id="escada_saida_piscina" name="saida_piscina" value="1">
+                        <label class="form-check-label" for="escada_saida_piscina">
+                            <strong>Saída Piscina</strong>
+                        </label>
+                        <div class="form-text">Adicionar componentes específicos para saída de piscina</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input param-input" type="checkbox" id="escada_portinhola" name="portinhola" value="1">
+                        <label class="form-check-label" for="escada_portinhola">
+                            <strong>Portinhola</strong>
+                        </label>
+                        <div class="form-text">Incluir portinhola na escada</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input param-input" type="checkbox" id="escada_tunel_2000mm" name="tunel_2000mm" value="1">
+                <label class="form-check-label" for="escada_tunel_2000mm">
+                    <strong>Túnel 2000MM</strong>
+                </label>
+                <div class="form-text">Adicionar túnel de 2000mm à escada</div>
+            </div>
+        </div>
+        
+        <!-- Seção de Mão de Obra -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Mão de Obra</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="escada_tempo_proc" class="form-label">Tempo Processamento (h)</label>
+                            <input type="number" class="form-control param-input" id="escada_tempo_proc" name="tempo_proc" step="0.1" value="3.0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="escada_tempo_mtg" class="form-label">Tempo Montagem (h)</label>
+                            <input type="number" class="form-control param-input" id="escada_tempo_mtg" name="tempo_mtg" step="0.1" value="2.0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botão de cálculo -->
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary" onclick="calcularEscada()" id="calcularEscadaBtn">
+                <i class="fas fa-calculator"></i> Calcular Escada
+            </button>
+        </div>
+    `;
+    
+    // Carregar arcos disponíveis
+    carregarArcosDisponiveis();
+    
+    console.log('Interface Escada carregada');
+}
+
+function carregarArcosDisponiveis() {
+    console.log('Carregando arcos disponíveis...');
+    
+    const select = document.getElementById('escada_arco_guarda_corpo');
+    
+    // Limpar completamente o select e remover qualquer valor selecionado
+    select.innerHTML = '<option value="">Selecione um arco (opcional)...</option>';
+    select.value = '';
+    
+    // Buscar produtos que contenham "arco" na descrição
+    fetch(apiProdutos)
+        .then(res => res.json())
+        .then(produtos => {
+            
+            // Filtrar produtos que contenham "arco" no nome (case insensitive) e tenham dados válidos
+            const arcos = produtos.filter(produto => {
+                const temDescricao = produto.descricao && produto.descricao.toLowerCase().includes('arco');
+                const temId = produto.id && !isNaN(produto.id) && produto.id > 0;
+                const temCusto = produto.custo_centavos !== undefined && produto.custo_centavos !== null;
+                
+                if (temDescricao && temId && temCusto) {
+                    console.log(`✅ Arco válido encontrado: ID ${produto.id} - ${produto.descricao}`);
+                    return true;
+                } else if (temDescricao) {
+                    console.warn(`❌ Arco com dados inválidos: ID ${produto.id} - ${produto.descricao}`, {
+                        temId,
+                        temCusto,
+                        produto
+                    });
+                }
+                return false;
+            });
+            
+            // Limpar options existentes (garantir que não há valores antigos)
+            select.innerHTML = '<option value="">Selecione um arco (opcional)...</option>';
+            select.value = '';
+            
+            // Adicionar arcos encontrados
+            arcos.forEach(arco => {
+                // Validação adicional antes de adicionar
+                if (arco.id && arco.descricao && arco.custo_centavos !== undefined) {
+                    const option = document.createElement('option');
+                    option.value = arco.id;
+                    option.textContent = `${arco.descricao} - R$ ${(arco.custo_centavos / 100).toFixed(2)}`;
+                    select.appendChild(option);
+                    console.log(`Arco adicionado ao select: ID ${arco.id}`);
+                } else {
+                    console.warn(`Arco rejeitado para o select: ID ${arco.id}`, arco);
+                }
+            });
+            
+            console.log(`${arcos.length} arcos carregados`);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar arcos:', error);
+        });
 }
 
 function carregarInterfaceTampaMontada() {
@@ -4126,6 +4420,272 @@ function toggleAreaPintura() {
     calcularPerfilParametrizado();
 }
 
+function calcularEscada() {
+    console.log('=== CALCULANDO ESCADA ===');
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const camposObrigatorios = ['escada_nome', 'escada_comprimento'];
+    
+    let todosCamposPreenchidos = true;
+    const dados = {};
+    
+    camposObrigatorios.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (!elemento || !elemento.value.trim()) {
+            todosCamposPreenchidos = false;
+            console.warn(`Campo ${campo} não preenchido`);
+            return;
+        }
+        
+        if (campo === 'escada_nome') {
+            dados.nome_escada = elemento.value.trim();
+        } else if (campo === 'escada_comprimento') {
+            dados.comprimento_escada = parseFloat(elemento.value);
+        }
+    });
+    
+    if (!todosCamposPreenchidos) {
+        alert('Por favor, preencha todos os campos obrigatórios (nome e comprimento).');
+        return;
+    }
+    
+    // Coletar campos opcionais
+    const arcoSelecionado = document.getElementById('escada_arco_guarda_corpo')?.value || null;
+    
+    // Validar arco selecionado
+    if (arcoSelecionado && arcoSelecionado !== "" && !isNaN(arcoSelecionado)) {
+        dados.arco_guarda_corpo = arcoSelecionado;
+        console.log(`Arco selecionado válido: ${arcoSelecionado}`);
+    } else {
+        dados.arco_guarda_corpo = null;
+        if (arcoSelecionado) {
+            console.warn(`Arco selecionado inválido: "${arcoSelecionado}" - será ignorado`);
+        }
+    }
+    
+    dados.saida_piscina = document.getElementById('escada_saida_piscina')?.checked || false;
+    dados.portinhola = document.getElementById('escada_portinhola')?.checked || false;
+    dados.tunel_2000mm = document.getElementById('escada_tunel_2000mm')?.checked || false;
+    dados.tempo_proc = parseFloat(document.getElementById('escada_tempo_proc')?.value || '3.0');
+    dados.tempo_mtg = parseFloat(document.getElementById('escada_tempo_mtg')?.value || '2.0');
+    dados.quantidade = 1; // Fixo em 1 unidade
+    
+    console.log('Dados coletados (Escada):', dados);
+    
+    // NOVA LÓGICA SIMPLIFICADA: Usar produto base ESCADA DE MARINHEIRO (ID 1465)
+    const produtosNecessarios = [];
+    
+    // Buscar produto base da escada (ID 1465)
+    produtosNecessarios.push(buscarProdutoPorId(1465)); // ESCADA DE MARINHEIRO
+    
+    // Adicionar produtos opcionais
+    if (dados.saida_piscina) {
+        produtosNecessarios.push(buscarProdutoPorId(1472)); // SAÍDA PISCINA
+    }
+    
+    if (dados.portinhola) {
+        produtosNecessarios.push(
+            buscarProdutoPorDescricao('PORTINHOLA').catch(() => null)
+        );
+    }
+    
+    if (dados.tunel_2000mm) {
+        produtosNecessarios.push(
+            buscarProdutoPorDescricao('TUNEL').catch(() => null)
+        );
+    }
+    
+    // Adicionar arco se selecionado e válido
+    if (dados.arco_guarda_corpo && dados.arco_guarda_corpo !== "" && !isNaN(dados.arco_guarda_corpo)) {
+        console.log(`Verificando arco ID: ${dados.arco_guarda_corpo}`);
+        produtosNecessarios.push(
+            buscarProdutoPorId(dados.arco_guarda_corpo).catch(error => {
+                console.warn(`Arco ID ${dados.arco_guarda_corpo} não encontrado:`, error);
+                return null;
+            })
+        );
+    } else if (dados.arco_guarda_corpo) {
+        console.warn(`ID de arco inválido: "${dados.arco_guarda_corpo}"`);
+    }
+    
+    // Processar todos os produtos necessários
+    Promise.all(produtosNecessarios).then((produtos) => {
+        // Filtrar produtos válidos
+        const produtosValidos = produtos.filter(p => p !== null);
+        
+        console.log('=== PRODUTOS ENCONTRADOS (ESCADA SIMPLIFICADA) ===');
+        produtosValidos.forEach(produto => {
+            if (produto) {
+                console.log(`${produto.descricao}: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
+            }
+        });
+        
+        // Calcular custo baseado no produto base ESCADA DE MARINHEIRO
+        const componentes = [];
+        let custoTotal = 0;
+        
+        // 1. ESCADA DE MARINHEIRO - Multiplicar pelo comprimento
+        const escadaBase = produtosValidos[0]; // Produto ID 1465
+        if (escadaBase) {
+            const quantidadeEscada = dados.comprimento_escada; // 1 unidade por metro
+            const custoEscada = (escadaBase.custo_centavos / 100) * quantidadeEscada;
+            custoTotal += custoEscada;
+            
+            componentes.push({
+                nome: escadaBase.descricao,
+                produto_nome: escadaBase.descricao,
+                produto_id: escadaBase.id,
+                quantidade: quantidadeEscada,
+                custo_unitario: escadaBase.custo_centavos / 100,
+                custo_total: custoEscada,
+                observacao: `${quantidadeEscada}m de escada`
+            });
+        }
+        
+        // 2. COMPONENTES OPCIONAIS
+        let componenteIndex = 1; // Começar do índice 1 (após escada base)
+        
+        if (dados.saida_piscina) {
+            const produto = produtosValidos[componenteIndex];
+            if (produto) {
+                const custo = produto.custo_centavos / 100;
+                custoTotal += custo;
+                
+                componentes.push({
+                    nome: produto.descricao,
+                    produto_nome: produto.descricao,
+                    produto_id: produto.id,
+                    quantidade: 1,
+                    custo_unitario: custo,
+                    custo_total: custo,
+                    observacao: 'Saída para piscina'
+                });
+                
+                console.log(`✅ Saída piscina: ${produto.descricao} - R$ ${custo.toFixed(2)}`);
+            } else {
+                console.warn('Produto SAÍDA PISCINA não encontrado');
+            }
+            componenteIndex++;
+        }
+        
+        if (dados.portinhola) {
+            const produto = produtosValidos[componenteIndex];
+            if (produto) {
+                const custo = produto.custo_centavos / 100;
+                custoTotal += custo;
+                
+                componentes.push({
+                    nome: produto.descricao,
+                    produto_nome: produto.descricao,
+                    produto_id: produto.id,
+                    quantidade: 1,
+                    custo_unitario: custo,
+                    custo_total: custo,
+                    observacao: 'Portinhola'
+                });
+            }
+            componenteIndex++;
+        }
+        
+        if (dados.tunel_2000mm) {
+            const produto = produtosValidos[componenteIndex];
+            if (produto) {
+                const custo = produto.custo_centavos / 100;
+                custoTotal += custo;
+                
+                componentes.push({
+                    nome: produto.descricao,
+                    produto_nome: produto.descricao,
+                    produto_id: produto.id,
+                    quantidade: 1,
+                    custo_unitario: custo,
+                    custo_total: custo,
+                    observacao: 'Túnel 2000mm'
+                });
+            }
+            componenteIndex++;
+        }
+        
+        if (dados.arco_guarda_corpo) {
+            const produto = produtosValidos[componenteIndex];
+            if (produto) {
+                // Quantidade de arco = comprimento da escada - 2 metros
+                const quantidadeArco = Math.max(0, dados.comprimento_escada - 2);
+                const custoUnitario = produto.custo_centavos / 100;
+                const custoTotal_arco = custoUnitario * quantidadeArco;
+                custoTotal += custoTotal_arco;
+                
+                componentes.push({
+                    nome: produto.descricao,
+                    produto_nome: produto.descricao,
+                    produto_id: produto.id,
+                    quantidade: quantidadeArco,
+                    custo_unitario: custoUnitario,
+                    custo_total: custoTotal_arco,
+                    observacao: `Arco de guarda corpo - ${quantidadeArco}m (escada ${dados.comprimento_escada}m - 2m)`
+                });
+                
+                console.log(`📏 Arco calculado: ${dados.comprimento_escada}m escada - 2m = ${quantidadeArco}m de arco`);
+            } else {
+                console.warn('Arco selecionado não encontrado');
+            }
+        }
+        
+        // 3. MÃO DE OBRA (mantida igual)
+        const custoMaoObraProcessamento = 50.00 * dados.tempo_proc; // R$ 50/h estimado
+        const custoMaoObraMontagem = 45.00 * dados.tempo_mtg; // R$ 45/h estimado
+        const custoMaoObraTotal = custoMaoObraProcessamento + custoMaoObraMontagem;
+        custoTotal += custoMaoObraTotal;
+        
+        componentes.push({
+            nome: 'MÃO DE OBRA - PROCESSAMENTO',
+            produto_nome: 'MÃO DE OBRA - PROCESSAMENTO',
+            produto_id: 'mao_obra_proc',
+            quantidade: dados.tempo_proc,
+            custo_unitario: 50.00,
+            custo_total: custoMaoObraProcessamento,
+            observacao: 'Processamento'
+        });
+        
+        componentes.push({
+            nome: 'MÃO DE OBRA - MONTAGEM',
+            produto_nome: 'MÃO DE OBRA - MONTAGEM',
+            produto_id: 'mao_obra_mtg',
+            quantidade: dados.tempo_mtg,
+            custo_unitario: 45.00,
+            custo_total: custoMaoObraMontagem,
+            observacao: 'Montagem'
+        });
+        
+        // Armazenar resultado
+        ultimoCalculo = {
+            template: 'escada_customizado',
+            componentes: componentes,  // Mover componentes para o nível correto
+            produto: {
+                nome: dados.nome_escada,
+                descricao: `Escada ${dados.comprimento_escada}m${dados.saida_piscina ? ' c/ Saída Piscina' : ''}${dados.portinhola ? ' c/ Portinhola' : ''}${dados.tunel_2000mm ? ' c/ Túnel 2000mm' : ''}`,
+                custo_total: custoTotal
+            },
+            parametros: dados
+        };
+        
+        // Atualizar interface
+        preencherTabelaComponentes(ultimoCalculo);
+        
+        // Habilitar botão salvar
+        document.getElementById('salvarProdutoBtn').disabled = false;
+        
+        console.log('=== CÁLCULO ESCADA SIMPLIFICADO CONCLUÍDO ===');
+        console.log('Custo Total:', custoTotal.toFixed(2));
+        console.log('Componentes:', componentes.length);
+        console.log('Base da escada: R$', (escadaBase?.custo_centavos / 100)?.toFixed(2), 'x', dados.comprimento_escada, 'm');
+        
+    }).catch(error => {
+        console.error('Erro ao processar produtos para escada:', error);
+        alert('Erro ao processar produtos necessários para o cálculo da escada. Verifique o console para detalhes.');
+    });
+}
+
 function calcularNovoPerfil() {
     console.log('=== CALCULANDO NOVO PERFIL ===');
     
@@ -4600,6 +5160,12 @@ function preencherTabelaComponentes(calculo) {
     
     console.log('=== PREENCHENDO TABELA DE COMPONENTES ===');
     
+    // Verificar se calculo e componentes existem
+    if (!calculo || !calculo.componentes || !Array.isArray(calculo.componentes)) {
+        console.warn('⚠️ Dados de componentes inválidos:', calculo);
+        return;
+    }
+    
     calculo.componentes.forEach((comp, index) => {
         const row = tbody.insertRow();
         const isComponenteResina = ['Resina PET', 'Monômero de estireno', 'Anti UV', 'Anti OX', 'BPO', 'TBPB', 'Desmoldante', 'Antichama', 'Carga mineral', 'Pigmento'].includes(comp.nome);
@@ -5001,6 +5567,12 @@ function carregarTemplates() {
             guardaCorpoHorizontalOption.textContent = 'Guarda Corpo - Horizontal';
             select.appendChild(guardaCorpoHorizontalOption);
             
+            // Adicionar opção "Escada"
+            const escadaOption = document.createElement('option');
+            escadaOption.value = 'escada_customizado';
+            escadaOption.textContent = 'Escada';
+            select.appendChild(escadaOption);
+            
             templates.forEach(template => {
                 const option = document.createElement('option');
                 option.value = template.id;
@@ -5100,6 +5672,13 @@ function carregarTemplate() {
     if (templateId === 'guarda_corpo_horizontal_customizado') {
         console.log('Carregando interface de Guarda Corpo - Horizontal');
         carregarInterfaceGuardaCorpoHorizontal();
+        return;
+    }
+    
+    // Verificar se é "Escada"
+    if (templateId === 'escada_customizado') {
+        console.log('Carregando interface de Escada');
+        carregarInterfaceEscada();
         return;
     }
     
@@ -7565,7 +8144,9 @@ async function buscarProdutoPorId(id) {
         }
         const produtos = await response.json();
         
-        const produto = produtos.find(p => p.id === id);
+        // Converter ID para número para garantir comparação correta
+        const idNumerico = parseInt(id, 10);
+        const produto = produtos.find(p => p.id === idNumerico);
         
         if (!produto) {
             throw new Error(`Produto com ID "${id}" não encontrado`);

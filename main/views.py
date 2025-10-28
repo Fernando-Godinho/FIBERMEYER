@@ -447,8 +447,69 @@ def orcamento_edit(request, orcamento_id):
 from .models import MP_Produtos
 
 def orcamento(request, orcamento_id):
+    from decimal import Decimal
+    
     orcamento = Orcamento.objects.get(id=orcamento_id)
     itens = list(orcamento.itens.all())
+    
+    # 🔄 APLICAR fórmula correta aos itens para exibição
+    print(f"🔄 DEBUG: Aplicando fórmula correta aos {len(itens)} itens do orçamento {orcamento_id}")
+    
+    for item in itens:
+        # Aplicar a mesma fórmula do modelo, mas sem salvar no banco
+        print(f"� DEBUG: Calculando item {item.id} - {item.descricao}")
+        
+        # 1. Valor Base: Custo × Quantidade
+        valor_base = Decimal(str(item.quantidade)) * Decimal(str(item.valor_unitario))
+        print(f"1️⃣ DEBUG: Valor base = {item.quantidade} × {item.valor_unitario} = {valor_base}")
+        
+        # 2. Calcular impostos totais (do orçamento + item)
+        impostos_orcamento = Decimal('0')
+        if orcamento:
+            # ICMS do orçamento
+            icms = Decimal(str(orcamento.icms or 0))
+            comissao = Decimal(str(orcamento.comissao or 0))
+            
+            # Outros impostos fixos
+            simples_iss = icms  # Simples ISS = ICMS
+            pis_confins = Decimal('3.65')
+            ir_csocial = Decimal('2.28')
+            embalagem = Decimal('1.0')
+            frete = Decimal('0.0')
+            desp_financ = Decimal('1.5')
+            desp_adm = Decimal('18.0')
+            
+            # TOTAL DE IMPOSTOS = Comissão + ICMS + outros impostos
+            outros_impostos = simples_iss + pis_confins + ir_csocial + embalagem + frete + desp_financ + desp_adm
+            impostos_orcamento = comissao + outros_impostos
+            print(f"💰 DEBUG: Comissão={comissao}, Outros impostos={outros_impostos}")
+            print(f"💰 DEBUG: Total impostos orçamento = {impostos_orcamento}%")
+        
+        # Impostos totais = impostos do orçamento + impostos específicos do item
+        impostos_totais = impostos_orcamento + Decimal(str(item.imposto_item or 0))
+        print(f"🎯 DEBUG: Impostos totais (orçamento + item) = {impostos_totais}%")
+        
+        # Aplicar Impostos + Comissão: Valor Base × (1 + (Impostos+Comissão)/100)
+        valor_com_impostos = valor_base * (Decimal('1') + impostos_totais / Decimal('100'))
+        print(f"2️⃣ DEBUG: Valor com impostos+comissão = {valor_base} × (1 + {impostos_totais}/100) = {valor_com_impostos}")
+        
+        # 3. Aplicar Lucro: Valor com Impostos × (1 + Lucro/100)
+        valor_com_lucro = valor_com_impostos * (Decimal('1') + Decimal(str(item.desconto_item)) / Decimal('100'))
+        print(f"3️⃣ DEBUG: Valor com lucro = {valor_com_impostos} × (1 + {item.desconto_item}/100) = {valor_com_lucro}")
+        
+        # 4. Aplicar IPI: Valor com Lucro × (1 + IPI/100)
+        valor_final = valor_com_lucro * (Decimal('1') + Decimal(str(item.ipi_item)) / Decimal('100'))
+        print(f"4️⃣ DEBUG: Valor final com IPI = {valor_com_lucro} × (1 + {item.ipi_item}/100) = {valor_final}")
+        
+        # Atualizar o valor_total do item para exibição (e salvar no banco)
+        item.valor_total = valor_final
+        item.save()
+        print(f"✅ DEBUG: Item {item.id} atualizado: R${item.valor_total}")
+    
+    # 🔄 RECARREGAR itens do banco para ter os valores atualizados
+    itens = list(orcamento.itens.all())
+    print(f"🔄 DEBUG: Itens recarregados do banco para exibição")
+    
     produtos = MP_Produtos.objects.all()
 
     # Adiciona ou edita produto no orçamento ou altera status
@@ -489,6 +550,7 @@ def orcamento(request, orcamento_id):
                 custo_unitario = safe_float(item.valor_unitario)  # agora é custo
                 quantidade = safe_float(item.quantidade, 1.0)
                 imposto = safe_float(request.POST.get('imposto', item.imposto_item))
+                ipi_percentual = safe_float(item.ipi_item, 0)  # IPI atual do item
                 
                 # Calcular valor de venda baseado no lucro sobre o custo
                 valor_lucro_unitario = custo_unitario * (lucro_percentual / 100)
@@ -496,13 +558,26 @@ def orcamento(request, orcamento_id):
                 
                 valor_bruto = valor_venda_unitario * quantidade
                 valor_imposto = valor_bruto * (imposto / 100)
-                valor_total = valor_bruto + valor_imposto
+                valor_sem_ipi = valor_bruto + valor_imposto
+                
+                # Calcular IPI sobre o valor sem IPI
+                valor_ipi = valor_sem_ipi * (ipi_percentual / 100)
+                valor_total = valor_sem_ipi + valor_ipi
                 
                 # Guardar o valor do lucro em valor monetário no campo desconto_item para compatibilidade
                 item.desconto_item = valor_lucro_unitario * quantidade
                 item.imposto_item = valor_imposto
                 item.valor_total = valor_total
-            except Exception:
+                
+                # Debug log apenas se DEBUG=True
+                from django.conf import settings
+                if getattr(settings, 'DEBUG', False):
+                    print(f"DEBUG - Item {item.id}: Custo={custo_unitario}, Lucro%={lucro_percentual}, IPI%={ipi_percentual}, Total={valor_total}")
+            except Exception as e:
+                # Log do erro apenas se DEBUG=True
+                from django.conf import settings
+                if getattr(settings, 'DEBUG', False):
+                    print(f"ERRO no cálculo do item {item.id}: {e}")
                 pass
             item.save()
             # Atualiza totais do orçamento
@@ -523,6 +598,146 @@ def orcamento(request, orcamento_id):
                 })
             
             return redirect('orcamento', orcamento_id=orcamento_id)
+        
+        # Tratamento específico para atualização de IPI
+        if request.POST.get('ajax_update_ipi'):
+            edit_item_id = request.POST.get('edit_item_id')
+            if edit_item_id:
+                from .models import OrcamentoItem
+                from django.http import JsonResponse
+                try:
+                    item = OrcamentoItem.objects.get(id=edit_item_id)
+                    
+                    # Atualizar IPI se fornecido
+                    if 'ipi' in request.POST:
+                        novo_ipi = safe_float(request.POST.get('ipi', 0))
+                        # Validar valor de IPI
+                        if novo_ipi < 0:
+                            novo_ipi = 0
+                        elif novo_ipi > 100:
+                            novo_ipi = 100
+                        item.ipi_item = novo_ipi
+                    
+                    # Atualizar unidade se fornecida
+                    if 'unidade' in request.POST:
+                        item.unidade = request.POST.get('unidade', item.unidade)
+                    
+                    # Salvar item (isso irá recalcular o valor_total automaticamente)
+                    item.save()
+                    
+                    # Atualizar totais do orçamento
+                    itens = list(orcamento.itens.all())
+                    orcamento.total_liquido = sum([safe_float(i.valor_total) for i in itens])
+                    orcamento.desconto_total = sum([safe_float(i.desconto_item) for i in itens])
+                    orcamento.save()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'IPI e unidade atualizados com sucesso',
+                        'novo_total': f"{item.valor_total:.2f}",
+                        'total_orcamento': f"{orcamento.total_liquido:.2f}"
+                    })
+                except OrcamentoItem.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Item não encontrado'
+                    })
+                except ValueError as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Valor inválido: {str(e)}'
+                    })
+                except Exception as e:
+                    # Log detalhado do erro
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"❌ Erro na atualização de IPI: {error_details}")
+                    
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Erro interno: {str(e)}'
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'ID do item não fornecido'
+                })
+        
+        # Tratamento específico para atualização de LUCRO
+        if request.POST.get('ajax_update_lucro'):
+            edit_item_id = request.POST.get('edit_item_id')
+            print(f"🔧 DEBUG: Iniciando atualização de lucro para item {edit_item_id}")
+            
+            if edit_item_id:
+                from .models import OrcamentoItem
+                from django.http import JsonResponse
+                try:
+                    print(f"🔍 DEBUG: Buscando item {edit_item_id}")
+                    item = OrcamentoItem.objects.get(id=edit_item_id)
+                    print(f"✅ DEBUG: Item encontrado: {item.descricao}")
+                    
+                    # Atualizar lucro se fornecido
+                    if 'lucro' in request.POST:
+                        novo_lucro = safe_float(request.POST.get('lucro', 0))
+                        print(f"📊 DEBUG: Novo lucro recebido: {novo_lucro}%")
+                        
+                        # Validar valor de lucro (0-1000% para ser seguro)
+                        if novo_lucro < 0:
+                            novo_lucro = 0
+                        elif novo_lucro > 1000:
+                            novo_lucro = 1000
+                        
+                        print(f"✔️ DEBUG: Lucro validado: {novo_lucro}%")
+                        
+                        # O campo desconto_item representa o lucro percentual
+                        item.desconto_item = novo_lucro
+                        print(f"💾 DEBUG: Campo desconto_item atualizado para {item.desconto_item}")
+                    
+                    # Salvar item (isso irá recalcular o valor_total automaticamente)
+                    print(f"💿 DEBUG: Salvando item...")
+                    item.save()
+                    print(f"✅ DEBUG: Item salvo com sucesso. Novo valor_total: {item.valor_total}")
+                    
+                    # Atualizar totais do orçamento
+                    print(f"🔢 DEBUG: Atualizando totais do orçamento...")
+                    itens = list(orcamento.itens.all())
+                    orcamento.total_liquido = sum([safe_float(i.valor_total) for i in itens])
+                    orcamento.desconto_total = sum([safe_float(i.desconto_item) for i in itens])
+                    orcamento.save()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Lucro atualizado com sucesso',
+                        'novo_total': f"{item.valor_total:.2f}",
+                        'total_orcamento': f"{orcamento.total_liquido:.2f}",
+                        'lucro_percentual': f"{item.desconto_item:.2f}"
+                    })
+                except OrcamentoItem.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Item não encontrado'
+                    })
+                except ValueError as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Valor inválido: {str(e)}'
+                    })
+                except Exception as e:
+                    # Log detalhado do erro
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"❌ Erro na atualização de lucro: {error_details}")
+                    
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Erro interno: {str(e)}'
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'ID do item não fornecido'
+                })
+        
         delete_item_id = request.POST.get('delete_item_id')
         if delete_item_id:
             from .models import OrcamentoItem
@@ -551,7 +766,7 @@ def orcamento(request, orcamento_id):
             produto_id = request.POST.get('produto_id')
             produto_parametrizado = request.POST.get('produto_parametrizado')
             quantidade = request.POST.get('quantidade')
-            lucro = request.POST.get('lucro') or 22.5  # padrão 22,5% de lucro
+            lucro = request.POST.get('lucro') or 0  # padrão 0% de lucro
             imposto = request.POST.get('imposto') or 0
             
             # Debug para verificar o valor do lucro recebido
@@ -627,7 +842,7 @@ def orcamento(request, orcamento_id):
                 quantidade_num = safe_float(quantidade, 1.0)
                 
                 # Validar e converter lucro
-                lucro_num = safe_float(request.POST.get('lucro', 22.5))  # padrão 22,5%
+                lucro_num = safe_float(request.POST.get('lucro', 0))  # padrão 0%
                 
                 # Validar e converter imposto
                 imposto_num = safe_float(imposto)
@@ -1106,6 +1321,120 @@ def mao_obra_lista(request):
             'mao_obra': mo_data
         })
     except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+def ajax_update_lucro(request, orcamento_id):
+    """Atualizar lucro de um item via AJAX"""
+    print(f"🔧 DEBUG: Iniciando atualização de lucro para orçamento {orcamento_id}")
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método não permitido'})
+    
+    try:
+        print(f"🔍 DEBUG: Buscando item")
+        item_id = request.POST.get('edit_item_id')
+        novo_lucro = safe_float(request.POST.get('lucro', 0))
+        
+        print(f"✅ DEBUG: Item ID: {item_id}, Novo lucro: {novo_lucro}")
+        
+        # Buscar o item
+        from .models import OrcamentoItem
+        item = OrcamentoItem.objects.get(id=item_id, orcamento_id=orcamento_id)
+        print(f"✅ DEBUG: Item encontrado: {item.descricao}")
+        
+        # Atualizar o desconto_item (que representa o lucro)
+        item.desconto_item = novo_lucro
+        print(f"📊 DEBUG: Novo lucro definido: {item.desconto_item}")
+        
+        # Salvar - isso vai acionar o método save() com os cálculos
+        print(f"💾 DEBUG: Salvando item")
+        item.save()
+        print(f"✅ DEBUG: Item salvo com valor total: {item.valor_total}")
+        
+        # Recalcular totais do orçamento
+        print(f"🔄 DEBUG: Recalculando totais do orçamento")
+        orcamento = item.orcamento
+        total_itens = sum(item.valor_total for item in orcamento.itens.all())
+        print(f"📊 DEBUG: Total recalculado: {total_itens}")
+        
+        return JsonResponse({
+            'success': True,
+            'item_total': float(item.valor_total),
+            'total_orcamento': float(total_itens),
+            'message': 'Lucro atualizado com sucesso'
+        })
+        
+    except OrcamentoItem.DoesNotExist:
+        print(f"❌ DEBUG: Item não encontrado")
+        return JsonResponse({
+            'success': False,
+            'error': 'Item não encontrado'
+        })
+    except Exception as e:
+        print(f"❌ DEBUG: Erro inesperado: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+def ajax_update_ipi(request, orcamento_id):
+    """Atualizar IPI de um item via AJAX"""
+    print(f"🔧 DEBUG: Iniciando atualização de IPI para orçamento {orcamento_id}")
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método não permitido'})
+    
+    try:
+        print(f"🔍 DEBUG: Buscando item")
+        item_id = request.POST.get('edit_item_id')
+        novo_ipi = safe_float(request.POST.get('ipi', 0))
+        
+        print(f"✅ DEBUG: Item ID: {item_id}, Novo IPI: {novo_ipi}")
+        
+        # Buscar o item
+        from .models import OrcamentoItem
+        item = OrcamentoItem.objects.get(id=item_id, orcamento_id=orcamento_id)
+        print(f"✅ DEBUG: Item encontrado: {item.descricao}")
+        
+        # Atualizar o IPI
+        item.ipi_item = novo_ipi
+        print(f"📊 DEBUG: Novo IPI definido: {item.ipi_item}")
+        
+        # Salvar - isso vai acionar o método save() com os cálculos
+        print(f"💾 DEBUG: Salvando item")
+        item.save()
+        print(f"✅ DEBUG: Item salvo com valor total: {item.valor_total}")
+        
+        # Recalcular totais do orçamento
+        print(f"🔄 DEBUG: Recalculando totais do orçamento")
+        orcamento = item.orcamento
+        total_itens = sum(item.valor_total for item in orcamento.itens.all())
+        print(f"📊 DEBUG: Total recalculado: {total_itens}")
+        
+        return JsonResponse({
+            'success': True,
+            'novo_total': float(item.valor_total),
+            'total_orcamento': float(total_itens),
+            'message': 'IPI atualizado com sucesso'
+        })
+        
+    except OrcamentoItem.DoesNotExist:
+        print(f"❌ DEBUG: Item não encontrado")
+        return JsonResponse({
+            'success': False,
+            'error': 'Item não encontrado'
+        })
+    except Exception as e:
+        print(f"❌ DEBUG: Erro inesperado: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': str(e)

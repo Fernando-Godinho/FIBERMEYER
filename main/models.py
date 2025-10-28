@@ -241,8 +241,7 @@ CONTRIBUINTE_ICMS_CHOICES = [
 TIPO_RESINA_CHOICES = [
     ('POLIESTER', 'POLIÉSTER'),
     ('ISOFTALICA', 'ISOFTÁLICA'),
-    ('EPOXI', 'EPÓXI'),
-    ('VINILESTER', 'VINILÉSTER'),
+    ('ESTER_VINILICA', 'ÉSTER VINÍLICA'),
 ]
 
 # Choices para Tipos de Inox
@@ -335,12 +334,68 @@ class OrcamentoItem(models.Model):
     desconto_item = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     imposto_item = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    # Novos campos para IPI e unidade
+    ipi_item = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Percentual de IPI")
+    unidade = models.CharField(max_length=10, default="UN", help_text="Unidade de medida")
 
     def save(self, *args, **kwargs):
-        # Cálculo correto: Custo + Lucro + Imposto
-        # desconto_item agora representa o LUCRO total, não desconto
-        self.valor_total = (self.quantidade * self.valor_unitario) + self.desconto_item + self.imposto_item
-        super().save(*args, **kwargs)
+        from decimal import Decimal
+        
+        print(f"🔧 DEBUG MODEL: Iniciando save do item {self.id} - {self.descricao}")
+        
+        # Cálculo correto em sequência: Valor Base → Impostos → Lucro → IPI
+        # 1. Valor Base: Custo × Quantidade
+        valor_base = Decimal(str(self.quantidade)) * Decimal(str(self.valor_unitario))
+        print(f"1️⃣ DEBUG: Valor base = {self.quantidade} × {self.valor_unitario} = {valor_base}")
+        
+        # 2. Calcular impostos totais (do orçamento + item)
+        # Impostos do orçamento: ICMS, Comissão, PIS/COFINS, etc.
+        impostos_orcamento = Decimal('0')
+        if hasattr(self, 'orcamento') and self.orcamento:
+            print(f"🏢 DEBUG: Orçamento encontrado: {self.orcamento.id}")
+            # ICMS do orçamento
+            icms = Decimal(str(self.orcamento.icms or 0))
+            comissao = Decimal(str(self.orcamento.comissao or 0))
+            print(f"📊 DEBUG: ICMS={icms}, Comissão={comissao}")
+            
+            # Outros impostos fixos
+            simples_iss = icms  # Simples ISS = ICMS
+            pis_confins = Decimal('3.65')
+            ir_csocial = Decimal('2.28')
+            embalagem = Decimal('1.0')
+            frete = Decimal('0.0')
+            desp_financ = Decimal('1.5')
+            desp_adm = Decimal('18.0')
+            
+            # TOTAL DE IMPOSTOS = Comissão + ICMS + outros impostos
+            outros_impostos = simples_iss + pis_confins + ir_csocial + embalagem + frete + desp_financ + desp_adm
+            impostos_orcamento = comissao + outros_impostos
+            print(f"💰 DEBUG: Comissão={comissao}, Outros impostos={outros_impostos}")
+            print(f"💰 DEBUG: Total impostos orçamento = {impostos_orcamento}%")
+        
+        # Impostos totais = impostos do orçamento + impostos específicos do item
+        impostos_totais = impostos_orcamento + Decimal(str(self.imposto_item or 0))
+        print(f"🎯 DEBUG: Impostos totais (orçamento + item) = {impostos_totais}%")
+        
+        # Aplicar Impostos + Comissão: Valor Base × (1 + (Impostos+Comissão)/100)
+        valor_com_impostos = valor_base * (Decimal('1') + impostos_totais / Decimal('100'))
+        print(f"2️⃣ DEBUG: Valor com impostos+comissão = {valor_base} × (1 + {impostos_totais}/100) = {valor_com_impostos}")
+        
+        # 3. Aplicar Lucro: Valor com Impostos × (1 + Lucro/100)
+        # desconto_item representa o LUCRO percentual
+        valor_com_lucro = valor_com_impostos * (Decimal('1') + Decimal(str(self.desconto_item)) / Decimal('100'))
+        print(f"3️⃣ DEBUG: Valor com lucro = {valor_com_impostos} × (1 + {self.desconto_item}/100) = {valor_com_lucro}")
+        
+        # 4. Aplicar IPI: Valor com Lucro × (1 + IPI/100)
+        self.valor_total = valor_com_lucro * (Decimal('1') + Decimal(str(self.ipi_item)) / Decimal('100'))
+        print(f"4️⃣ DEBUG: Valor final com IPI = {valor_com_lucro} × (1 + {self.ipi_item}/100) = {self.valor_total}")
+        
+        try:
+            super().save(*args, **kwargs)
+            print(f"✅ DEBUG: Save concluído com sucesso!")
+        except Exception as e:
+            print(f"❌ DEBUG: Erro no super().save(): {e}")
+            raise
 
     def __str__(self):
         return f"{self.descricao} - Qtd: {self.quantidade}"
@@ -392,6 +447,7 @@ class ProdutoTemplate(models.Model):
     parametros_obrigatorios = models.JSONField(default=list, help_text="Lista de parâmetros obrigatórios")
     parametros_opcionais = models.JSONField(default=dict, help_text="Parâmetros opcionais com valores padrão")
     formula_principal = models.TextField(blank=True, help_text="Fórmula principal de cálculo")
+    descricao_tecnica = models.TextField(blank=True, help_text="Descrição técnica detalhada do produto")
 
     def __str__(self):
         return f"Template: {self.produto_base.descricao if self.produto_base else 'Sem produto'}"

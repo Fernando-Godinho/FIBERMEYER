@@ -1453,14 +1453,21 @@ function carregarInterfaceNovoPerfil() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Novo Perfil</h6>
         <small class="text-muted">Categoria: PRODUTO_FINAL</small>
+        <br><small class="text-info">Template para criação de perfis pultrusados customizados</small>
     `;
     
-    // Criar APENAS os 11 campos solicitados
+    // Criar APENAS os 11 campos solicitados + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
         <div class="mb-3">
             <label for="perfil_nome" class="form-label">Nome perfil *</label>
             <input type="text" class="form-control param-input" id="perfil_nome" name="nome_perfil" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="perfil_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="perfil_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica detalhada do perfil..."></textarea>
+            <div class="form-text">Informações técnicas sobre material, dimensões, aplicações, etc.</div>
         </div>
         
         <div class="mb-3">
@@ -1520,6 +1527,22 @@ function carregarInterfaceNovoPerfil() {
         <div class="mb-3" id="perfil_area_pintura_container" style="display: none;">
             <label for="perfil_area_pintura" class="form-label">Área pintura (m²) *</label>
             <input type="number" step="0.01" class="form-control param-input" id="perfil_area_pintura" name="area_pintura_m2">
+        </div>
+        
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="perfil_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="perfil_unidade" name="unidade" required>
+                <option value="M">M (Metro Linear)</option>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="UN">UN (Unidade)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
         </div>
         
         <div class="mt-3 text-center">
@@ -1604,17 +1627,24 @@ function carregarInterfaceGrades() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Grades</h6>
         <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <br><small class="text-info">Template para grades estruturais em fibra de vidro</small>
         <p class="mt-2 text-info small">
             <strong>Fórmula:</strong> (((comprimento/eixo i)*vão/1000)* peso do perfil)
         </p>
     `;
     
-    // Criar campos específicos para grades
+    // Criar campos específicos para grades + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
         <div class="mb-3">
             <label for="grade_nome" class="form-label">Nome da Grade *</label>
             <input type="text" class="form-control param-input" id="grade_nome" name="nome_grade" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="grade_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="grade_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica da grade..."></textarea>
+            <div class="form-text">Especificações técnicas, carga suportada, aplicações, etc.</div>
         </div>
         
         <div class="mb-3">
@@ -1671,6 +1701,22 @@ function carregarInterfaceGrades() {
                     <small><i class="fas fa-info-circle"></i> Mão de Obra: Processamento/Montagem - R$ 65,79/hora</small>
                 </div>
             </div>
+        </div>
+        
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="grade_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="grade_unidade" name="unidade" required>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="UN">UN (Unidade)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
         </div>
         
         <div class="mt-3 text-center">
@@ -1857,6 +1903,22 @@ function carregarInterfaceTampaInjetada() {
             </div>
         </div>
         
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="tampa_inj_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="tampa_inj_unidade" name="unidade" required>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="UN">UN (Unidade)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
+        </div>
+        
         <div class="mt-3 text-center">
             <button type="button" class="btn btn-primary" onclick="calcularTampaInjetada()" id="calcularTampaInjetadaBtn">
                 <i class="fas fa-calculator"></i> Calcular Tampa Injetada
@@ -2006,6 +2068,22 @@ function carregarInterfaceDegraus() {
             <div class="form-text">Percentual de perda aplicado aos materiais (padrão: 3%)</div>
         </div>
         
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="degraus_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="degraus_unidade" name="unidade" required>
+                <option value="UN">UN (Unidade)</option>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
+        </div>
+        
         <div class="mt-3 text-center">
             <button type="button" class="btn btn-primary" onclick="calcularDegraus()" id="calcularDegrausBtn">
                 <i class="fas fa-calculator"></i> Calcular Degraus
@@ -2091,6 +2169,22 @@ function carregarInterfaceDegrauInjetado() {
         <div class="mb-3">
             <label for="degrau_inj_perda" class="form-label">Perda (%)</label>
             <input type="number" class="form-control param-input" id="degrau_inj_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
+        </div>
+        
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="degrau_inj_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="degrau_inj_unidade" name="unidade" required>
+                <option value="UN">UN (Unidade)</option>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
         </div>
         
         <div class="mt-3 text-center">
@@ -2265,6 +2359,22 @@ function carregarInterfaceGuardaCorpoHorizontal() {
             <input type="number" class="form-control param-input" id="gc_horiz_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
         </div>
         
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="gc_horiz_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="gc_horiz_unidade" name="unidade" required>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="UN">UN (Unidade)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
+        </div>
+        
         <div class="mt-3 text-center">
             <button type="button" class="btn btn-success" onclick="calcularGuardaCorpoHorizontal()">
                 <i class="fas fa-calculator"></i> Calcular Guarda Corpo
@@ -2372,6 +2482,22 @@ function carregarInterfaceEscada() {
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="escada_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="escada_unidade" name="unidade" required>
+                <option value="UN">UN (Unidade)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
         </div>
         
         <!-- Botão de cálculo -->
@@ -2543,6 +2669,22 @@ function carregarInterfaceTampaMontada() {
                     Incluir Chapa EV
                 </label>
             </div>
+        </div>
+        
+        <!-- Campo de Unidade de Medida -->
+        <div class="mb-3">
+            <label for="tampa_unidade" class="form-label">Unidade de Medida *</label>
+            <select class="form-select param-input" id="tampa_unidade" name="unidade" required>
+                <option value="M²">M² (Metro Quadrado)</option>
+                <option value="ML">ML (Metro Linear)</option>
+                <option value="UN">UN (Unidade)</option>
+                <option value="KG">KG (Quilograma)</option>
+                <option value="PC">PC (Peça)</option>
+                <option value="CJ">CJ (Conjunto)</option>
+                <option value="L">L (Litro)</option>
+                <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto final</div>
         </div>
         
         <div class="d-grid gap-2">
@@ -2936,6 +3078,7 @@ function calcularTampaInjetada() {
     dados.quadro_u4 = document.getElementById('tampa_inj_quadro_u4').checked;
     dados.alca = document.getElementById('tampa_inj_alca').checked;
     dados.chapa_ev = document.getElementById('tampa_inj_chapa_ev').checked;
+    dados.unidade = document.getElementById('tampa_inj_unidade').value || 'M²'; // Unidade selecionada
     dados.tipo_calculo = 'tampa_injetada';
     
     if (!todosCamposPreenchidos) {
@@ -3257,7 +3400,7 @@ function calcularDegraus() {
     Promise.all([
         buscarProdutoPorDescricao(dados.tipo_perfil === 'I25' ? 'I25mm' : 'I38mm'),
         buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa R$ 2,12
-        buscarProdutoPorDescricao('COLA ESTRUTURAL'),
+        buscarProdutoPorId(1183), // Cola estrutural - ID fixo
         dados.tipo_perfil === 'I25' ? buscarProdutoPorDescricao('E - 4\'x1.3/16\' #3/16\'') : buscarProdutoPorDescricao('PERFIL F 4"'), // Perfil E para I25, Perfil F para I38
         buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'),
         buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'),
@@ -5286,7 +5429,7 @@ function salvarPerfilParametrizado() {
         descricao: dadosPerfil.nome_perfil,
         custo_centavos: ultimoCalculo.custo_total,
         peso_und: dadosPerfil.peso_metro_kg.toFixed(3),
-        unidade: 'M', // Metro linear
+        unidade: dadosPerfil.unidade || 'M', // Usar unidade selecionada ou Metro linear como padrão
         referencia: gerarReferenciaPerfil(dadosPerfil.nome_perfil),
         tipo_produto: 'composto', // CORREÇÃO: Definir como composto
         categoria: 'Perfis',
@@ -6565,6 +6708,9 @@ function salvarTampaMontadaParametrizada() {
         return;
     }
     
+    // Obter unidade selecionada
+    const unidadeSelecionada = document.getElementById('tampa_unidade').value || 'M²';
+    
     console.log('Dados da tampa montada para salvar:', ultimoCalculo);
     
     // Usar sempre o custo_total que já foi corrigido no ultimoCalculo
@@ -6581,7 +6727,7 @@ function salvarTampaMontadaParametrizada() {
         descricao: nomeTampa,
         custo_centavos: custoFinalCentavos,
         peso_und: parseFloat(ultimoCalculo.peso_total.toFixed(3)),
-        unidade: 'm²',
+        unidade: unidadeSelecionada, // Usar unidade selecionada pelo usuário
         referencia: gerarReferenciaTampa(nomeTampa),
         tipo_produto: 'composto',
         categoria: 'Tampa',
@@ -6682,6 +6828,9 @@ function salvarTampaInjetadaParametrizada() {
         return;
     }
     
+    // Obter unidade selecionada
+    const unidadeSelecionada = document.getElementById('tampa_inj_unidade').value || 'M²';
+    
     console.log('Dados da tampa injetada para salvar:', ultimoCalculo);
     
     // Usar o custo_total corrigido
@@ -6692,7 +6841,7 @@ function salvarTampaInjetadaParametrizada() {
         descricao: nomeTampa,
         custo_centavos: custoFinalCentavos,
         peso_und: parseFloat(ultimoCalculo.peso_total.toFixed(3)),
-        unidade: 'm²',
+        unidade: unidadeSelecionada, // Usar unidade selecionada pelo usuário
         referencia: gerarReferenciaTampa(nomeTampa),
         tipo_produto: 'composto',
         categoria: 'Tampa',

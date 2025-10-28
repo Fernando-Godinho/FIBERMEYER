@@ -158,38 +158,46 @@ def gerar_pdf_orcamento(request, orcamento_id):
     )
     elements.append(Paragraph('<b>PROPOSTA COMERCIAL</b>', proposta_title))
     
-    # Processar produtos com as 5 colunas essenciais
+    # Processar produtos com colunas incluindo IPI
     produtos_data = []
     
     # Buscar itens do orçamento
     itens = orcamento.itens.all()
     for i, item in enumerate(itens, 1):
+        # Calcular valor unitário final (valor_total / quantidade)
+        valor_unitario_final = float(item.valor_total) / float(item.quantidade) if float(item.quantidade) > 0 else 0
+        
+        # Obter percentual de IPI
+        ipi_percentual = float(item.ipi_item) if item.ipi_item else 0
+        
         produtos_data.append([
             str(i),
             str(item.quantidade),
             item.descricao,
-            f"R$ {float(item.valor_unitario):.2f}".replace('.', ','),
+            f"R$ {valor_unitario_final:.2f}".replace('.', ','),
+            f"{ipi_percentual:.1f}%",
             f"R$ {float(item.valor_total):.2f}".replace('.', ',')
         ])
     
     # Adicionar linhas vazias para completar a tabela (mínimo 8 linhas)
     while len(produtos_data) < 8:
-        produtos_data.append(['', '', '', '', ''])
+        produtos_data.append(['', '', '', '', '', ''])
     
-    # Cabeçalho da tabela com as mesmas colunas do orçamento
+    # Cabeçalho da tabela com coluna de IPI
     table_header = [
-        ['ITEM', 'QTDE', 'DESCRIÇÃO DOS PRODUTOS', 'VALOR UNIT.', 'VALOR TOTAL']
+        ['ITEM', 'QTDE', 'DESCRIÇÃO DOS PRODUTOS', 'VALOR UNIT.', 'IPI (%)', 'VALOR TOTAL']
     ]
     
     # Dados completos da tabela
     table_data = table_header + produtos_data
     
-    # Criar tabela com layout das 5 colunas essenciais
+    # Criar tabela com layout das 6 colunas incluindo IPI
     table = Table(table_data, colWidths=[
         1.5*cm,   # ITEM
         2*cm,     # QTDE
-        11*cm,    # DESCRIÇÃO DOS PRODUTOS (mais espaço)
+        9*cm,     # DESCRIÇÃO DOS PRODUTOS (reduzido para acomodar IPI)
         3*cm,     # VALOR UNIT.
+        2*cm,     # IPI (%) - nova coluna
         3*cm      # VALOR TOTAL
     ])
     
@@ -202,12 +210,13 @@ def gerar_pdf_orcamento(request, orcamento_id):
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 7),  # Reduzido de 8 para 7
         
-        # Corpo da tabela - apenas 5 colunas
+        # Corpo da tabela - agora com 6 colunas
         ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # ITEM
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # QTDE
         ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # DESCRIÇÃO DOS PRODUTOS
         ('ALIGN', (3, 1), (3, -1), 'RIGHT'),   # VALOR UNIT.
-        ('ALIGN', (4, 1), (4, -1), 'RIGHT'),   # VALOR TOTAL
+        ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # IPI (%)
+        ('ALIGN', (5, 1), (5, -1), 'RIGHT'),   # VALOR TOTAL
         
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 8),

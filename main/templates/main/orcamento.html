@@ -105,6 +105,12 @@
             <div class="card-text fw-bold text-success" style="font-size: 1.2rem;">R$ {{ total_lucro|floatformat:2 }}</div>
           </div>
         </div>
+        <div class="card shadow-sm" style="min-width: 170px; max-width: 180px;">
+          <div class="card-body py-2 px-3">
+            <div class="card-title mb-1" style="font-size: 1rem;">Total IPI</div>
+            <div class="card-text fw-bold text-info" style="font-size: 1.2rem;" id="total-ipi-display">R$ 0,00</div>
+          </div>
+        </div>
       </div>
       <div class="col-md-8 d-flex justify-content-end align-items-start">
         <a href="{% url 'orcamento_edit' orcamento.id %}" class="btn btn-primary me-2">Editar Orçamento</a>
@@ -147,7 +153,7 @@
               </div>
               <div class="mb-3">
                 <label for="lucro" class="form-label">Lucro (%)</label>
-                <input type="number" class="form-control" id="lucro" name="lucro" min="0" max="500" step="0.1" value="22.5">
+                <input type="number" class="form-control" id="lucro" name="lucro" min="0" max="500" step="0.1" value="0">
               </div>
 
             </div>
@@ -165,8 +171,10 @@
         <tr>
           <th>Descrição</th>
           <th>Quantidade</th>
+          <th>Unidade</th>
           <th>Custo Unitário</th>
           <th>Lucro (%)</th>
+          <th>IPI (%)</th>
           <th>Valor Total</th>
           <th style="width: 150px;">Ações</th>
         </tr>
@@ -176,6 +184,7 @@
         <tr>
           <td>{{ item.descricao }}</td>
           <td>{{ item.quantidade }}</td>
+          <td>{{ item.unidade|default:"UN" }}</td>
           <td>
             <strong class="text-primary" id="valor-unitario-final-{{ item.id }}">R$ {{ item.valor_unitario|floatformat:2 }}</strong>
           </td>
@@ -191,7 +200,7 @@
               <input type="number" 
                      class="form-control form-control-sm lucro-input" 
                      style="width: 80px; display: inline-block;"
-                     value="22.5"
+                     value="0"
                      data-lucro-valor="{{ item.desconto_item }}"
                      min="0" 
                      max="500" 
@@ -203,6 +212,21 @@
                      onchange="atualizarLucroItem(this)"
                      onfocus="aplicarLucroSeZero(this)">%<br/>
               <small class="text-muted">R$ <span id="lucro-valor-{{ item.id }}">{{ item.desconto_item|floatformat:2 }}</span></small>
+            {% endif %}
+          </td>
+          <td>
+            {% if orcamento.status == 'Enviado' %}
+              {{ item.ipi_item|default:"0"|floatformat:2 }}%
+            {% else %}
+              <input type="number" 
+                     class="form-control form-control-sm ipi-input" 
+                     style="width: 70px; display: inline-block;"
+                     value="{{ item.ipi_item|default:'0' }}"
+                     min="0" 
+                     max="100" 
+                     step="0.1"
+                     data-item-id="{{ item.id }}"
+                     onchange="atualizarIPIItem(this)">%
             {% endif %}
           </td>
           <td>R$ <span id="total-{{ item.id }}">{{ item.valor_total|floatformat:2 }}</span></td>
@@ -217,8 +241,10 @@
                 data-id="{{ item.id }}" 
                 data-descricao="{{ item.descricao }}" 
                 data-quantidade="{{ item.quantidade }}" 
+                data-unidade="{{ item.unidade|default:'UN' }}"
                 data-valor_unitario="{{ item.valor_unitario }}" 
                 data-desconto="{{ item.desconto_item }}" 
+                data-ipi="{{ item.ipi_item|default:'0' }}"
                 data-imposto="{{ item.imposto_item }}">
                 <i class="fas fa-edit"></i> Editar
               </button>
@@ -255,12 +281,29 @@
                 <input type="number" class="form-control" id="edit_quantidade" name="quantidade" step="any" required>
               </div>
               <div class="mb-3">
+                <label for="edit_unidade" class="form-label">Unidade</label>
+                <select class="form-control" id="edit_unidade" name="unidade">
+                  <option value="UN">UN (Unidade)</option>
+                  <option value="M">M (Metro Linear)</option>
+                  <option value="M²">M² (Metro Quadrado)</option>
+                  <option value="KG">KG (Quilograma)</option>
+                  <option value="PC">PC (Peça)</option>
+                  <option value="CJ">CJ (Conjunto)</option>
+                  <option value="L">L (Litro)</option>
+                  <option value="M³">M³ (Metro Cúbico)</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label for="edit_valor_unitario" class="form-label">Custo Unitário</label>
                 <input type="number" class="form-control" id="edit_valor_unitario" name="valor_unitario" step="any" required>
               </div>
               <div class="mb-3">
                 <label for="edit_lucro" class="form-label">Lucro (%)</label>
                 <input type="number" class="form-control" id="edit_lucro" name="lucro" step="0.1" min="0" max="500">
+              </div>
+              <div class="mb-3">
+                <label for="edit_ipi" class="form-label">IPI (%)</label>
+                <input type="number" class="form-control" id="edit_ipi" name="ipi" step="0.1" min="0" max="100" value="0">
               </div>
 
             </div>
@@ -284,8 +327,10 @@
       document.getElementById('edit_item_id').value = button.getAttribute('data-id');
       document.getElementById('edit_descricao').value = button.getAttribute('data-descricao');
       document.getElementById('edit_quantidade').value = button.getAttribute('data-quantidade');
+      document.getElementById('edit_unidade').value = button.getAttribute('data-unidade') || 'UN';
       document.getElementById('edit_valor_unitario').value = button.getAttribute('data-valor_unitario');
       document.getElementById('edit_lucro').value = button.getAttribute('data-desconto');
+      document.getElementById('edit_ipi').value = button.getAttribute('data-ipi') || '0';
     });
 
     // Calcular total de impostos (Comissão + Outros Impostos)
@@ -372,17 +417,17 @@
           
           // Buscar o input de lucro ou o texto se estiver no modo "Enviado"
           const inputLucro = linha.querySelector('.lucro-input');
-          let lucroPercent = 22.5; // valor padrão
+          let lucroPercent = 0; // valor padrão
           
           if (inputLucro) {
-            lucroPercent = parseFloat(inputLucro.value) || 22.5;
+            lucroPercent = parseFloat(inputLucro.value) || 0;
           } else {
             // Se não tem input, tentar extrair do texto (modo "Enviado")
             const cellaLucro = linha.cells[3];
             if (cellaLucro) {
               const lucroMatch = cellaLucro.textContent.match(/([\d,\.]+)%/);
               if (lucroMatch) {
-                lucroPercent = parseFloat(lucroMatch[1].replace(',', '.')) || 22.5;
+                lucroPercent = parseFloat(lucroMatch[1].replace(',', '.')) || 0;
               }
             }
           }
@@ -391,32 +436,32 @@
           const custoUnit = parseFloat(custoUnitText) || 0;
           
           if (quantidade > 0 && custoUnit > 0) {
-            // Nova fórmula: Custo Unit / (1 - (impostos + lucro))
-            // Primeiro converter percentuais para decimais
-            const impostosDecimal = totalImpostosPercent / 100;
-            const lucroDecimal = lucroPercent / 100;
+            // Nova fórmula sequencial: Valor Base → Impostos → Lucro → IPI
+            // 1. Valor Base: Custo Unit × Quantidade
+            const valorBase = custoUnit * quantidade;
             
-            // Denominador = 1 - (impostos + lucro)
-            const denominador = 1 - (impostosDecimal + lucroDecimal);
+            // 2. Aplicar Impostos: Valor Base × (1 + Impostos/100)
+            const valorComImpostos = valorBase * (1 + totalImpostosPercent / 100);
             
-            // Verificar se o denominador é válido (não pode ser zero ou negativo)
-            if (denominador <= 0) {
-              console.warn(`Denominador inválido para item ${index + 1}: ${denominador}`);
-              return;
-            }
+            // 3. Aplicar Lucro: Valor com Impostos × (1 + Lucro/100)
+            const valorComLucro = valorComImpostos * (1 + lucroPercent / 100);
             
-            // Valor Unitário Final = Custo Unit / (1 - (impostos + lucro))
-            const valorUnitarioFinal = custoUnit / denominador;
+            // 4. Buscar IPI do item
+            const ipiInput = linha.querySelector('input.ipi-input');
+            const ipiPercent = ipiInput ? (parseFloat(ipiInput.value) || 0) : 0;
             
-            // Valor Total = Quantidade × Valor Unitário Final
-            const valorTotal = quantidade * valorUnitarioFinal;
+            // 5. Aplicar IPI: Valor com Lucro × (1 + IPI/100)
+            const valorFinal = valorComLucro * (1 + ipiPercent / 100);
+            
+            // Calcular valor unitário final para exibição
+            const valorUnitarioFinal = valorFinal / quantidade;
             
             // Atualizar o valor na tabela
             const spanTotal = linha.querySelector('span[id^="total-"]');
             const spanValorUnitarioFinal = linha.querySelector('strong[id^="valor-unitario-final-"]');
             
             if (spanTotal) {
-              spanTotal.textContent = valorTotal.toFixed(2);
+              spanTotal.textContent = valorFinal.toFixed(2);
             }
             
             if (spanValorUnitarioFinal) {
@@ -424,12 +469,11 @@
             }
             
             console.log(`Item ${index + 1}:`);
-            console.log(`  Custo unitário original: R$${custoUnit.toFixed(2)}`);
-            console.log(`  Impostos: ${totalImpostosPercent.toFixed(2)}% (${impostosDecimal.toFixed(4)})`);
-            console.log(`  Lucro: ${lucroPercent}% (${lucroDecimal.toFixed(4)})`);
-            console.log(`  Denominador: 1 - (${impostosDecimal.toFixed(4)} + ${lucroDecimal.toFixed(4)}) = ${denominador.toFixed(4)}`);
-            console.log(`  Fórmula: R$${custoUnit.toFixed(2)} / ${denominador.toFixed(4)} = R$${valorUnitarioFinal.toFixed(2)}`);
-            console.log(`  × Quantidade (${quantidade}): R$${valorTotal.toFixed(2)}`);
+            console.log(`  1. Valor Base: R$${custoUnit.toFixed(2)} × ${quantidade} = R$${valorBase.toFixed(2)}`);
+            console.log(`  2. + Impostos (${totalImpostosPercent.toFixed(2)}%): R$${valorComImpostos.toFixed(2)}`);
+            console.log(`  3. + Lucro (${lucroPercent}%): R$${valorComLucro.toFixed(2)}`);
+            console.log(`  4. + IPI (${ipiPercent}%): R$${valorFinal.toFixed(2)}`);
+            console.log(`  Valor Unitário Final: R$${valorUnitarioFinal.toFixed(2)}`);
             console.log('');
           }
         } catch (error) {
@@ -1236,7 +1280,7 @@ function salvarItemNoBackend(descricao, quantidade, valorUnitario, valorTotal) {
     formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
     formData.append('produto_parametrizado', JSON.stringify(produtoParametrizadoData));
     formData.append('quantidade', quantidade);
-    formData.append('lucro', 22.5);
+    formData.append('lucro', 0);
     formData.append('imposto', 0);
     
     // Enviar via POST para o mesmo endpoint que adiciona produtos normais
@@ -3888,7 +3932,7 @@ function calcularDegrausOrcamento() {
     Promise.all([
         buscarProdutoPorDescricao(tipoPerfil === 'I25' ? 'I25mm' : 'I38mm'), // Perfil principal
         buscarProdutoPorDescricao('Perfil Chaveta'), // Travessa 
-        buscarProdutoPorDescricao('COLA ESTRUTURAL'), // Cola
+        buscarProdutoPorId(1183), // Cola estrutural - ID fixo
         buscarProdutoPorDescricao(tipoPerfil === 'I25' ? 'E - 4\'x1.3/16\' #3/16\'' : 'PERFIL F 4"'), // Reforço conforme perfil
         buscarProdutoPorDescricao('Tubo Quadrado 25x38#3mm'), // Tubo quadrado
         buscarProdutoPorDescricao('PARAF-SXT-M6X40-AI304'), // Parafuso M6X40
@@ -5516,41 +5560,40 @@ function atualizarLucroItem(input) {
     const outrosImpostos = simplesISS + pisConfins + irCSocial + embalagem + frete + despFinanc + despAdm;
     const totalImpostosPercent = comissao + outrosImpostos;
     
-    // Nova fórmula: Custo Unit / (1 - (impostos + lucro))
-    // Converter percentuais para decimais
-    const impostosDecimal = totalImpostosPercent / 100;
-    const lucroDecimal = lucroPercentual / 100;
+    // Nova fórmula sequencial: Valor Base → Impostos+Comissão → Lucro → IPI
+    // 1. Valor Base: Custo Unit × Quantidade
+    const valorBase = custoUnitario * quantidade;
     
-    // Denominador = 1 - (impostos + lucro)
-    const denominador = 1 - (impostosDecimal + lucroDecimal);
+    // 2. Aplicar Impostos+Comissão: Valor Base × (1 + (Impostos+Comissão)/100)
+    const valorComImpostos = valorBase * (1 + totalImpostosPercent / 100);
     
-    // Verificar se o denominador é válido
-    if (denominador <= 0) {
-        console.warn(`Denominador inválido para item ${itemId}: ${denominador}`);
-        return;
-    }
+    // 3. Aplicar Lucro: Valor com Impostos × (1 + Lucro/100)
+    const valorComLucro = valorComImpostos * (1 + lucroPercentual / 100);
     
-    // Valor Unitário Final = Custo Unit / (1 - (impostos + lucro))
-    const valorUnitarioFinal = custoUnitario / denominador;
+    // 4. Buscar IPI do item
+    const ipiInput = document.querySelector(`input[data-item-id="${itemId}"].ipi-input`);
+    const ipiPercent = ipiInput ? (parseFloat(ipiInput.value) || 0) : 0;
     
-    // Valor Total = Quantidade × Valor Unitário Final
-    const valorTotal = quantidade * valorUnitarioFinal;
+    // 5. Aplicar IPI: Valor com Lucro × (1 + IPI/100)
+    const valorFinal = valorComLucro * (1 + ipiPercent / 100);
     
-    // Calcular valor do lucro para exibição (parte do lucro no valor unitário)
-    const valorUnitarioComImpostos = custoUnitario * multiplicadorImpostos;
-    const valorLucroUnitario = valorUnitarioFinal - valorUnitarioComImpostos;
-    const valorLucroTotal = valorLucroUnitario * quantidade;
+    // Calcular valor unitário final
+    const valorUnitarioFinal = valorFinal / quantidade;
+    
+    // Calcular valor do lucro isolado para exibição
+    const valorLucroTotal = valorComLucro - valorComImpostos;
     
     console.log(`Atualizando item ${itemId}:`);
-    console.log(`  Custo unitário: R$${custoUnitario.toFixed(2)}`);
-    console.log(`  × Impostos (${totalImpostosPercent.toFixed(2)}%): ${multiplicadorImpostos.toFixed(4)}`);
-    console.log(`  × Lucro (${lucroPercentual}%): ${multiplicadorLucro.toFixed(4)}`);
-    console.log(`  = Valor unitário final: R$${valorUnitarioFinal.toFixed(2)}`);
-    console.log(`  × Quantidade (${quantidade}): R$${valorTotal.toFixed(2)}`);
+    console.log(`  1. Valor Base: R$${custoUnitario.toFixed(2)} × ${quantidade} = R$${valorBase.toFixed(2)}`);
+    console.log(`  2. + Impostos+Comissão (${totalImpostosPercent.toFixed(2)}%): R$${valorComImpostos.toFixed(2)}`);
+    console.log(`  3. + Lucro (${lucroPercentual}%): R$${valorComLucro.toFixed(2)}`);
+    console.log(`  4. + IPI (${ipiPercent}%): R$${valorFinal.toFixed(2)}`);
+    console.log(`  Valor Unitário Final: R$${valorUnitarioFinal.toFixed(2)}`);
+    console.log(`  💰 Valor do Lucro: R$${valorLucroTotal.toFixed(2)}`);
     
     // Atualizar displays
     document.getElementById(`lucro-valor-${itemId}`).textContent = valorLucroTotal.toFixed(2);
-    document.getElementById(`total-${itemId}`).textContent = valorTotal.toFixed(2);
+    document.getElementById(`total-${itemId}`).textContent = valorFinal.toFixed(2);
     
     // Atualizar valor unitário final
     const spanValorUnitarioFinal = document.getElementById(`valor-unitario-final-${itemId}`);
@@ -5565,26 +5608,53 @@ function atualizarLucroItem(input) {
     }
     
     // Atualizar o total geral do orçamento
-    atualizarTotalOrcamento();
+    recalcularTotais();
     
     // Enviar atualização para o servidor
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
     formData.append('edit_item_id', itemId);
     formData.append('lucro', lucroPercentual);
-    formData.append('ajax_update', 'true');
+    formData.append('ajax_update_lucro', 'true');
     
-    fetch(window.location.href, {
+    const orcamentoId = window.location.pathname.split('/')[2]; // Extrair ID da URL /orcamento/27/
+    const ajaxUrl = `/orcamento/${orcamentoId}/ajax-update-lucro/`;
+    
+    fetch(ajaxUrl, {
         method: 'POST',
         body: formData,
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log(`Status da resposta Lucro: ${response.status}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('❌ Resposta Lucro não é JSON válido:', text.substring(0, 500));
+                throw new Error('Resposta do servidor não é JSON válido');
+            }
+        });
+    })
     .then(data => {
         if (data.success) {
             console.log('✅ Lucro atualizado com sucesso');
+            
+            // Atualizar valor total do item na tabela se fornecido
+            if (data.item_total) {
+                const totalSpan = document.getElementById(`total-${itemId}`);
+                if (totalSpan) {
+                    totalSpan.textContent = parseFloat(data.item_total).toFixed(2).replace('.', ',');
+                }
+            }
+            
             // Atualizar totais se fornecidos
             if (data.total_lucro) {
                 const totalLucroElement = document.querySelector('.card-text.fw-bold.text-success');
@@ -5592,6 +5662,17 @@ function atualizarLucroItem(input) {
                     totalLucroElement.textContent = `R$ ${data.total_lucro}`;
                 }
             }
+            
+            // Atualizar total geral do orçamento se fornecido
+            if (data.total_liquido) {
+                const totalDisplay = document.getElementById('total-orcamento-display');
+                if (totalDisplay) {
+                    totalDisplay.textContent = 'R$ ' + parseFloat(data.total_liquido).toFixed(2).replace('.', ',');
+                }
+            }
+            
+            // Recalcular totais após atualização
+            recalcularTotais();
         } else {
             console.error('❌ Erro ao atualizar lucro:', data.error);
             alert('Erro ao atualizar lucro: ' + data.error);
@@ -5600,6 +5681,134 @@ function atualizarLucroItem(input) {
     .catch(error => {
         console.error('❌ Erro na requisição:', error);
         alert('Erro de conexão ao atualizar lucro');
+    });
+}
+
+// Função para recalcular totais incluindo IPI
+function recalcularTotais() {
+    let totalOrcamento = 0;
+    let totalIPI = 0;
+    
+    document.querySelectorAll('#itensOrcamento tr').forEach(function(linha) {
+        const precoTotalCell = linha.querySelector('td:nth-child(7)'); // Coluna Valor Total (7ª coluna)
+        const ipiCell = linha.querySelector('td:nth-child(6)'); // Coluna IPI (6ª coluna)
+        
+        if (precoTotalCell && ipiCell) {
+            // Extrair valor do span dentro da célula de total
+            const totalSpan = precoTotalCell.querySelector('span[id^="total-"]');
+            const precoTotal = totalSpan ? parseFloat(totalSpan.textContent.replace(',', '.')) || 0 : 0;
+            
+            // Extrair percentual de IPI
+            let ipiPercentual = 0;
+            const ipiInput = ipiCell.querySelector('input.ipi-input');
+            if (ipiInput) {
+                ipiPercentual = parseFloat(ipiInput.value) || 0;
+            } else {
+                // Se não há input, extrair do texto da célula
+                const ipiText = ipiCell.textContent.replace('%', '').trim();
+                ipiPercentual = parseFloat(ipiText) || 0;
+            }
+            
+            // O valor total já inclui o IPI, então vamos calcular a base do IPI
+            // Total = Base + IPI, onde IPI = Base * (ipi_percentual/100)
+            // Total = Base * (1 + ipi_percentual/100)
+            // Base = Total / (1 + ipi_percentual/100)
+            const valorBase = ipiPercentual > 0 ? precoTotal / (1 + ipiPercentual/100) : precoTotal;
+            const valorIPI = valorBase * (ipiPercentual / 100);
+            
+            totalOrcamento += precoTotal;
+            totalIPI += valorIPI;
+        }
+    });
+    
+    // Atualizar displays
+    const totalOrcamentoDisplay = document.getElementById('total-orcamento-display');
+    const totalIPIDisplay = document.getElementById('total-ipi-display');
+    
+    if (totalOrcamentoDisplay) {
+        totalOrcamentoDisplay.textContent = 'R$ ' + totalOrcamento.toFixed(2).replace('.', ',');
+    }
+    
+    if (totalIPIDisplay) {
+        totalIPIDisplay.textContent = 'R$ ' + totalIPI.toFixed(2).replace('.', ',');
+    }
+}
+
+function atualizarIPIItem(input) {
+    const itemId = input.dataset.itemId;
+    const ipiPercentual = parseFloat(input.value) || 0;
+    
+    console.log(`Atualizando IPI do item ${itemId}: ${ipiPercentual}%`);
+    
+    // Recalcular o item com novo IPI
+    const lucroInput = document.querySelector(`input[data-item-id="${itemId}"].lucro-input`);
+    if (lucroInput) {
+        atualizarLucroItem(lucroInput);
+    }
+    
+    // Enviar atualização para o servidor
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('edit_item_id', itemId);
+    formData.append('ipi', ipiPercentual);
+    formData.append('ajax_update_ipi', 'true');
+    
+    const orcamentoId = window.location.pathname.split('/')[2]; // Extrair ID da URL /orcamento/27/
+    const ajaxUrl = `/orcamento/${orcamentoId}/ajax-update-ipi/`;
+    
+    fetch(ajaxUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        console.log(`Status da resposta IPI: ${response.status}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('❌ Resposta IPI não é JSON válido:', text.substring(0, 500));
+                throw new Error('Resposta do servidor não é JSON válido');
+            }
+        });
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('✅ IPI atualizado com sucesso');
+            
+            // Atualizar valor total do item na tabela se fornecido
+            if (data.novo_total) {
+                const totalSpan = document.getElementById(`total-${itemId}`);
+                if (totalSpan) {
+                    totalSpan.textContent = parseFloat(data.novo_total).toFixed(2).replace('.', ',');
+                }
+            }
+            
+            // Atualizar total geral do orçamento se fornecido
+            if (data.total_orcamento) {
+                const totalDisplay = document.getElementById('total-orcamento-display');
+                if (totalDisplay) {
+                    totalDisplay.textContent = 'R$ ' + parseFloat(data.total_orcamento).toFixed(2).replace('.', ',');
+                }
+            }
+            
+            // Recalcular totais após atualização bem-sucedida
+            recalcularTotais();
+        } else {
+            console.error('❌ Erro ao atualizar IPI:', data.error);
+            alert('Erro ao atualizar IPI: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição de IPI:', error);
+        alert('Erro de conexão ao atualizar IPI');
     });
 }
 
@@ -5621,27 +5830,33 @@ function getCookie(name) {
 // Função para calcular percentual de lucro correto nos campos existentes
 function calcularPercentuaisLucro() {
     document.querySelectorAll('.lucro-input').forEach(input => {
-        const lucroValor = parseFloat(input.dataset.lucroValor) || 0;
-        const custo = parseFloat(input.dataset.custo) || 0;
-        const quantidade = parseFloat(input.dataset.quantidade) || 1;
+        const percentualSalvo = parseFloat(input.dataset.lucroValor) || 0;
         
-        if (custo > 0 && lucroValor > 0) {
-            // Calcular percentual: (lucro_total / quantidade) / custo * 100
-            const lucroUnitario = lucroValor / quantidade;
-            const percentual = (lucroUnitario / custo) * 100;
-            input.value = percentual.toFixed(1);
-            
-            console.log(`Item ${input.dataset.itemId}: Lucro Total=${lucroValor}, Custo=${custo}, Qtd=${quantidade}, Percentual=${percentual.toFixed(1)}%`);
-        } else {
-            input.value = 22.5;
-        }
+        // O data-lucro-valor já contém o percentual salvo no banco (desconto_item)
+        // Então simplesmente usamos esse valor diretamente
+        input.value = percentualSalvo.toFixed(1);
+        
+        console.log(`Item ${input.dataset.itemId}: Percentual salvo no banco = ${percentualSalvo}%`);
     });
+}
+
+function calcularValoresUnitariosFinais() {
+    console.log('🔄 Calculando valores unitários finais no carregamento...');
+    
+    document.querySelectorAll('.lucro-input').forEach(input => {
+        // Simular o evento de alteração do lucro para recalcular todos os valores
+        atualizarLucroItem(input);
+    });
+    
+    console.log('✅ Valores unitários finais calculados');
 }
 
 // Executar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
     calcularPercentuaisLucro();
+    calcularValoresUnitariosFinais(); // Nova função para calcular valores unitários finais
     carregarPerfisGrade(); // Carregar perfis para o modal de grade
+    recalcularTotais(); // Calcular totais de IPI na inicialização
 });
 
 // ========== FUNÇÕES PARA MODAL DE GRADE ==========
@@ -5654,6 +5869,13 @@ function carregarPerfisGrade() {
         .then(response => response.json())
         .then(produtos => {
             const selectPerfil = document.getElementById('grade_perfil_orc');
+            
+            // Verificar se o elemento existe antes de tentar acessá-lo
+            if (!selectPerfil) {
+                console.warn('⚠️ Elemento grade_perfil_orc não encontrado');
+                return;
+            }
+            
             selectPerfil.innerHTML = '<option value="">Selecione um perfil...</option>';
             
             // Filtrar apenas perfis I (I25, I32, I38)
@@ -5905,7 +6127,7 @@ function adicionarGradeAoOrcamento() {
     formData.append('descricao', ultimoCalculoGrade.nome_produto);
     formData.append('quantidade', '1'); // Grades são vendidas por m²
     formData.append('valor_unitario', (ultimoCalculoGrade.custo_total / 100).toFixed(2)); // Converter centavos para reais
-    formData.append('lucro', '22.5'); // Lucro padrão
+    formData.append('lucro', '0'); // Lucro padrão
     formData.append('imposto', '0'); // Sem imposto por padrão
     
     // Enviar para o servidor

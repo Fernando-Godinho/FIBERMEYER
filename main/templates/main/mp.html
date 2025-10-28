@@ -252,6 +252,12 @@
             </select>
           </div>
           <div class="mb-3">
+            <label for="descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control" id="descricao_tecnica" rows="3" 
+                      placeholder="Descrição técnica detalhada do produto (opcional)..."></textarea>
+            <div class="form-text">Informações técnicas adicionais sobre o produto</div>
+          </div>
+          <div class="mb-3">
             <label for="referencia" class="form-label">Referência</label>
             <select class="form-select" id="referencia">
               <option value="">Selecione</option>
@@ -456,6 +462,33 @@
               <div class="form-text">Percentual de perda aplicado ao custo total</div>
               <div class="invalid-feedback" id="feedbackPercentualPerda" style="display: none;"></div>
             </div>
+          </div>
+          
+          <!-- Campo de Descrição Técnica -->
+          <div class="mb-3">
+            <label for="descricaoTecnicaComposto" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control" id="descricaoTecnicaComposto" rows="3" 
+                      placeholder="Descrição técnica detalhada do produto composto (opcional)..."></textarea>
+            <div class="form-text">Informações técnicas adicionais sobre o produto composto</div>
+          </div>
+          
+          <!-- Campo de Unidade de Medida -->
+          <div class="mb-3">
+            <label for="unidadeComposto" class="form-label">Unidade de Medida *</label>
+            <select class="form-select" id="unidadeComposto" required>
+              <option value="">Selecione</option>
+              <option value="UN">UN (Unidade)</option>
+              <option value="M">M (Metro Linear)</option>
+              <option value="M²">M² (Metro Quadrado)</option>
+              <option value="CM">CM (Centímetro)</option>
+              <option value="KG">KG (Quilograma)</option>
+              <option value="L">L (Litro)</option>
+              <option value="PÇ">PÇ (Peça)</option>
+              <option value="CX">CX (Caixa)</option>
+              <option value="CJ">CJ (Conjunto)</option>
+              <option value="M³">M³ (Metro Cúbico)</option>
+            </select>
+            <div class="form-text">Define a unidade de medida para o produto composto</div>
           </div>
           
           <!-- Seção de componentes -->
@@ -710,6 +743,7 @@ function openFormProduto(id=null, isDuplicate=false) {
                 document.getElementById('peso_und').value = produto.peso_und;
                 document.getElementById('unidade').value = produto.unidade;
                 document.getElementById('referencia').value = produto.referencia || '';
+                document.getElementById('descricao_tecnica').value = produto.descricao_tecnica || '';
                 
                 // Para duplicação, não preencher data de revisão (será gerada nova)
                 if (!isDuplicate) {
@@ -726,6 +760,7 @@ function submitFormProduto() {
     const id = document.getElementById('produtoId').value;
     const isDuplicate = document.getElementById('isDuplicate').value === 'true';
     const descricao = document.getElementById('descricao').value;
+    const descricao_tecnica = document.getElementById('descricao_tecnica').value.trim();
     
     // Converte valor monetário para centavos
     let custo_valor = document.getElementById('custo_centavos').value.replace('.', '').replace(',', '.');
@@ -750,7 +785,7 @@ function submitFormProduto() {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrftoken
         },
-        body: JSON.stringify({descricao, custo_centavos, peso_und, unidade, referencia, data_revisao})
+        body: JSON.stringify({descricao, custo_centavos, peso_und, unidade, referencia, data_revisao, descricao_tecnica})
     })
     .then(res => {
         if (res.ok) {
@@ -1233,9 +1268,16 @@ function salvarProdutoComposto() {
     const descricao = document.getElementById('descricaoComposto').value;
     const referencia = document.getElementById('referenciaComposto').value;
     const percentualPerda = parseFloat(document.getElementById('percentualPerdaComposto').value) || 0;
+    const descricaoTecnica = document.getElementById('descricaoTecnicaComposto').value.trim();
+    const unidade = document.getElementById('unidadeComposto').value;
     
     if (!descricao.trim()) {
         alert('Informe a descrição do produto composto!');
+        return;
+    }
+    
+    if (!unidade) {
+        alert('Selecione a unidade de medida!');
         return;
     }
     
@@ -1272,10 +1314,11 @@ function salvarProdutoComposto() {
         descricao: descricao,
         custo_centavos: custoCentavos,
         peso_und: 0, // Peso pode ser calculado se necessário
-        unidade: 'UN', // Padrão para produtos compostos
+        unidade: unidade, // Unidade selecionada pelo usuário
         referencia: referencia || '',
         data_revisao: data_revisao,
-        tipo_produto: 'composto'
+        tipo_produto: 'composto',
+        descricao_tecnica: descricaoTecnica
     };
 
     // Debug: mostrar dados que serão enviados
@@ -1396,6 +1439,8 @@ function editProdutoComposto(id) {
       document.getElementById('produtoCompostoId').value = produto.id;
       document.getElementById('descricaoComposto').value = produto.descricao;
       document.getElementById('referenciaComposto').value = produto.referencia || '';
+      document.getElementById('descricaoTecnicaComposto').value = produto.descricao_tecnica || '';
+      document.getElementById('unidadeComposto').value = produto.unidade || 'UN';
       document.getElementById('modalTitleProdutoComposto').innerText = 'Editar Produto Composto';
       // Buscar componentes
       fetch(apiComponentes + '?produto_principal=' + produto.id)
@@ -1811,17 +1856,24 @@ function carregarInterfaceTampaInjetada() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Tampa Injetada</h6>
         <small class="text-muted">Categoria: TAMPAS</small>
+        <br><small class="text-info">Template para tampas injetadas com grade pré-fabricada</small>
         <p class="mt-2 text-info small">
             <strong>Fórmula:</strong> Grade injetada com preço por m² fixo
         </p>
     `;
     
-    // Criar campos específicos para tampa injetada
+    // Criar campos específicos para tampa injetada + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
         <div class="mb-3">
             <label for="tampa_inj_nome" class="form-label">Nome da Tampa Injetada *</label>
             <input type="text" class="form-control param-input" id="tampa_inj_nome" name="nome_tampa" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_inj_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="tampa_inj_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica da tampa injetada..."></textarea>
+            <div class="form-text">Especificações técnicas, grade utilizada, aplicações, etc.</div>
         </div>
         
         <div class="mb-3">
@@ -2002,14 +2054,26 @@ function carregarInterfaceDegraus() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Degraus</h6>
         <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <br><small class="text-info">Template para degraus estruturais com perfis I</small>
         <p class="mt-2 text-info small">
             <strong>Componentes:</strong> Perfis I25/I38, Travessas, Reforços F4"/E, Tubos, Parafusos, Cola
         </p>
     `;
     
-    // Criar campos específicos para degraus
+    // Criar campos específicos para degraus + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
+        <div class="mb-3">
+            <label for="degraus_nome" class="form-label">Nome do Degrau *</label>
+            <input type="text" class="form-control param-input" id="degraus_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degraus_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="degraus_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica do degrau..."></textarea>
+            <div class="form-text">Especificações técnicas, carga suportada, dimensões, etc.</div>
+        </div>
+        
         <div class="mb-3">
             <label for="degraus_nome" class="form-label">Nome do Degrau *</label>
             <input type="text" class="form-control param-input" id="degraus_nome" name="nome_degrau" required>
@@ -2108,17 +2172,24 @@ function carregarInterfaceDegrauInjetado() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Degrau Injetado</h6>
         <small class="text-muted">Categoria: ESTRUTURAS</small>
+        <br><small class="text-info">Template para degraus com grade injetada</small>
         <p class="mt-2 text-info small">
             Cálculo de degraus usando grade injetada ao invés de perfil I. Fórmulas e componentes iguais aos degraus normais.
         </p>
     `;
     
-    // Criar campos específicos para degrau injetado (similar aos degraus normais)
+    // Criar campos específicos para degrau injetado + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
         <div class="mb-3">
             <label for="degrau_inj_nome" class="form-label">Nome do Degrau *</label>
             <input type="text" class="form-control param-input" id="degrau_inj_nome" name="nome_degrau" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="degrau_inj_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="degrau_inj_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica do degrau injetado..."></textarea>
+            <div class="form-text">Especificações técnicas, grade utilizada, carga suportada, etc.</div>
         </div>
         
         <div class="mb-3">
@@ -2359,6 +2430,13 @@ function carregarInterfaceGuardaCorpoHorizontal() {
             <input type="number" class="form-control param-input" id="gc_horiz_perda" name="percentual_perda" step="0.1" value="3.0" min="0">
         </div>
         
+        <!-- Campo de Descrição Técnica -->
+        <div class="mb-3">
+            <label for="guarda_corpo_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="guarda_corpo_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica detalhada do guarda corpo..."></textarea>
+            <div class="form-text">Informações técnicas adicionais sobre o guarda corpo</div>
+        </div>
+        
         <!-- Campo de Unidade de Medida -->
         <div class="mb-3">
             <label for="gc_horiz_unidade" class="form-label">Unidade de Medida *</label>
@@ -2484,6 +2562,13 @@ function carregarInterfaceEscada() {
             </div>
         </div>
         
+        <!-- Campo de Descrição Técnica -->
+        <div class="mb-3">
+            <label for="escada_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="escada_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Insira uma descrição técnica detalhada da escada (opcional)"></textarea>
+            <div class="form-text">Informações técnicas adicionais sobre a escada</div>
+        </div>
+        
         <!-- Campo de Unidade de Medida -->
         <div class="mb-3">
             <label for="escada_unidade" class="form-label">Unidade de Medida *</label>
@@ -2586,14 +2671,21 @@ function carregarInterfaceTampaMontada() {
     document.getElementById('templateDescription').innerHTML = `
         <h6 class="text-primary">Tampa Montada</h6>
         <small class="text-muted">Categoria: PRODUTO_FINAL</small>
+        <br><small class="text-info">Template para tampas montadas com perfis e acessórios</small>
     `;
     
-    // Criar campos específicos para tampa montada
+    // Criar campos específicos para tampa montada + descrição técnica
     const parametrosContainer = document.getElementById('parametrosContainer');
     parametrosContainer.innerHTML = `
         <div class="mb-3">
             <label for="tampa_nome" class="form-label">Nome da Tampa *</label>
             <input type="text" class="form-control param-input" id="tampa_nome" name="nome_tampa" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="tampa_descricao_tecnica" class="form-label">Descrição Técnica</label>
+            <textarea class="form-control param-input" id="tampa_descricao_tecnica" name="descricao_tecnica" rows="3" placeholder="Descrição técnica da tampa..."></textarea>
+            <div class="form-text">Especificações técnicas, materiais, aplicações, etc.</div>
         </div>
         
         <div class="mb-3">
@@ -5406,6 +5498,8 @@ function salvarPerfilParametrizado() {
             dadosPerfil[input.name] = input.checked;
         } else if (input.name === 'nome_perfil') {
             dadosPerfil[input.name] = input.value.trim();
+        } else if (input.name === 'descricao_tecnica') {
+            dadosPerfil[input.name] = input.value.trim();
         } else {
             dadosPerfil[input.name] = parseFloat(input.value) || 0;
         }
@@ -5435,6 +5529,7 @@ function salvarPerfilParametrizado() {
         categoria: 'Perfis',
         subcategoria: 'Pultrusão',
         data_revisao: new Date().toISOString(),
+        descricao_tecnica: dadosPerfil.descricao_tecnica || '',
         // Dados específicos do perfil
         dados_perfil: JSON.stringify(dadosPerfil)
     };
@@ -6464,6 +6559,10 @@ function salvarProdutoParametrizado() {
         parametros[input.name] = input.value;
     });
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaInput = document.querySelector('.param-input[name="descricao_tecnica"]');
+    const descricaoTecnica = descricaoTecnicaInput ? descricaoTecnicaInput.value.trim() : '';
+    
     // Usar o nome digitado pelo usuário
     const descricaoFinal = nomeInput.value.trim();
     
@@ -6506,7 +6605,8 @@ function salvarProdutoParametrizado() {
         referencia: referencia,
         tipo_produto: 'composto',  // Mudança: salvar como composto
         categoria: template.produto_base.categoria,
-        subcategoria: 'Parametrizado'
+        subcategoria: 'Parametrizado',
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Salvando produto:', produtoData);
@@ -6586,6 +6686,10 @@ function salvarGradeParametrizada() {
         return;
     }
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('grade_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     console.log('Dados da grade para salvar:', ultimoCalculo);
     
     // Usar sempre o custo_total que já foi corrigido no ultimoCalculo
@@ -6607,7 +6711,8 @@ function salvarGradeParametrizada() {
         referencia: gerarReferenciaGrade(nomeGrade),
         tipo_produto: 'composto',
         categoria: 'Grade',
-        subcategoria: 'Estrutural'
+        subcategoria: 'Estrutural',
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Salvando grade com custo corrigido:', produtoData);
@@ -6708,6 +6813,10 @@ function salvarTampaMontadaParametrizada() {
         return;
     }
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('tampa_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     // Obter unidade selecionada
     const unidadeSelecionada = document.getElementById('tampa_unidade').value || 'M²';
     
@@ -6731,7 +6840,8 @@ function salvarTampaMontadaParametrizada() {
         referencia: gerarReferenciaTampa(nomeTampa),
         tipo_produto: 'composto',
         categoria: 'Tampa',
-        subcategoria: 'Montada'
+        subcategoria: 'Montada',
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Salvando tampa montada com custo corrigido:', produtoData);
@@ -6828,6 +6938,10 @@ function salvarTampaInjetadaParametrizada() {
         return;
     }
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('tampa_inj_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     // Obter unidade selecionada
     const unidadeSelecionada = document.getElementById('tampa_inj_unidade').value || 'M²';
     
@@ -6845,7 +6959,8 @@ function salvarTampaInjetadaParametrizada() {
         referencia: gerarReferenciaTampa(nomeTampa),
         tipo_produto: 'composto',
         categoria: 'Tampa',
-        subcategoria: 'Injetada'
+        subcategoria: 'Injetada',
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Salvando tampa injetada:', produtoData);
@@ -7116,6 +7231,10 @@ async function salvarDegrausParametrizado() {
     
     const csrftoken = getCookie('csrftoken');
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('degrau_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     // Dados do produto principal
     const produtoData = {
         descricao: ultimoCalculo.nome,
@@ -7128,7 +7247,8 @@ async function salvarDegrausParametrizado() {
         observacoes: `Degrau calculado automaticamente - ${ultimoCalculo.parametros.tipo_perfil}`,
         referencia: gerarReferenciaDegrau(ultimoCalculo.nome),
         data_revisao: new Date().toISOString(),
-        ativo: true
+        ativo: true,
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Dados do produto degrau:', produtoData);
@@ -7333,6 +7453,10 @@ async function salvarDegrauInjetadoParametrizado() {
     
     const csrftoken = getCookie('csrftoken');
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('degrau_inj_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     // Dados do produto principal
     const produtoData = {
         descricao: ultimoCalculo.nome,
@@ -7345,7 +7469,8 @@ async function salvarDegrauInjetadoParametrizado() {
         observacoes: `Degrau Injetado calculado automaticamente - Grade ID ${ultimoCalculo.parametros.grade_id}`,
         referencia: gerarReferenciaDegrauInjetado(ultimoCalculo.nome),
         data_revisao: new Date().toISOString(),
-        ativo: true
+        ativo: true,
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Dados do produto degrau injetado:', produtoData);
@@ -7492,6 +7617,10 @@ async function salvarGuardaCorpoHorizontalParametrizado() {
     
     const csrftoken = getCookie('csrftoken');
     
+    // Obter descrição técnica se disponível
+    const descricaoTecnicaElement = document.getElementById('guarda_corpo_descricao_tecnica');
+    const descricaoTecnica = descricaoTecnicaElement ? descricaoTecnicaElement.value.trim() : '';
+    
     // Dados do produto principal
     const produtoData = {
         descricao: ultimoCalculo.nome,
@@ -7514,7 +7643,8 @@ async function salvarGuardaCorpoHorizontalParametrizado() {
         }),
         referencia: gerarReferenciaGuardaCorpo(ultimoCalculo.nome),
         data_revisao: new Date().toISOString(),
-        ativo: true
+        ativo: true,
+        descricao_tecnica: descricaoTecnica
     };
     
     console.log('Dados do produto guarda corpo horizontal:', produtoData);

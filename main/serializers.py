@@ -26,7 +26,7 @@ class MaoObraSerializer(serializers.ModelSerializer):
 class MP_ProdutosSerializer(serializers.ModelSerializer):
     class Meta:
         model = MP_Produtos
-        fields = ['id', 'descricao', 'custo_centavos', 'peso_und', 'unidade', 'referencia', 'data_revisao', 'is_composto', 'tipo_produto', 'categoria', 'subcategoria']
+        fields = ['id', 'descricao', 'custo_centavos', 'peso_und', 'unidade', 'referencia', 'data_revisao', 'is_composto', 'tipo_produto', 'categoria', 'subcategoria', 'descricao_tecnica']
 
 class ProdutoComponenteSerializer(serializers.ModelSerializer):
     produto_componente_nome = serializers.CharField(source='produto_componente.descricao', read_only=True)

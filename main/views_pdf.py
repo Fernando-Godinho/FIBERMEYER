@@ -158,49 +158,58 @@ def gerar_pdf_orcamento(request, orcamento_id):
     )
     elements.append(Paragraph('<b>PROPOSTA COMERCIAL</b>', proposta_title))
     
-    # Processar produtos com colunas incluindo IPI
+    # Processar produtos com colunas incluindo IPI e UNIDADE
     produtos_data = []
-    
+
     # Buscar itens do orçamento
     itens = orcamento.itens.all()
     for i, item in enumerate(itens, 1):
         # Calcular valor unitário final (valor_total / quantidade)
         valor_unitario_final = float(item.valor_total) / float(item.quantidade) if float(item.quantidade) > 0 else 0
-        
+
         # Obter percentual de IPI
         ipi_percentual = float(item.ipi_item) if item.ipi_item else 0
-        
+
+        # Determinar unidade: preferir unidade do produto relacionado, senão usar item.unidade
+        unidade_text = ''
+        try:
+            unidade_text = item.produto.unidade if item.produto and getattr(item.produto, 'unidade', None) else (item.unidade or 'UN')
+        except Exception:
+            unidade_text = item.unidade or 'UN'
+
         produtos_data.append([
             str(i),
             str(item.quantidade),
+            unidade_text,
             item.descricao,
             f"R$ {valor_unitario_final:.2f}".replace('.', ','),
             f"{ipi_percentual:.1f}%",
             f"R$ {float(item.valor_total):.2f}".replace('.', ',')
         ])
-    
+
     # Adicionar linhas vazias para completar a tabela (mínimo 8 linhas)
     while len(produtos_data) < 8:
-        produtos_data.append(['', '', '', '', '', ''])
-    
-    # Cabeçalho da tabela com coluna de IPI
+        produtos_data.append(['', '', '', '', '', '', ''])
+
+    # Cabeçalho da tabela com coluna de IPI e UNIDADE
     table_header = [
-        ['ITEM', 'QTDE', 'DESCRIÇÃO DOS PRODUTOS', 'VALOR UNIT.', 'IPI (%)', 'VALOR TOTAL']
+        ['ITEM', 'QTDE', 'UNID', 'DESCRIÇÃO DOS PRODUTOS', 'VALOR UNIT.', 'IPI (%)', 'VALOR TOTAL']
     ]
-    
+
     # Dados completos da tabela
     table_data = table_header + produtos_data
-    
-    # Criar tabela com layout das 6 colunas incluindo IPI
+
+    # Criar tabela com layout das 7 colunas incluindo UNID e IPI
     table = Table(table_data, colWidths=[
         1.5*cm,   # ITEM
         2*cm,     # QTDE
-        9*cm,     # DESCRIÇÃO DOS PRODUTOS (reduzido para acomodar IPI)
+        1.5*cm,   # UNID
+        8.5*cm,   # DESCRIÇÃO DOS PRODUTOS (reduzido para acomodar UNID e IPI)
         3*cm,     # VALOR UNIT.
-        2*cm,     # IPI (%) - nova coluna
+        2*cm,     # IPI (%)
         3*cm      # VALOR TOTAL
     ])
-    
+
     # Estilo da tabela com faixa azul mais fina no cabeçalho
     table.setStyle(TableStyle([
         # Cabeçalho - faixa azul mais fina
@@ -209,29 +218,30 @@ def gerar_pdf_orcamento(request, orcamento_id):
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 7),  # Reduzido de 8 para 7
-        
-        # Corpo da tabela - agora com 6 colunas
+
+        # Corpo da tabela - agora com 7 colunas
         ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # ITEM
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # QTDE
-        ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # DESCRIÇÃO DOS PRODUTOS
-        ('ALIGN', (3, 1), (3, -1), 'RIGHT'),   # VALOR UNIT.
-        ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # IPI (%)
-        ('ALIGN', (5, 1), (5, -1), 'RIGHT'),   # VALOR TOTAL
-        
+        ('ALIGN', (2, 1), (2, -1), 'CENTER'),  # UNID
+        ('ALIGN', (3, 1), (3, -1), 'LEFT'),    # DESCRIÇÃO DOS PRODUTOS
+        ('ALIGN', (4, 1), (4, -1), 'RIGHT'),   # VALOR UNIT.
+        ('ALIGN', (5, 1), (5, -1), 'CENTER'),  # IPI (%)
+        ('ALIGN', (6, 1), (6, -1), 'RIGHT'),   # VALOR TOTAL
+
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 8),
-        
+
         # Bordas
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        
+
         # Padding ainda menor para faixa mais fina
         ('TOPPADDING', (0, 0), (-1, -1), 2),  # Reduzido de 3 para 2
         ('BOTTOMPADDING', (0, 0), (-1, -1), 2),  # Reduzido de 3 para 2
         ('LEFTPADDING', (0, 0), (-1, -1), 2),
         ('RIGHTPADDING', (0, 0), (-1, -1), 2),
     ]))
-    
+
     elements.append(table)
     elements.append(Spacer(1, 0.5*cm))
     
@@ -296,11 +306,17 @@ def preview_pdf_orcamento(request, orcamento_id):
     produtos = []
     itens = orcamento.itens.all()
     for i, item in enumerate(itens, 1):
+        # Determinar unidade para preview (usar produto.unidade se disponível)
+        try:
+            unid_preview = item.produto.unidade if item.produto and getattr(item.produto, 'unidade', None) else (item.unidade or 'UN')
+        except Exception:
+            unid_preview = item.unidade or 'UN'
+
         produtos.append({
             'item': i,
             'qtd': item.quantidade,
             'descricao': item.descricao,
-            'unid': 'unid',
+            'unid': unid_preview,
             'rs_unit': f"R$ {float(item.valor_unitario):.2f}".replace('.', ','),
             'rs_total': f"R$ {float(item.valor_total):.2f}".replace('.', ','),
             'ipi': '3,25',

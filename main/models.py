@@ -54,6 +54,7 @@ class MP_Produtos(models.Model):
     peso_und = models.DecimalField(max_digits=10, decimal_places=3, default=0.000, help_text="Peso por unidade em kg")
     referencia = models.CharField(max_length=100, blank=True, null=True)
     data_revisao = models.DateTimeField(blank=True, null=True)
+    descricao_tecnica = models.TextField(blank=True, null=True, help_text="Descrição técnica detalhada do produto")
     
     # Estrutura hierárquica de produtos
     tipo_produto = models.CharField(
@@ -327,6 +328,7 @@ class Orcamento(models.Model):
 class OrcamentoItem(models.Model):
     id = models.AutoField(primary_key=True)
     orcamento = models.ForeignKey(Orcamento, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey(MP_Produtos, on_delete=models.SET_NULL, null=True, blank=True, related_name='orcamento_itens')
     tipo_item = models.CharField(max_length=20, choices=ITEM_TIPO_CHOICES)
     descricao = models.CharField(max_length=250)
     quantidade = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)

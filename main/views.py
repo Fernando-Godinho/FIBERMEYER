@@ -450,7 +450,7 @@ def orcamento(request, orcamento_id):
     from decimal import Decimal
     
     orcamento = Orcamento.objects.get(id=orcamento_id)
-    itens = list(orcamento.itens.all())
+    itens = list(orcamento.itens.select_related('produto').all())
     
     # 🔄 APLICAR fórmula correta aos itens para exibição
     print(f"🔄 DEBUG: Aplicando fórmula correta aos {len(itens)} itens do orçamento {orcamento_id}")
@@ -806,15 +806,26 @@ def orcamento(request, orcamento_id):
                     valor_lucro_total = valor_lucro_unitario * quantidade_valor
                     
                     from .models import OrcamentoItem
+                    
+                    # Obter produto se produto_id foi fornecido
+                    produto_obj = None
+                    if produto_id:
+                        try:
+                            produto_obj = MP_Produtos.objects.get(id=produto_id)
+                        except MP_Produtos.DoesNotExist:
+                            pass
+                    
                     item = OrcamentoItem.objects.create(
                         orcamento=orcamento,
+                        produto=produto_obj,  # relacionar com o produto
                         tipo_item='Parametrizado',
                         descricao=descricao,
                         quantidade=quantidade_valor,
                         valor_unitario=custo_unitario,  # guarda o custo unitário
                         desconto_item=valor_lucro_total,  # guarda o lucro total
                         imposto_item=valor_imposto,
-                        valor_total=valor_total
+                        valor_total=valor_total,
+                        unidade=produto_obj.unidade if produto_obj else 'UN'  # usar unidade do produto
                     )
                     
                     logger.info(f"✅ Item criado com sucesso: ID={item.id}, Descrição={item.descricao}")
@@ -861,13 +872,15 @@ def orcamento(request, orcamento_id):
                 from .models import OrcamentoItem
                 OrcamentoItem.objects.create(
                     orcamento=orcamento,
+                    produto=produto,  # relacionar com o produto
                     tipo_item='Produto',
                     descricao=produto.descricao,
                     quantidade=quantidade_num,
                     valor_unitario=custo_unitario,  # guardar custo
                     desconto_item=valor_lucro_total,  # guardar lucro
                     imposto_item=valor_imposto,
-                    valor_total=valor_total
+                    valor_total=valor_total,
+                    unidade=produto.unidade  # usar unidade do produto da base MP
                 )
                 # Atualiza totais do orçamento
                 itens = list(orcamento.itens.all())

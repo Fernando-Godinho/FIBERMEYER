@@ -182,9 +182,14 @@
       <tbody id="itensOrcamento">
         {% for item in itens %}
         <tr>
-          <td>{{ item.descricao }}</td>
+          <td>
+            <div class="fw-bold">{{ item.descricao }}</div>
+            {% if item.produto.descricao_tecnica %}
+            <small class="text-muted">{{ item.produto.descricao_tecnica|truncatechars:100 }}</small>
+            {% endif %}
+          </td>
           <td>{{ item.quantidade }}</td>
-          <td>{{ item.unidade|default:"UN" }}</td>
+          <td>{{ item.produto.unidade|default:item.unidade|default:"UN" }}</td>
           <td>
             <strong class="text-primary" id="valor-unitario-final-{{ item.id }}">R$ {{ item.valor_unitario|floatformat:2 }}</strong>
           </td>
@@ -241,7 +246,7 @@
                 data-id="{{ item.id }}" 
                 data-descricao="{{ item.descricao }}" 
                 data-quantidade="{{ item.quantidade }}" 
-                data-unidade="{{ item.unidade|default:'UN' }}"
+                data-unidade="{{ item.produto.unidade|default:item.unidade|default:'UN' }}"
                 data-valor_unitario="{{ item.valor_unitario }}" 
                 data-desconto="{{ item.desconto_item }}" 
                 data-ipi="{{ item.ipi_item|default:'0' }}"

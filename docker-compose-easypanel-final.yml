@@ -18,7 +18,6 @@ services:
       DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: "*"
-      DJANGO_SETTINGS_MODULE: "fibermeyer_project.settings"
     working_dir: /app
     ports:
       - "8000:8000"
@@ -38,7 +37,7 @@ services:
       python manage.py migrate --noinput &&
       mkdir -p /app/staticfiles &&
       python manage.py collectstatic --noinput --clear &&
-      echo 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' | python manage.py shell &&
+      python -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' &&
       python manage.py runserver 0.0.0.0:8000
       "
     restart: on-failure:3

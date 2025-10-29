@@ -1,0 +1,97 @@
+🚀 DEPLOY RÁPIDO NO EASYPANEL
+============================
+
+📋 CHECKLIST PARA DEPLOY:
+
+1️⃣ PREPARAÇÃO:
+   ✅ VPS com EasyPanel instalado
+   ✅ Repositório GitHub atualizado
+   ✅ Portas 8000 e 5432 livres
+
+2️⃣ EASYPANEL - NOVO PROJETO:
+   ✅ Login no EasyPanel
+   ✅ Clique "New Project"
+   ✅ Escolha "Docker Compose"
+   ✅ Nome: "fibermeyer"
+
+3️⃣ DOCKER COMPOSE:
+   📄 Cole o conteúdo do arquivo: docker-compose-production.yml
+   
+   OU use esta versão simplificada:
+
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_DEBUG: "False"
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    command: sh -c "
+      apt-get update -qq &&
+      apt-get install -y -qq git netcat-traditional build-essential &&
+      git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /app &&
+      cd /app &&
+      pip install -r requirements.txt &&
+      while ! nc -z db 5432; do sleep 1; done &&
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      python manage.py shell -c \"
+      from django.contrib.auth import get_user_model;
+      User = get_user_model();
+      if not User.objects.filter(username='admin').exists():
+          User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123');
+      \" &&
+      python manage.py runserver 0.0.0.0:8000
+    "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_media:
+  app_static:
+
+4️⃣ CONFIGURAR DOMÍNIO:
+   ✅ Vá em "Domains"
+   ✅ Adicione seu domínio
+   ✅ Aponte para porta 8000
+   ✅ Ative HTTPS
+
+5️⃣ DEPLOY:
+   ✅ Clique "Deploy"
+   ✅ Aguarde 5-10 minutos
+   ✅ Monitore os logs
+
+6️⃣ TESTAR:
+   🌐 Acesse: https://seu-dominio.com
+   👨‍💼 Admin: https://seu-dominio.com/admin/
+   🔑 Login: admin / admin123
+
+📊 MONITORAMENTO:
+   📄 Ver logs: docker logs fibermeyer-app-1 -f
+   📈 Status: docker ps
+   🔄 Restart: docker restart fibermeyer-app-1
+
+⚠️ SEGURANÇA (PRODUÇÃO):
+   🔒 Mude POSTGRES_PASSWORD
+   🔒 Mude DJANGO_SECRET_KEY
+   🔒 Mude senha do admin
+   🔒 Configure DJANGO_ALLOWED_HOSTS específico
+
+🎉 PRONTO! FIBERMEYER RODANDO NO EASYPANEL!

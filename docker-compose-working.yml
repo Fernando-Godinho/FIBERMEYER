@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "*"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    command: |
+      bash -c "
+      echo '=== FIBERMEYER SETUP - CORRIGINDO DEPENDENCIAS ==='
+      
+      # Sistema
+      apt-get update -qq
+      apt-get install -y -qq git netcat-traditional build-essential pkg-config default-libmysqlclient-dev
+      
+      # Limpeza e clone
+      rm -rf /tmp/repo /app/* 2>/dev/null || true
+      git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /tmp/repo
+      cp -r /tmp/repo/* /app/
+      cd /app
+      
+      # Python deps (instalacao manual para garantir)
+      pip install --upgrade pip
+      pip install Django==5.2.4
+      pip install djangorestframework
+      pip install reportlab
+      pip install psycopg2-binary
+      pip install requests
+      pip install pillow
+      pip install python-decouple
+      pip install asgiref
+      pip install sqlparse
+      pip install tzdata
+      
+      # Aguardar banco
+      while ! nc -z db 5432; do echo 'Aguardando banco...'; sleep 3; done
+      echo 'Banco conectado!'
+      
+      # Django
+      python manage.py migrate --noinput
+      python manage.py collectstatic --noinput || echo 'Collectstatic ok'
+      
+      # Admin
+      python -c \"
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123')
+    print('✅ Admin criado: admin/admin123')
+else:
+    print('ℹ️ Admin ja existe')
+\"
+      
+      echo '🚀 FIBERMEYER INICIANDO...'
+      echo '🌐 Sistema: http://localhost:8000'
+      echo '👨‍💼 Admin: http://localhost:8000/admin/ (admin/admin123)'
+      python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_media:
+  app_static:

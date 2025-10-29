@@ -1,0 +1,91 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fibermeyer-network
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_DEBUG: "False"
+      DJANGO_SECRET_KEY: fibermeyer-production-secret-key-2025-change-me
+      DJANGO_ALLOWED_HOSTS: "*"
+      PYTHONUNBUFFERED: "1"
+    working_dir: /workspace/FIBERMEYER
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/workspace/FIBERMEYER/media
+      - ./staticfiles:/workspace/FIBERMEYER/staticfiles
+    networks:
+      - fibermeyer-network
+    command: |
+      sh -c '
+        echo "Instalando dependencias do sistema..."
+        apt-get update -qq
+        apt-get install -y -qq git netcat-traditional pkg-config default-libmysqlclient-dev build-essential
+        
+        echo "Clonando repositorio FIBERMEYER..."
+        if [ ! -d .git ]; then
+          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git .
+          echo "Repositorio clonado!"
+        else
+          git pull origin main
+          echo "Repositorio atualizado!"
+        fi
+        
+        echo "Instalando dependencias Python..."
+        pip install --no-cache-dir --upgrade pip
+        pip install --no-cache-dir -r requirements.txt
+        
+        echo "Aguardando banco de dados..."
+        for i in $(seq 1 30); do
+          if nc -z db 5432; then
+            echo "Banco conectado!"
+            break
+          fi
+          echo "Aguardando PostgreSQL... tentativa $i/30"
+          sleep 2
+        done
+        
+        echo "Executando migracoes..."
+        python manage.py makemigrations --noinput
+        python manage.py migrate --noinput
+        
+        echo "Coletando arquivos estaticos..."
+        python manage.py collectstatic --noinput --clear
+        
+        echo "Criando superusuario..."
+        python manage.py shell -c "
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123')
+    print('Superusuario criado: admin/admin123')
+else:
+    print('Superusuario ja existe')
+"
+        
+        echo "Iniciando FIBERMEYER..."
+        echo "Sistema disponivel na porta 8000"
+        echo "Admin: /admin/ (admin/admin123)"
+        python manage.py runserver 0.0.0.0:8000
+      '
+    restart: unless-stopped
+
+networks:
+  fibermeyer-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

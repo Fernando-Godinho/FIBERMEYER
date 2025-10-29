@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "*"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    command: |
+      bash -c "
+      apt-get update -qq &&
+      apt-get install -y -qq git netcat-traditional build-essential pkg-config default-libmysqlclient-dev &&
+      git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /app &&
+      cd /app &&
+      pip install -r requirements.txt &&
+      while ! nc -z db 5432; do sleep 1; done &&
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      python manage.py shell -c \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123')\" &&
+      python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_media:
+  app_static:

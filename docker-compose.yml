@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_STATIC_ROOT: "/app/staticfiles"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    command: bash -c "apt-get update && apt-get install -y git netcat-traditional build-essential pkg-config default-libmysqlclient-dev && rm -rf /tmp/fibermeyer /app/* 2>/dev/null || true && git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /tmp/fibermeyer && cp -r /tmp/fibermeyer/* /app/ && cd /app && pip install Django==5.2.4 djangorestframework reportlab psycopg2-binary requests pillow python-decouple asgiref sqlparse tzdata && while ! nc -z db 5432; do echo 'Aguardando banco...'; sleep 3; done && python manage.py migrate && mkdir -p /app/staticfiles && python manage.py collectstatic --noinput || echo 'Static files ok' && python -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' && python manage.py runserver 0.0.0.0:8000"
+    restart: on-failure:3
+
+volumes:
+  postgres_data:
+  app_media:
+  app_static:

@@ -1,0 +1,38 @@
+🚀 FIBERMEYER - SETUP RÁPIDO COM DOCKER
+========================================
+
+📥 DOWNLOAD E EXECUÇÃO:
+
+1️⃣ Clone o repositório:
+   git clone https://github.com/Fernando-Godinho/FIBERMEYER.git
+   cd FIBERMEYER
+
+2️⃣ Execute uma das opções:
+
+   OPÇÃO A - Completo (com PostgreSQL):
+   docker-compose up -d
+
+   OPÇÃO B - Simples (só SQLite):
+   docker-compose -f docker-compose-simple.yml up -d
+
+   OPÇÃO C - Windows (script automático):
+   setup_docker.bat
+
+3️⃣ Acesse:
+   🌐 http://localhost:8000        (Sistema FIBERMEYER)
+   👨‍💼 http://localhost:8000/admin/  (Admin: admin/admin123)
+
+📋 COMANDOS ESSENCIAIS:
+
+   Ver logs:        docker-compose logs -f app
+   Parar:          docker-compose down
+   Reiniciar:      docker-compose restart app
+   Testar:         python test_docker_setup.py
+
+🔧 TROUBLESHOOTING:
+
+   ❌ Porta ocupada: Mude a porta no docker-compose.yml
+   ❌ Erro de build: docker-compose down -v && docker-compose up -d
+   ❌ Permissões:    Execute como administrador (Windows)
+
+✅ PRONTO! Seu FIBERMEYER está rodando em Docker!

@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: fibermeyer123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:fibermeyer123@db:5432/fibermeyer
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: "*"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    command: |
+      bash -c "
+      echo '=== DEBUG FIBERMEYER SETUP ==='
+      echo 'Passo 1: Atualizando sistema'
+      apt-get update -qq
+      
+      echo 'Passo 2: Instalando git e ferramentas'
+      apt-get install -y git netcat-traditional curl
+      
+      echo 'Passo 3: Clonando repositorio'
+      git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /tmp/repo
+      
+      echo 'Passo 4: Copiando arquivos'
+      cp -r /tmp/repo/* /app/
+      ls -la /app/
+      
+      echo 'Passo 5: Verificando requirements'
+      if [ -f /app/requirements.txt ]; then
+        echo 'requirements.txt encontrado!'
+        head -10 /app/requirements.txt
+      else
+        echo 'ERRO: requirements.txt NAO encontrado!'
+        exit 1
+      fi
+      
+      echo 'Passo 6: Instalando Python deps (pode demorar)'
+      pip install -r /app/requirements.txt
+      
+      echo 'Passo 7: Testando conexao com banco'
+      for i in {1..30}; do
+        if nc -z db 5432; then
+          echo 'Banco conectado!'
+          break
+        fi
+        echo \"Tentativa \$i - Aguardando banco...\"
+        sleep 2
+      done
+      
+      echo 'Passo 8: Django setup'
+      cd /app
+      python manage.py migrate --noinput
+      
+      echo 'Passo 9: Criando admin'
+      python -c \"
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123')
+    print('Admin criado!')
+\"
+      
+      echo 'Passo 10: Iniciando servidor'
+      python manage.py runserver 0.0.0.0:8000
+      "
+    restart: on-failure:3
+
+volumes:
+  postgres_data:
+  app_media:
+  app_static:

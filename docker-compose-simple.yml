@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.11-slim
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=fibermeyer-secret-key-change-me
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    working_dir: /workspace/FIBERMEYER
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/workspace/FIBERMEYER/data
+      - ./media:/workspace/FIBERMEYER/media
+      - ./staticfiles:/workspace/FIBERMEYER/staticfiles
+    command: >
+      sh -c "
+        echo '🔧 Instalando dependências do sistema...' &&
+        apt-get update &&
+        apt-get install -y git pkg-config default-libmysqlclient-dev build-essential &&
+        
+        echo '📥 Clonando/Atualizando repositório FIBERMEYER...' &&
+        if [ ! -d .git ]; then
+          echo '📥 Clonando repositório...' &&
+          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git . &&
+          echo '✅ Repositório clonado!';
+        else
+          echo '📂 Puxando atualizações...' &&
+          git pull &&
+          echo '✅ Repositório atualizado!';
+        fi &&
+        
+        echo '📦 Instalando dependências Python...' &&
+        pip install --upgrade pip &&
+        pip install -r requirements.txt &&
+        
+        echo '🗄️ Configurando banco SQLite...' &&
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        
+        echo '📊 Coletando arquivos estáticos...' &&
+        python manage.py collectstatic --noinput &&
+        
+        echo '👤 Criando superusuário admin/admin123...' &&
+        python manage.py shell -c \"
+        from django.contrib.auth import get_user_model;
+        User = get_user_model();
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser('admin', 'admin@fibermeyer.com', 'admin123');
+            print('✅ Superusuário criado: admin/admin123');
+        else:
+            print('ℹ️ Superusuário já existe');
+        \" &&
+        
+        echo '🚀 Iniciando servidor FIBERMEYER em http://localhost:8000' &&
+        echo '👨‍💼 Admin disponível em http://localhost:8000/admin/' &&
+        echo '🔑 Login: admin / Senha: admin123' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped

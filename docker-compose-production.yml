@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fibermeyer
+      POSTGRES_USER: fibermeyer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fibermeyer123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fibermeyer-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fibermeyer -d fibermeyer"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    image: python:3.11-slim
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://fibermeyer:${POSTGRES_PASSWORD:-fibermeyer123}@db:5432/fibermeyer
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-False}"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-fibermeyer-change-me-in-production}
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    networks:
+      - fibermeyer-network
+    command: |
+      sh -c "
+        echo '🔧 Preparando ambiente FIBERMEYER...' &&
+        
+        # Instalar dependências do sistema
+        apt-get update -qq &&
+        apt-get install -y -qq --no-install-recommends \
+          git \
+          netcat-traditional \
+          pkg-config \
+          default-libmysqlclient-dev \
+          build-essential \
+          curl &&
+        apt-get clean && rm -rf /var/lib/apt/lists/* &&
+        
+        # Clonar/atualizar repositório
+        echo '📥 Obtendo código do repositório...' &&
+        if [ ! -d .git ]; then
+          echo 'Clonando repositório FIBERMEYER...' &&
+          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git . &&
+          echo '✅ Repositório clonado!';
+        else
+          echo 'Atualizando repositório...' &&
+          git fetch origin &&
+          git reset --hard origin/main &&
+          echo '✅ Repositório atualizado!';
+        fi &&
+        
+        # Instalar dependências Python
+        echo '📦 Instalando dependências Python...' &&
+        pip install --no-cache-dir --upgrade pip &&
+        pip install --no-cache-dir -r requirements.txt &&
+        
+        # Aguardar banco
+        echo '⏳ Verificando conexão com PostgreSQL...' &&
+        timeout=60 &&
+        while ! nc -z db 5432 && [ \$timeout -gt 0 ]; do
+          echo \"Aguardando banco... (\$timeout segundos restantes)\";
+          sleep 2;
+          timeout=\$((timeout-2));
+        done &&
+        
+        if ! nc -z db 5432; then
+          echo '❌ Timeout na conexão com PostgreSQL!';
+          exit 1;
+        fi &&
+        echo '✅ PostgreSQL conectado!' &&
+        
+        # Executar migrações
+        echo '🔄 Aplicando migrações do banco...' &&
+        python manage.py makemigrations --noinput &&
+        python manage.py migrate --noinput &&
+        
+        # Coletar arquivos estáticos
+        echo '📊 Coletando arquivos estáticos...' &&
+        python manage.py collectstatic --noinput --clear &&
+        
+        # Criar superusuário
+        echo '👤 Configurando usuário administrador...' &&
+        python manage.py shell -c \"
+        from django.contrib.auth import get_user_model;
+        User = get_user_model();
+        username = 'admin';
+        email = 'admin@fibermeyer.com';
+        password = 'admin123';
+        if not User.objects.filter(username=username).exists():
+            User.objects.create_superuser(username, email, password);
+            print(f'✅ Superusuário criado: {username}/{password}');
+            print('⚠️  ALTERE A SENHA EM PRODUÇÃO!');
+        else:
+            print(f'ℹ️  Superusuário {username} já existe');
+        \" &&
+        
+        # Iniciar servidor
+        echo '🚀 Iniciando servidor FIBERMEYER...' &&
+        echo '🌐 Sistema disponível na porta 8000' &&
+        echo '👨‍💼 Admin: /admin/ (admin/admin123)' &&
+        echo '📋 Orçamentos: /orcamento/' &&
+        echo '' &&
+        echo '✅ FIBERMEYER INICIADO COM SUCESSO!' &&
+        
+        python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/admin/ || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+
+networks:
+  fibermeyer-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  app_media:
+    driver: local
+  app_static:
+    driver: local

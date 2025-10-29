@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.11-slim
+    ports:
+      - "8000:8000"
+    working_dir: /app
+    volumes:
+      - /root/fibermeyer_data:/app/data
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y git &&
+        rm -rf /app/src &&
+        git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /app/src &&
+        cp -r /app/src/* /app/ &&
+        pip install -r requirements.txt &&
+        if [ ! -f /app/data/db.sqlite3 ]; then
+          echo 'Criando banco inicial...'
+          python manage.py migrate
+        else
+          echo 'Usando banco existente...'
+          cp /app/data/db.sqlite3 /app/db.sqlite3
+        fi &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    environment:
+      - DEBUG=True

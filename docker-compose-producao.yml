@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.11-slim
+    ports:
+      - "8000:8000"
+    working_dir: /app
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y git &&
+        rm -rf /app/* &&
+        git clone https://github.com/Fernando-Godinho/FIBERMEYER.git /tmp/repo &&
+        cp -r /tmp/repo/* /app/ &&
+        pip install -r requirements.txt &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000 --settings=fibermeyer_project.settings_prod
+      "
+    environment:
+      - DEBUG=False
+      - ALLOWED_HOSTS=69.62.89.102,localhost,0.0.0.0
+      - DATABASE_URL=sqlite:///db.sqlite3

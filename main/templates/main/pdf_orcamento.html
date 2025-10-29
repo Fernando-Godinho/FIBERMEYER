@@ -431,6 +431,13 @@
         <p>3. Desenhos técnicos personalizados não estão incluídos na precificação desta proposta. Caso haja necessidade de desenhos personalizados ou medição em campo, os serviços adicionais serão negociados e cobrados à parte.</p>
         <p>4. Salvo quando a instalação for de responsabilidade da Fibermeyer, não nos responsabilizamos pelo sistema de fixação dos produtos.</p>
         <p>5. Para serviços de revestimento, por ocasião da aplicação de produtos químicos, poderá ocorrer propagação de odores, causando desconforto a algumas pessoas. Caso isso ocorra, caberá à contratante o fornecimento de EPIs adequados a estas pessoas (máscara para vapores orgânicos).</p>
+        
+        {% if orcamento.observacoes %}
+        <div class="section-title">Observações Adicionais:</div>
+        <div style="background-color: #f8f9fa; padding: 10px; border-left: 4px solid #007bff; margin: 10px 0;">
+            <p style="margin: 0; white-space: pre-line;">{{ orcamento.observacoes }}</p>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>

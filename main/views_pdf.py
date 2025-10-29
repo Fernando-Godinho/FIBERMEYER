@@ -255,6 +255,7 @@ def gerar_pdf_orcamento(request, orcamento_id):
         leading=11
     )
     
+    # Observações padrão
     observacoes_text = """
     <b>OBSERVAÇÕES:</b><br/>
     • Valores válidos por 30 dias a partir da data de emissão.<br/>
@@ -262,6 +263,15 @@ def gerar_pdf_orcamento(request, orcamento_id):
     • Frete por conta do cliente.<br/>
     • Prazo de entrega: Sob consulta após confirmação do pedido.
     """
+    
+    # Adicionar observações personalizadas do orçamento se existirem
+    if orcamento.observacoes and orcamento.observacoes.strip():
+        observacoes_customizadas = orcamento.observacoes.strip()
+        # Escapar caracteres especiais para HTML
+        observacoes_customizadas = observacoes_customizadas.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        # Converter quebras de linha em <br/>
+        observacoes_customizadas = observacoes_customizadas.replace('\n', '<br/>')
+        observacoes_text += f"<br/><b>OBSERVAÇÕES ADICIONAIS:</b><br/>{observacoes_customizadas}"
     
     elements.append(Paragraph(observacoes_text, observacoes_style))
     elements.append(Spacer(1, 0.2*cm))

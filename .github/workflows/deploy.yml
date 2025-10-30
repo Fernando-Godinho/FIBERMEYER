@@ -1,0 +1,40 @@
+name: Deploy Automático FIBERMEYER
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚀 Executar Deploy no VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        script: |
+          echo "🔄 Iniciando deploy automático..."
+          cd /root/FIBERMEYER || exit 1
+          
+          echo "📥 Atualizando código do GitHub..."
+          git pull origin main
+          
+          echo "🐳 Reiniciando containers..."
+          docker compose -f docker-compose-sqlite.yml down
+          docker compose -f docker-compose-sqlite.yml up -d --build
+          
+          echo "⏳ Aguardando aplicação inicializar..."
+          sleep 30
+          
+          echo "✅ Verificando se aplicação está online..."
+          if curl -f http://localhost:8000/ > /dev/null 2>&1; then
+            echo "🎉 Deploy realizado com sucesso!"
+            echo "🌐 Aplicação disponível em: http://69.62.89.102:8000"
+          else
+            echo "❌ Erro: Aplicação não está respondendo"
+            exit 1
+          fi

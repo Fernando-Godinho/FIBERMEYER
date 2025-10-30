@@ -1,0 +1,29 @@
+/* FIBERMEYER - Paleta de Cores Oficial */
+:root {
+    --color-primary: #32427f;      /* Azul principal */
+    --color-secondary: #3ca9de;    /* Azul claro */
+    --color-accent: #e7cf5c;       /* Amarelo */
+    --color-accent-light: #f8d22b; /* Amarelo claro */
+    --color-neutral: #e7ebea;      /* Cinza claro */
+    --color-dark: #524c2d;         /* Marrom escuro */
+    --color-text: #3c4146;         /* Texto principal */
+    --color-border: #7d8184;       /* Bordas */
+    --color-highlight: #ebdf98;    /* Destaque */
+}
+
+/* Cores aplicadas no projeto */
+.primary { color: var(--color-primary); }
+.secondary { color: var(--color-secondary); }
+.accent { color: var(--color-accent); }
+.neutral { background-color: var(--color-neutral); }
+.text-main { color: var(--color-text); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-neutral { background-color: var(--color-neutral); }
+.bg-highlight { background-color: var(--color-highlight); }
+
+.border-primary { border-color: var(--color-primary); }
+.border-accent { border-color: var(--color-accent); }
+.border-neutral { border-color: var(--color-border); }

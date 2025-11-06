@@ -2,8 +2,6 @@
 # Deploy FIBERMEYER com PostgreSQL Online (Neon)
 # Baseado no sistema de deploy automático existente
 
-set -e  # Parar em caso de erro
-
 echo "🚀 DEPLOY FIBERMEYER - PostgreSQL Online (Neon)"
 echo "================================================"
 

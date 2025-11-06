@@ -11,7 +11,7 @@ services:
       PYTHONUNBUFFERED: "1"
     working_dir: /workspace/FIBERMEYER
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       - app_media:/workspace/FIBERMEYER/media
       - app_static:/workspace/FIBERMEYER/staticfiles

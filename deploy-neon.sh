@@ -1,6 +1,8 @@
 #!/bin/bash
 # Deploy FIBERMEYER com PostgreSQL Online (Neon)
-# Execute este script no VPS
+# Baseado no sistema de deploy automático existente
+
+set -e  # Parar em caso de erro
 
 echo "🚀 DEPLOY FIBERMEYER - PostgreSQL Online (Neon)"
 echo "================================================"
@@ -8,6 +10,7 @@ echo "================================================"
 # Parar containers antigos
 echo "🛑 Parando containers antigos..."
 docker compose down 2>/dev/null || true
+docker compose -f docker-compose-sqlite.yml down 2>/dev/null || true
 docker rm -f $(docker ps -aq) 2>/dev/null || true
 
 # Criar docker-compose com PostgreSQL do Neon

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.11-slim
+    environment:
+      # PostgreSQL Online - Neon
+      DATABASE_URL: postgresql://neondb_owner:npg_WHw0KL1qUsmN@ep-falling-unit-acyw2gc7-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+      SECRET_KEY: django-insecure-production-change-me-12345
+      DEBUG: "False"
+      PYTHONUNBUFFERED: "1"
+    working_dir: /workspace/FIBERMEYER
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_media:/workspace/FIBERMEYER/media
+      - app_static:/workspace/FIBERMEYER/staticfiles
+    command: >
+      sh -c "
+        apt-get update -qq &&
+        apt-get install -y -qq git netcat-traditional build-essential pkg-config &&
+        if [ ! -d .git ]; then
+          echo '📥 Clonando repositório...' &&
+          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git .;
+        else
+          echo '📂 Repositório já existe, puxando updates...' &&
+          git pull;
+        fi &&
+        echo '📚 Instalando dependências...' &&
+        pip install -q -r requirements.txt &&
+        echo '🔄 Executando migrações...' &&
+        python manage.py migrate --noinput &&
+        echo '📁 Coletando arquivos estáticos...' &&
+        python manage.py collectstatic --noinput --clear &&
+        echo '👨‍💼 Criando superusuário...' &&
+        python -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' &&
+        echo '✅ Iniciando servidor...' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped
+
+volumes:
+  app_media:
+  app_static:

@@ -38,7 +38,7 @@ services:
         echo 'Coletando arquivos estaticos...' &&
         python manage.py collectstatic --noinput --clear &&
         echo 'Criando superusuario...' &&
-        python -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' &&
+        DJANGO_SETTINGS_MODULE=fibermeyer_project.settings python -c 'from django.contrib.auth import get_user_model; import django; django.setup(); User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' &&
         echo 'Iniciando servidor...' &&
         python manage.py runserver 0.0.0.0:8000
       "

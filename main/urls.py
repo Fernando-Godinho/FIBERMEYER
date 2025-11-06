@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import views_pdf
+from .diagnostico_db import diagnostico_db
 
 
 router = DefaultRouter()
@@ -32,5 +33,6 @@ urlpatterns = [
     path('api/mao-obra/', views.mao_obra_lista, name='mao_obra_lista'),
     path('orcamento/<int:orcamento_id>/pdf/', views_pdf.gerar_pdf_orcamento, name='gerar_pdf_orcamento'),
     path('orcamento/<int:orcamento_id>/preview/', views_pdf.preview_pdf_orcamento, name='preview_pdf_orcamento'),
+    path('diagnostico-db/', diagnostico_db, name='diagnostico_db'),
     path('api/', include(router.urls)),
 ]

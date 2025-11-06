@@ -7,7 +7,7 @@ echo "================================================"
 
 # Parar containers antigos
 echo "🛑 Parando containers antigos..."
-docker-compose down 2>/dev/null || true
+docker compose down 2>/dev/null || true
 docker rm -f $(docker ps -aq) 2>/dev/null || true
 
 # Criar docker-compose com PostgreSQL do Neon
@@ -63,7 +63,7 @@ echo "🔥 Liberando porta 8000 no firewall..."
 ufw allow 8000/tcp 2>/dev/null || true
 
 echo "🚀 Iniciando aplicação..."
-docker-compose -f docker-compose-neon.yml up -d
+docker compose -f docker-compose-neon.yml up -d
 
 echo ""
 echo "⏳ Aguardando 30 segundos para aplicação inicializar..."
@@ -82,9 +82,9 @@ if curl -f http://localhost:8000/ >/dev/null 2>&1; then
     echo "================================================"
     echo ""
     echo "📊 Ver logs:"
-    echo "   docker-compose -f docker-compose-neon.yml logs -f"
+    echo "   docker compose -f docker-compose-neon.yml logs -f"
 else
     echo "❌ ERRO: Aplicação não está respondendo!"
     echo "📋 Ver logs de erro:"
-    echo "   docker-compose -f docker-compose-neon.yml logs"
+    echo "   docker compose -f docker-compose-neon.yml logs"
 fi

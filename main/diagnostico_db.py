@@ -24,7 +24,7 @@ def diagnostico_db(request):
     diagnostico = {
         'banco': {
             'engine': db_settings['ENGINE'],
-            'nome': db_settings['NAME'],
+            'nome': str(db_settings['NAME']),  # Converter PosixPath para string
             'host': db_settings.get('HOST', 'N/A'),
             'porta': db_settings.get('PORT', 'N/A'),
             'usuario': db_settings.get('USER', 'N/A'),

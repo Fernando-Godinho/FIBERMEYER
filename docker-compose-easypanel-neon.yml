@@ -4,7 +4,6 @@ services:
   app:
     image: python:3.11-slim
     environment:
-      # PostgreSQL Online - Neon
       DATABASE_URL: postgresql://neondb_owner:npg_WHw0KL1qUsmN@ep-falling-unit-acyw2gc7-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
       SECRET_KEY: django-insecure-production-change-me-12345
       DEBUG: "False"
@@ -21,22 +20,26 @@ services:
         apt-get install -y -qq git netcat-traditional build-essential pkg-config &&
         cd /workspace/FIBERMEYER &&
         if [ -d .git ]; then
-          echo '� Repositório já existe, puxando updates...' &&
-          git pull;
+          echo 'Repositorio ja existe, atualizando...' &&
+          git reset --hard HEAD &&
+          git pull origin main;
         else
-          echo '�📥 Clonando repositório...' &&
-          rm -rf * &&
-          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git . || (rm -rf .git && git clone https://github.com/Fernando-Godinho/FIBERMEYER.git .);
+          echo 'Inicializando repositorio...' &&
+          git init &&
+          git remote add origin https://github.com/Fernando-Godinho/FIBERMEYER.git &&
+          git fetch origin main &&
+          git reset --hard origin/main &&
+          git branch -M main;
         fi &&
-        echo '📚 Instalando dependências...' &&
+        echo 'Instalando dependencias...' &&
         pip install -q -r requirements.txt &&
-        echo '🔄 Executando migrações...' &&
+        echo 'Executando migracoes...' &&
         python manage.py migrate --noinput &&
-        echo '📁 Coletando arquivos estáticos...' &&
+        echo 'Coletando arquivos estaticos...' &&
         python manage.py collectstatic --noinput --clear &&
-        echo '👨‍💼 Criando superusuário...' &&
+        echo 'Criando superusuario...' &&
         python -c 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@fibermeyer.com\", \"admin123\")' &&
-        echo '✅ Iniciando servidor...' &&
+        echo 'Iniciando servidor...' &&
         python manage.py runserver 0.0.0.0:8000
       "
     restart: unless-stopped

@@ -19,12 +19,14 @@ services:
       sh -c "
         apt-get update -qq &&
         apt-get install -y -qq git netcat-traditional build-essential pkg-config &&
-        if [ ! -d .git ]; then
-          echo '📥 Clonando repositório...' &&
-          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git .;
-        else
-          echo '📂 Repositório já existe, puxando updates...' &&
+        cd /workspace/FIBERMEYER &&
+        if [ -d .git ]; then
+          echo '� Repositório já existe, puxando updates...' &&
           git pull;
+        else
+          echo '�📥 Clonando repositório...' &&
+          rm -rf * &&
+          git clone https://github.com/Fernando-Godinho/FIBERMEYER.git . || (rm -rf .git && git clone https://github.com/Fernando-Godinho/FIBERMEYER.git .);
         fi &&
         echo '📚 Instalando dependências...' &&
         pip install -q -r requirements.txt &&

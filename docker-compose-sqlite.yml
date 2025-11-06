@@ -27,3 +27,4 @@ services:
       "
     environment:
       - DEBUG=True
+      - DATABASE_URL=postgresql://neondb_owner:npg_WHw0KL1qUsmN@ep-falling-unit-acyw2gc7-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require

@@ -1215,10 +1215,10 @@ def calcular_produto_parametrizado(request):
                     print(f"❌ ERRO AO BUSCAR MÃO DE OBRA ID=1: {e}")
                     print(f"   Usando fallback: {mo_pultrusao} centavos = R$ {mo_pultrusao/100:.2f}")
                 
-                # Aplicar nova fórmula: ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * 0,5)
+                # Aplicar nova fórmula: ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * 0,85)
                 if velocidade_m_h > 0 and num_matrizes > 0:
                     numerador = (mo_pultrusao / 3) * num_maquinas_utilizadas
-                    denominador = velocidade_m_h * num_matrizes * 24 * 21 * 0.5
+                    denominador = velocidade_m_h * num_matrizes * 24 * 21 * 0.85
                     custo_mao_obra = numerador / denominador
                     
                     # Garantir que o custo seja pelo menos 1 centavo se > 0
@@ -1231,9 +1231,9 @@ def calcular_produto_parametrizado(request):
                     print(f"   N° Matrizes: {num_matrizes}")
                     print(f"   Máquinas utilizadas: {num_maquinas_utilizadas}")
                     print(f"   Valor base (mo_pultrusao): {mo_pultrusao} centavos = R$ {mo_pultrusao/100:.2f}")
-                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * 0.5)")
+                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * 0.85)")
                     print(f"   Numerador = ({mo_pultrusao} / 3) * {num_maquinas_utilizadas} = {numerador:.2f}")
-                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * 0.5 = {denominador}")
+                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * 0.85 = {denominador}")
                     print(f"   Custo raw = {numerador:.2f} / {denominador} = {custo_mao_obra:.6f}")
                     print(f"   Custo final = {custo_mao_obra_centavos} centavos = R$ {custo_mao_obra_centavos/100:.2f}")
                     

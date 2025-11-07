@@ -5198,7 +5198,7 @@ function calcularNovoPerfil() {
                 
                 // Aplicar nova fórmula
                 const numerador = (mo_pultrusao / 3) * maquinas;
-                const denominador = velocidade * matrizes * 24 * 21 * 0.5;
+                const denominador = velocidade * matrizes * 24 * 21 * 0.85;
                 const custo_raw = numerador / denominador;
                 const custo_mao_obra_centavos = Math.max(1, Math.floor(custo_raw));
                 const custo_mao_obra_reais = custo_mao_obra_centavos / 100;
@@ -5206,7 +5206,7 @@ function calcularNovoPerfil() {
                 console.log('=== CÁLCULO MÃO DE OBRA (NOVA FÓRMULA) ===');
                 console.log(`Parâmetros: velocidade=${velocidade}, matrizes=${matrizes}, máquinas=${maquinas}`);
                 console.log(`Numerador: (${mo_pultrusao} / 3) * ${maquinas} = ${numerador.toFixed(2)}`);
-                console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * 0.5 = ${denominador}`);
+                console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * 0.85 = ${denominador}`);
                 console.log(`Resultado: ${numerador.toFixed(2)} / ${denominador} = ${custo_raw.toFixed(8)}`);
                 console.log(`Custo final: ${custo_mao_obra_centavos} centavos = R$ ${custo_mao_obra_reais.toFixed(2)}`);
                 

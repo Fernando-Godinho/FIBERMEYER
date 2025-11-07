@@ -8390,7 +8390,27 @@ function recalcularTodosComponentes() {
 function atualizarTotalGeral() {
     if (!ultimoCalculo || !ultimoCalculo.componentes) return;
     
-    const custoTotalGeral = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
+    // Separar matérias-primas de mão de obra
+    const custoMateriasPrimas = ultimoCalculo.componentes
+        .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    const custoMaoObra = ultimoCalculo.componentes
+        .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    // Aplicar percentual de perda nas matérias-primas (manter do cálculo original)
+    const percentualPerda = ultimoCalculo.dados_originais?.percentual_perda || 0;
+    const fatorPerda = 1 + (percentualPerda / 100);
+    const custoMateriasComPerda = custoMateriasPrimas * fatorPerda;
+    const custoTotalGeral = custoMateriasComPerda + custoMaoObra;
+    
+    console.log('=== RECÁLCULO DO TOTAL ===');
+    console.log(`Matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
+    console.log(`Percentual de perda: ${percentualPerda}%`);
+    console.log(`Matérias-primas com perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
+    console.log(`Mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
+    console.log(`Total geral: R$ ${custoTotalGeral.toFixed(2)}`);
     
     // Atualizar exibição na tabela
     const totalElement = document.getElementById('custo-total-geral');
@@ -8400,9 +8420,7 @@ function atualizarTotalGeral() {
     
     // Atualizar no resumo também
     ultimoCalculo.custo_total = Math.round(custoTotalGeral * 100);
-    document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(2)}`;
-    
-    console.log(`Total geral atualizado: R$ ${custoTotalGeral.toFixed(2)}`);
+    document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(2)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
 }
 
 // Função auxiliar para buscar produto por descrição

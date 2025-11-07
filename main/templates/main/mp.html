@@ -5232,7 +5232,7 @@ function calcularNovoPerfil() {
                 });
             }
             
-            // Calcular custo total com 3% de perda nas matérias-primas
+            // Calcular custo total com perda configurável nas matérias-primas
             // Separar matérias-primas de mão de obra
             const custoMateriasPrimas = componentes
                 .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
@@ -5242,13 +5242,16 @@ function calcularNovoPerfil() {
                 .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
                 .reduce((total, comp) => total + comp.custo_total, 0);
             
-            // Aplicar 3% de perda nas matérias-primas
-            const custoMateriasComPerda = custoMateriasPrimas * 1.03; // 3% de perda
+            // Aplicar percentual de perda nas matérias-primas (do campo perfil_perda)
+            const percentualPerda = dados.percentual_perda || 0;
+            const fatorPerda = 1 + (percentualPerda / 100);
+            const custoMateriasComPerda = custoMateriasPrimas * fatorPerda;
             const custoTotal = custoMateriasComPerda + custoMaoObra;
             
-            console.log('=== APLICAÇÃO DE 3% DE PERDA ===');
+            console.log('=== APLICAÇÃO DE PERDA ===');
+            console.log(`Percentual de perda: ${percentualPerda}%`);
             console.log(`Custo matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
-            console.log(`Custo matérias-primas com 3% perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
+            console.log(`Custo matérias-primas com ${percentualPerda}% perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
             console.log(`Custo mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
             console.log(`Custo total final: R$ ${custoTotal.toFixed(2)}`);
             
@@ -5278,7 +5281,7 @@ function calcularNovoPerfil() {
             
             // Mostrar resultado na interface padrão
             document.getElementById('nomeProdutoCalculado').textContent = dados.nome_perfil;
-            document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (preços atualizados + 3% perda)`;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
             document.getElementById('pesoTotalCalculado').textContent = `${dados.peso_metro_kg} kg`;
             document.getElementById('resultadoCalculado').style.display = 'block';
             

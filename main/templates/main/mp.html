@@ -5441,10 +5441,23 @@ function preencherTabelaComponentes(calculo) {
             <td>${acaoCol}</td>`;
     });
     
+    // Calcular total com perda aplicada nas matérias-primas
+    const custoMateriasPrimas = calculo.componentes
+        .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    const custoMaoObra = calculo.componentes
+        .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    const percentualPerda = calculo.dados_originais?.percentual_perda || 0;
+    const fatorPerda = 1 + (percentualPerda / 100);
+    const custoMateriasComPerda = custoMateriasPrimas * fatorPerda;
+    const custoTotalGeral = custoMateriasComPerda + custoMaoObra;
+    
     const totalRow = tbody.insertRow();
-    const custoTotalGeral = calculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     totalRow.innerHTML = `
-        <td colspan="5"><strong>TOTAL GERAL</strong></td>
+        <td colspan="5"><strong>TOTAL GERAL${percentualPerda > 0 ? ` (com ${percentualPerda}% perda)` : ''}</strong></td>
         <td><strong><span id="custo-total-geral">R$ ${custoTotalGeral.toFixed(2)}</span></strong></td>
         <td>
             <button class="btn btn-sm btn-warning" onclick="recalcularTodosComponentes()" title="Recalcular Todos">

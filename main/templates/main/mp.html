@@ -5189,24 +5189,37 @@ function calcularNovoPerfil() {
             }
             
             // ADICIONAR MÃO DE OBRA - NOVA FÓRMULA
-            // ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * 0,5)
+            // ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * rendimento)
+            // Rendimento: 50% para Éster Vinílica, 85% para outras resinas
             if (dados.metros_produzidos_h > 0 && dados.n_matrizes > 0) {
                 const mo_pultrusao = 9976258; // Valor da tabela main_maoobra ID=1 em centavos
                 const velocidade = dados.metros_produzidos_h;
                 const matrizes = dados.n_matrizes;
                 const maquinas = dados.n_maquinas;
                 
+                // Verificar se é Éster Vinílica
+                const tipoResinaId = dados.tipo_resina || '1269';
+                const selectResina = document.querySelector('select[name="tipo_resina"]');
+                const resinaTexto = selectResina ? selectResina.options[selectResina.selectedIndex]?.text || '' : '';
+                const ehEsterVinilica = resinaTexto.toLowerCase().includes('ester') && resinaTexto.toLowerCase().includes('vinil');
+                
+                // Definir rendimento baseado no tipo de resina
+                const rendimento = ehEsterVinilica ? 0.5 : 0.85;
+                
                 // Aplicar nova fórmula
                 const numerador = (mo_pultrusao / 3) * maquinas;
-                const denominador = velocidade * matrizes * 24 * 21 * 0.85;
+                const denominador = velocidade * matrizes * 24 * 21 * rendimento;
                 const custo_raw = numerador / denominador;
                 const custo_mao_obra_centavos = Math.max(1, Math.floor(custo_raw));
                 const custo_mao_obra_reais = custo_mao_obra_centavos / 100;
                 
                 console.log('=== CÁLCULO MÃO DE OBRA (NOVA FÓRMULA) ===');
+                console.log(`Tipo de Resina: ${resinaTexto}`);
+                console.log(`É Éster Vinílica: ${ehEsterVinilica}`);
+                console.log(`Rendimento aplicado: ${rendimento * 100}%`);
                 console.log(`Parâmetros: velocidade=${velocidade}, matrizes=${matrizes}, máquinas=${maquinas}`);
                 console.log(`Numerador: (${mo_pultrusao} / 3) * ${maquinas} = ${numerador.toFixed(2)}`);
-                console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * 0.85 = ${denominador}`);
+                console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * ${rendimento} = ${denominador}`);
                 console.log(`Resultado: ${numerador.toFixed(2)} / ${denominador} = ${custo_raw.toFixed(8)}`);
                 console.log(`Custo final: ${custo_mao_obra_centavos} centavos = R$ ${custo_mao_obra_reais.toFixed(2)}`);
                 

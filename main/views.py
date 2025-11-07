@@ -1215,10 +1215,24 @@ def calcular_produto_parametrizado(request):
                     print(f"❌ ERRO AO BUSCAR MÃO DE OBRA ID=1: {e}")
                     print(f"   Usando fallback: {mo_pultrusao} centavos = R$ {mo_pultrusao/100:.2f}")
                 
-                # Aplicar nova fórmula: ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * 0,85)
+                # Aplicar nova fórmula: ((mo_pultrusao / 3) * n° de máquinas) / (VELOCIDADE M/H * N° MATRIZES * 24 * 21 * rendimento)
+                # Rendimento: 50% para Éster Vinílica, 85% para outras resinas
+                
+                # Verificar tipo de resina
+                tipo_resina_id = parametros.get('tipo_resina', '1269')
+                try:
+                    resina_selecionada = MP_Produtos.objects.get(id=int(tipo_resina_id))
+                    # Verificar se é Éster Vinílica (case insensitive)
+                    eh_ester_vinilica = 'ester' in resina_selecionada.descricao.lower() and 'vinil' in resina_selecionada.descricao.lower()
+                except:
+                    eh_ester_vinilica = False
+                
+                # Definir rendimento baseado no tipo de resina
+                rendimento = 0.5 if eh_ester_vinilica else 0.85
+                
                 if velocidade_m_h > 0 and num_matrizes > 0:
                     numerador = (mo_pultrusao / 3) * num_maquinas_utilizadas
-                    denominador = velocidade_m_h * num_matrizes * 24 * 21 * 0.85
+                    denominador = velocidade_m_h * num_matrizes * 24 * 21 * rendimento
                     custo_mao_obra = numerador / denominador
                     
                     # Garantir que o custo seja pelo menos 1 centavo se > 0
@@ -1226,14 +1240,17 @@ def calcular_produto_parametrizado(request):
                     
                     # DEBUG: Mostrar cálculo detalhado
                     print(f"\n=== CÁLCULO MÃO DE OBRA (NOVA FÓRMULA) ===")
+                    print(f"Tipo de Resina: {resina_selecionada.descricao if 'resina_selecionada' in locals() else 'Padrão'}")
+                    print(f"É Éster Vinílica: {eh_ester_vinilica}")
+                    print(f"Rendimento aplicado: {rendimento * 100:.0f}%")
                     print(f"Parâmetros:")
                     print(f"   Velocidade: {velocidade_m_h} m/h")
                     print(f"   N° Matrizes: {num_matrizes}")
                     print(f"   Máquinas utilizadas: {num_maquinas_utilizadas}")
                     print(f"   Valor base (mo_pultrusao): {mo_pultrusao} centavos = R$ {mo_pultrusao/100:.2f}")
-                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * 0.85)")
+                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * {rendimento})")
                     print(f"   Numerador = ({mo_pultrusao} / 3) * {num_maquinas_utilizadas} = {numerador:.2f}")
-                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * 0.85 = {denominador}")
+                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * {rendimento} = {denominador}")
                     print(f"   Custo raw = {numerador:.2f} / {denominador} = {custo_mao_obra:.6f}")
                     print(f"   Custo final = {custo_mao_obra_centavos} centavos = R$ {custo_mao_obra_centavos/100:.2f}")
                     

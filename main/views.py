@@ -1172,11 +1172,14 @@ def calcular_produto_parametrizado(request):
                         'custo_total': round(custo_componente, 2)
                     })
         
-        # Aplicar perda de processo se especificada
+        # Guardar custo dos materiais antes da perda
+        custo_materiais = custo_total
+        
+        # Aplicar perda de processo SOMENTE nos materiais
         if 'perda_processo' in parametros:
             try:
                 perda = float(parametros['perda_processo'])
-                custo_total = custo_total * (1 + perda / 100)
+                custo_materiais = custo_materiais * (1 + perda / 100)
             except:
                 pass
         
@@ -1240,17 +1243,14 @@ def calcular_produto_parametrizado(request):
                     
                     # DEBUG: Mostrar cálculo detalhado
                     print(f"\n=== CÁLCULO MÃO DE OBRA (NOVA FÓRMULA) ===")
-                    print(f"Tipo de Resina: {resina_selecionada.descricao if 'resina_selecionada' in locals() else 'Padrão'}")
-                    print(f"É Éster Vinílica: {eh_ester_vinilica}")
-                    print(f"Rendimento aplicado: {rendimento * 100:.0f}%")
                     print(f"Parâmetros:")
                     print(f"   Velocidade: {velocidade_m_h} m/h")
                     print(f"   N° Matrizes: {num_matrizes}")
                     print(f"   Máquinas utilizadas: {num_maquinas_utilizadas}")
                     print(f"   Valor base (mo_pultrusao): {mo_pultrusao} centavos = R$ {mo_pultrusao/100:.2f}")
-                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * {rendimento})")
+                    print(f"\nFórmula: ((mo_pultrusao / 3) * n° máquinas) / (velocidade * n° matrizes * 24 * 21 * 0.85)")
                     print(f"   Numerador = ({mo_pultrusao} / 3) * {num_maquinas_utilizadas} = {numerador:.2f}")
-                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * {rendimento} = {denominador}")
+                    print(f"   Denominador = {velocidade_m_h} * {num_matrizes} * 24 * 21 * 0.85 = {denominador}")
                     print(f"   Custo raw = {numerador:.2f} / {denominador} = {custo_mao_obra:.6f}")
                     print(f"   Custo final = {custo_mao_obra_centavos} centavos = R$ {custo_mao_obra_centavos/100:.2f}")
                     
@@ -1267,8 +1267,8 @@ def calcular_produto_parametrizado(request):
                     print(f"   Nome: Mão de Obra - Pultrusão")
                     print(f"   Custo: {custo_mao_obra_centavos} centavos = R$ {custo_mao_obra_centavos/100:.2f}")
                     
-                    # Adicionar ao custo total
-                    custo_total += custo_mao_obra_centavos
+                    # Guardar custo de mão de obra
+                    custo_mao_obra = custo_mao_obra_centavos
                     
                 else:
                     print(f"❌ ERRO: Velocidade ({velocidade_m_h}) ou matrizes ({num_matrizes}) inválidas")
@@ -1277,9 +1277,18 @@ def calcular_produto_parametrizado(request):
                 # Se houver erro nos cálculos, ignora mão de obra
                 pass
         
+        # CALCULAR CUSTO TOTAL FINAL: Materiais com perda + Mão de obra sem perda
+        custo_total_final = custo_materiais + custo_mao_obra
+        
+        print(f"\n=== RESUMO FINAL ===")
+        print(f"   Materiais (sem perda): R$ {custo_total/100:.2f}")
+        print(f"   Materiais (com perda): R$ {custo_materiais/100:.2f}")
+        print(f"   Mão de obra: R$ {custo_mao_obra/100:.2f}")
+        print(f"   TOTAL: R$ {custo_total_final/100:.2f}")
+        
         return JsonResponse({
             'success': True,
-            'custo_total': int(custo_total),
+            'custo_total': int(custo_total_final),
             'peso_total': round(peso_total, 3),
             'componentes': componentes,
             'parametros_utilizados': parametros

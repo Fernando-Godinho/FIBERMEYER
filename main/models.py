@@ -89,7 +89,7 @@ class MP_Produtos(models.Model):
         """
         Calcula o custo total baseado no tipo de produto:
         - Simples: retorna o custo direto
-        - Composto/Parametrizado: soma dos componentes
+        - Composto/Parametrizado: soma dos custos dos componentes
         """
         if self.tipo_produto == 'simples':
             return self.custo_centavos

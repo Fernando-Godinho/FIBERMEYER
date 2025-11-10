@@ -1036,7 +1036,7 @@ function mostrarProdutosFiltrados(produtos) {
         item.innerHTML = `
             <div>
                 <strong>${produto.descricao}</strong>
-                <small class="text-muted d-block">ID: ${produto.id} - R$ ${produto.custo.toFixed(2)}</small>
+                <small class="text-muted d-block">ID: ${produto.id} - R$ ${produto.custo.toFixed(4)}</small>
             </div>
         `;
         
@@ -1055,7 +1055,7 @@ function selecionarProdutoComponente(produto) {
     // Mostrar feedback visual com animação
     const feedbackDiv = document.getElementById('produtoSelecionado');
     const feedbackTexto = document.getElementById('produtoSelecionadoTexto');
-    feedbackTexto.textContent = `${produto.descricao} - R$ ${produto.custo.toFixed(2)}`;
+    feedbackTexto.textContent = `${produto.descricao} - R$ ${produto.custo.toFixed(4)}`;
     
     feedbackDiv.className = 'form-text produto-selecionado-feedback';
     feedbackDiv.style.display = 'block';
@@ -1157,8 +1157,8 @@ function atualizarTabelaComponentes() {
             <tr>
                 <td>${comp.produto_descricao}</td>
                 <td>${comp.quantidade.toFixed(2)}</td>
-                <td>R$ ${comp.custo_unitario.toFixed(2)}</td>
-                <td>R$ ${comp.custo_total.toFixed(2)}</td>
+                <td>R$ ${comp.custo_unitario.toFixed(4)}</td>
+                <td>R$ ${comp.custo_total.toFixed(4)}</td>
                 <td>
                     <button class="btn btn-danger btn-sm" onclick="removerComponente(${index})">
                         <i class="fas fa-trash"></i>
@@ -1202,23 +1202,23 @@ function calcularCustoTotalComposto(custoBase = null) {
         elementoCustoTotal.innerHTML = `
             <div class="row">
                 <div class="col-6">Subtotal:</div>
-                <div class="col-6 text-end">R$ ${custoBase.toFixed(2)}</div>
+                <div class="col-6 text-end">R$ ${custoBase.toFixed(4)}</div>
             </div>
             <div class="row text-muted small">
                 <div class="col-6">Perda (${percentualPerda}%):</div>
-                <div class="col-6 text-end">R$ ${valorPerda.toFixed(2)}</div>
+                <div class="col-6 text-end">R$ ${valorPerda.toFixed(4)}</div>
             </div>
             <hr class="my-2">
             <div class="row">
                 <div class="col-6"><strong>Total Final:</strong></div>
-                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(2)}</strong></div>
+                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(4)}</strong></div>
             </div>
         `;
     } else {
         elementoCustoTotal.innerHTML = `
             <div class="row">
                 <div class="col-6"><strong>Total:</strong></div>
-                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(2)}</strong></div>
+                <div class="col-6 text-end"><strong>R$ ${custoTotalFinal.toFixed(4)}</strong></div>
             </div>
         `;
     }
@@ -1302,7 +1302,7 @@ function salvarProdutoComposto() {
     console.log('🔍 SALVAMENTO - Custo Base:', custoBase.toFixed(2));
     console.log('🔍 SALVAMENTO - Percentual:', percentualPerda + '%');
     console.log('🔍 SALVAMENTO - Valor Perda:', valorPerda.toFixed(2));
-    console.log('🔍 SALVAMENTO - Total Final:', custoTotalFinal.toFixed(2));
+    console.log('🔍 SALVAMENTO - Total Final:', custoTotalFinal.toFixed(4));
     console.log('🔍 SALVAMENTO - Centavos:', custoCentavos);
 
     // Gerar data de revisão no formato ISO
@@ -1414,12 +1414,12 @@ function verComponentes(produtoId) {
                     
                     detalhes += `• ${produto.descricao}\n`;
                     detalhes += `  Quantidade: ${comp.quantidade}\n`;
-                    detalhes += `  Custo unitário: R$ ${custoUnitario.toFixed(2)}\n`;
-                    detalhes += `  Custo total: R$ ${custoItem.toFixed(2)}\n\n`;
+                    detalhes += `  Custo unitário: R$ ${custoUnitario.toFixed(4)}\n`;
+                    detalhes += `  Custo total: R$ ${custoItem.toFixed(4)}\n\n`;
                 }
             });
             
-            detalhes += `Custo total do produto: R$ ${custoTotal.toFixed(2)}`;
+            detalhes += `Custo total do produto: R$ ${custoTotal.toFixed(4)}`;
             alert(detalhes);
         })
         .catch(error => {
@@ -1464,7 +1464,7 @@ function editProdutoComposto(id) {
                     if (custosCalculados.nome_componente) {
                       descricaoComponente = custosCalculados.nome_componente;
                     }
-                    console.log(`✅ Custos recuperados da observação para ${descricaoComponente}: Unit: R$ ${custoUnitario.toFixed(2)}, Total: R$ ${custoTotal.toFixed(2)}`);
+                    console.log(`✅ Custos recuperados da observação para ${descricaoComponente}: Unit: R$ ${custoUnitario.toFixed(4)}, Total: R$ ${custoTotal.toFixed(4)}`);
                   }
                 } catch (e) {
                   console.warn(`⚠️ Erro ao parsear observação do componente ${comp.id}:`, e);
@@ -1631,10 +1631,10 @@ function carregarTiposResina() {
                 data.resinas.forEach(resina => {
                     const option = document.createElement('option');
                     option.value = resina.id;
-                    option.textContent = `${resina.descricao} - R$ ${resina.custo_reais.toFixed(2)}`;
+                    option.textContent = `${resina.descricao} - R$ ${resina.custo_reais.toFixed(4)}`;
                     selectResina.appendChild(option);
                     
-                    console.log(`   • ${resina.descricao}: R$ ${resina.custo_reais.toFixed(2)}`);
+                    console.log(`   • ${resina.descricao}: R$ ${resina.custo_reais.toFixed(4)}`);
                 });
                 
                 // Selecionar Resina Poliéster como padrão (ID 1269)
@@ -1816,10 +1816,10 @@ function carregarPerfisGrade() {
             perfisGrade.forEach(perfil => {
                 const option = document.createElement('option');
                 option.value = perfil.id;
-                option.textContent = `${perfil.descricao} - ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(2)}`;
+                option.textContent = `${perfil.descricao} - ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(4)}`;
                 selectPerfil.appendChild(option);
                 
-                console.log(`   • ${perfil.descricao}: ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(2)}`);
+                console.log(`   • ${perfil.descricao}: ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(4)}`);
             });
             
             if (perfisGrade.length === 0) {
@@ -2022,10 +2022,10 @@ function carregarGradesInjetadas() {
             gradesInjetadas.forEach(grade => {
                 const option = document.createElement('option');
                 option.value = grade.id;
-                option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos/100).toFixed(2)}/m²`;
+                option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos/100).toFixed(4)}/m²`;
                 selectGrade.appendChild(option);
                 
-                console.log(`   • ${grade.descricao}: R$ ${(grade.custo_centavos/100).toFixed(2)}/m²`);
+                console.log(`   • ${grade.descricao}: R$ ${(grade.custo_centavos/100).toFixed(4)}/m²`);
             });
             
             if (gradesInjetadas.length === 0) {
@@ -2305,7 +2305,7 @@ function carregarGradesInjetadasDegrau() {
             gradesInjetadas.forEach(grade => {
                 const option = document.createElement('option');
                 option.value = grade.id;
-                option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos/100).toFixed(2)}/m²`;
+                option.textContent = `${grade.descricao} - R$ ${(grade.custo_centavos/100).toFixed(4)}/m²`;
                 selectGrade.appendChild(option);
                 console.log(`✓ Grade adicionada: ${grade.descricao} - ID ${grade.id}`);
             });
@@ -2642,7 +2642,7 @@ function carregarArcosDisponiveis() {
                 if (arco.id && arco.descricao && arco.custo_centavos !== undefined) {
                     const option = document.createElement('option');
                     option.value = arco.id;
-                    option.textContent = `${arco.descricao} - R$ ${(arco.custo_centavos / 100).toFixed(2)}`;
+                    option.textContent = `${arco.descricao} - R$ ${(arco.custo_centavos / 100).toFixed(4)}`;
                     select.appendChild(option);
                     console.log(`Arco adicionado ao select: ID ${arco.id}`);
                 } else {
@@ -2835,7 +2835,7 @@ function carregarPerfisTampa() {
             perfis.forEach(perfil => {
                 const option = document.createElement('option');
                 option.value = perfil.id;
-                option.textContent = `${perfil.descricao} - ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(2)}`;
+                option.textContent = `${perfil.descricao} - ${perfil.peso_und}kg - R$ ${(perfil.custo_centavos/100).toFixed(4)}`;
                 selectPerfil.appendChild(option);
             });
             
@@ -2945,15 +2945,15 @@ function calcularGrade() {
             
             console.log(`📐 Perfil selecionado: ${perfilSelecionado.descricao}`);
             console.log(`   • Peso: ${perfilSelecionado.peso_und} kg/m (tipo: ${typeof perfilSelecionado.peso_und})`);
-            console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(2)}/m`);
+            console.log(`   • Custo: R$ ${(perfilSelecionado.custo_centavos/100).toFixed(4)}/m`);
             
             console.log(`🔧 Chaveta incluída: ${chaveta.descricao}`);
             console.log(`   • Peso: ${chaveta.peso_und} kg/m (tipo: ${typeof chaveta.peso_und})`);
-            console.log(`   • Custo: R$ ${(chaveta.custo_centavos/100).toFixed(2)}/m`);
+            console.log(`   • Custo: R$ ${(chaveta.custo_centavos/100).toFixed(4)}/m`);
             
             console.log(`🧴 Cola incluída: ${cola.descricao}`);
             console.log(`   • Peso: ${cola.peso_und} kg/unid (tipo: ${typeof cola.peso_und})`);
-            console.log(`   • Custo: R$ ${(cola.custo_centavos/100).toFixed(2)}/unid`);
+            console.log(`   • Custo: R$ ${(cola.custo_centavos/100).toFixed(4)}/unid`);
             
             // APLICAR FÓRMULA: (((comprimento/eixo i)*vão/1000)* peso do perfil)
             const metrosLinearesPorM2 = (dados.comprimento / dados.eixo_i) * (dados.vao / 1000);
@@ -2981,7 +2981,7 @@ function calcularGrade() {
             const custoMaoObraTotal = tempoTotal * valorHoraMO * 100; // em centavos
             const maoObraDescricao = `Processamento/Montagem (${tempoTotal}h)`;
             
-            console.log(`💼 Mão de Obra: ${maoObraDescricao} - R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
+            console.log(`💼 Mão de Obra: ${maoObraDescricao} - R$ ${(custoMaoObraTotal/100).toFixed(4)}/m²`);
             
             // CUSTO TOTAL = Materiais com perda + Mão de obra (sem perda)
             let pesoTotalKg = (pesoPerfilKg + pesoChaveta + pesoCola) * fatorPerda;
@@ -2990,17 +2990,17 @@ function calcularGrade() {
             console.log('\n🧮 CÁLCULO DETALHADO:');
             console.log(`Perfil - Fórmula: (${dados.comprimento}/${dados.eixo_i}) * (${dados.vao}/1000)`);
             console.log(`Perfil - Metros lineares/m²: ${metrosLinearesPorM2.toFixed(4)} m/m²`);
-            console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(2)}/m²`);
+            console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(4)}/m²`);
             console.log(`Chaveta - Fórmula: (${dados.vao}/150) * 2`);
             console.log(`Chaveta - Quantidade: ${quantidadeChaveta.toFixed(4)} m/m²`);
-            console.log(`Chaveta - Peso: ${pesoChaveta.toFixed(3)} kg/m² | Custo: R$ ${(custoChaveta/100).toFixed(2)}/m²`);
+            console.log(`Chaveta - Peso: ${pesoChaveta.toFixed(3)} kg/m² | Custo: R$ ${(custoChaveta/100).toFixed(4)}/m²`);
             console.log(`Cola - Fórmula: 0.06 unid/m² (quantidade fixa)`);
             console.log(`Cola - Quantidade: ${quantidadeCola.toFixed(4)} unid/m²`);
-            console.log(`Cola - Peso: ${pesoCola.toFixed(3)} kg/m² | Custo: R$ ${(custoCola/100).toFixed(2)}/m²`);
+            console.log(`Cola - Peso: ${pesoCola.toFixed(3)} kg/m² | Custo: R$ ${(custoCola/100).toFixed(4)}/m²`);
             console.log(`\n💰 RESUMO DE CUSTOS:`);
-            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola) * fatorPerda/100).toFixed(2)}/m²`);
-            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
-            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
+            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${((custoPerfilCentavos + custoChaveta + custoCola) * fatorPerda/100).toFixed(4)}/m²`);
+            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(4)}/m²`);
+            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(4)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
             
             console.log('\n🔍 DEBUG CUSTOS INDIVIDUAIS:');
             console.log(`Perfil com perda: ${custoPerfilCentavos * fatorPerda} centavos`);
@@ -3059,9 +3059,9 @@ function calcularGrade() {
             // Debug final: verificar soma dos componentes
             const somaComponentes = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
             console.log(`\n🔎 VERIFICAÇÃO FINAL:`);
-            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(2)}`);
-            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(2)}`);
-            console.log(`Diferença: ${Math.abs(custoTotalCentavos - somaComponentes)} centavos = R$ ${(Math.abs(custoTotalCentavos - somaComponentes)/100).toFixed(2)}`);
+            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(4)}`);
+            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(4)}`);
+            console.log(`Diferença: ${Math.abs(custoTotalCentavos - somaComponentes)} centavos = R$ ${(Math.abs(custoTotalCentavos - somaComponentes)/100).toFixed(4)}`);
             
             // Atualizar o custo_total do resultado com a soma correta dos componentes
             resultado.custo_total = somaComponentes;
@@ -3071,7 +3071,7 @@ function calcularGrade() {
             
             // Mostrar resultado na interface
             document.getElementById('nomeProdutoCalculado').textContent = dados.nome_grade;
-            document.getElementById('custoTotalCalculado').textContent = `R$ ${(custoTotalCentavos / 100).toFixed(2)}/m²`;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(custoTotalCentavos / 100).toFixed(4)}/m²`;
             document.getElementById('pesoTotalCalculado').textContent = `${pesoTotalKg.toFixed(3)} kg/m²`;
             document.getElementById('resultadoCalculado').style.display = 'block';
             
@@ -3114,8 +3114,8 @@ function preencherTabelaComponentesGrade(resultado) {
             <td>${comp.produto_nome || 'N/A'}</td>
             <td>${fatorCol}</td>
             <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
-            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(2) : '0.00'}</td>
-            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(2) : '0.00'}</span></td>
+            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(4) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(4) : '0.00'}</span></td>
             <td>${acaoCol}</td>`;
         
         console.log(`✓ Componente adicionado: ${comp.nome} - ${comp.quantidade.toFixed(4)} ${comp.unidade || 'm'}`);
@@ -3126,11 +3126,11 @@ function preencherTabelaComponentesGrade(resultado) {
     const custoTotalGeral = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL</strong></td>
-        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(4)}</strong></td>
         <td></td>`;
     totalRow.style.backgroundColor = '#f8f9fa';
     
-    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(2)}`);
+    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(4)}`);
 }
 
 function calcularTampaInjetada() {
@@ -3325,9 +3325,9 @@ function calcularTampaInjetada() {
             const maoObraDescricao = `MÃO DE OBRA Processamento/Montagem${descricaoOpcoes}`;
             
             console.log(`\n🔧 CÁLCULO ESPECIAL MÃO DE OBRA TAMPA INJETADA:`);
-            console.log(`   • Custo base: R$ ${(custoMaoObraBase/100).toFixed(2)}`);
+            console.log(`   • Custo base: R$ ${(custoMaoObraBase/100).toFixed(4)}`);
             console.log(`   • Multiplicador: ${multiplicadorMO}x ${descricaoOpcoes}`);
-            console.log(`   • Custo final MO: R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
+            console.log(`   • Custo final MO: R$ ${(custoMaoObraTotal/100).toFixed(4)}`);
             
             // Custo total
             const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
@@ -3337,15 +3337,15 @@ function calcularTampaInjetada() {
             
             console.log('\n🧮 CÁLCULO DETALHADO TAMPA INJETADA:');
             console.log(`Área da tampa: ${areaTampa.toFixed(4)} m²`);
-            console.log(`Grade - Peso: ${pesoGrade.toFixed(3)} kg | Custo: R$ ${(custoGradeCentavos/100).toFixed(2)}`);
+            console.log(`Grade - Peso: ${pesoGrade.toFixed(3)} kg | Custo: R$ ${(custoGradeCentavos/100).toFixed(4)}`);
             console.log(`Cola - Quantidade fixa: ${quantidadeCola} unid`);
-            console.log(`${nomeChapa} - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(2)}`);
-            if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(2)}`);
-            if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(2)}`);
+            console.log(`${nomeChapa} - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(4)}`);
+            if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(4)}`);
+            if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(4)}`);
             console.log(`\n💰 RESUMO DE CUSTOS:`);
-            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}`);
-            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
-            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)} | Peso: ${pesoTotalKg.toFixed(3)} kg`);
+            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(4)}`);
+            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(4)}`);
+            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(4)} | Peso: ${pesoTotalKg.toFixed(3)} kg`);
             
             // Criar resultado final
             const resultado = {
@@ -3421,8 +3421,8 @@ function calcularTampaInjetada() {
             // Verificar soma dos componentes
             const somaComponentes = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
             console.log(`\n🔎 VERIFICAÇÃO FINAL:`);
-            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(2)}`);
-            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(2)}`);
+            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(4)}`);
+            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(4)}`);
             
             // Atualizar o custo_total com a soma correta
             resultado.custo_total = somaComponentes;
@@ -4122,9 +4122,9 @@ function calcularTampaMontada() {
             const maoObraDescricao = `MÃO DE OBRA Processamento/Montagem${descricaoOpcoes}`;
             
             console.log(`\n🔧 CÁLCULO ESPECIAL MÃO DE OBRA TAMPA:`);
-            console.log(`   • Custo base: R$ ${(custoMaoObraBase/100).toFixed(2)}`);
+            console.log(`   • Custo base: R$ ${(custoMaoObraBase/100).toFixed(4)}`);
             console.log(`   • Multiplicador: ${multiplicadorMO}x ${descricaoOpcoes}`);
-            console.log(`   • Custo final MO: R$ ${(custoMaoObraTotal/100).toFixed(2)}`);
+            console.log(`   • Custo final MO: R$ ${(custoMaoObraTotal/100).toFixed(4)}`);
             
             // Custo total
             const custoTotalCentavos = custoTotalMateriaisCentavos + custoMaoObraTotal;
@@ -4134,16 +4134,16 @@ function calcularTampaMontada() {
             
             console.log('\n🧮 CÁLCULO DETALHADO TAMPA MONTADA:');
             console.log(`Perfil - Metros lineares/m²: ${metrosLinearesPorM2.toFixed(4)} m/m²`);
-            console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(2)}/m²`);
+            console.log(`Perfil - Peso: ${pesoPerfilKg.toFixed(3)} kg/m² | Custo: R$ ${(custoPerfilCentavos/100).toFixed(4)}/m²`);
             console.log(`Chaveta - Quantidade: ${quantidadeChaveta.toFixed(4)} m/m²`);
             console.log(`Cola - Quantidade fixa: ${quantidadeCola} unid`);
-            console.log(`${nomeChapa} - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(2)}`);
-            if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(2)}`);
-            if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(2)}`);
+            console.log(`${nomeChapa} - Área: ${areaChapa.toFixed(4)} m² | Custo: R$ ${(custoChapa25/100).toFixed(4)}`);
+            if (dados.quadro_u4) console.log(`Quadro U4" - 2 unidades | Custo: R$ ${(custoU4/100).toFixed(4)}`);
+            if (dados.alca) console.log(`Alças - 2 unidades | Custo: R$ ${(custoAlca/100).toFixed(4)}`);
             console.log(`\n💰 RESUMO DE CUSTOS:`);
-            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(2)}/m²`);
-            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(2)}/m²`);
-            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(2)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
+            console.log(`   Materiais (com ${dados.perda}% perda): R$ ${(custoTotalMateriaisCentavos/100).toFixed(4)}/m²`);
+            console.log(`   Mão de Obra (sem perda): R$ ${(custoMaoObraTotal/100).toFixed(4)}/m²`);
+            console.log(`   TOTAL FINAL: R$ ${(custoTotalCentavos/100).toFixed(4)}/m² | Peso: ${pesoTotalKg.toFixed(3)} kg/m²`);
             
             // Criar resultado final
             const resultado = {
@@ -4229,8 +4229,8 @@ function calcularTampaMontada() {
             // Verificar soma dos componentes
             const somaComponentes = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
             console.log(`\n🔎 VERIFICAÇÃO FINAL:`);
-            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(2)}`);
-            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(2)}`);
+            console.log(`Custo total calculado: ${custoTotalCentavos} centavos = R$ ${(custoTotalCentavos/100).toFixed(4)}`);
+            console.log(`Soma dos componentes: ${somaComponentes} centavos = R$ ${(somaComponentes/100).toFixed(4)}`);
             
             // Atualizar o custo_total com a soma correta
             resultado.custo_total = somaComponentes;
@@ -4240,7 +4240,7 @@ function calcularTampaMontada() {
             
             // Mostrar resultado na interface
             document.getElementById('nomeProdutoCalculado').textContent = dados.nome_tampa;
-            document.getElementById('custoTotalCalculado').textContent = `R$ ${(custoTotalCentavos / 100).toFixed(2)}/m²`;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(custoTotalCentavos / 100).toFixed(4)}/m²`;
             document.getElementById('pesoTotalCalculado').textContent = `${pesoTotalKg.toFixed(3)} kg/m²`;
             document.getElementById('resultadoCalculado').style.display = 'block';
             
@@ -4283,8 +4283,8 @@ function preencherTabelaComponentesTampa(resultado) {
             <td>${comp.produto_nome || 'N/A'}</td>
             <td>${fatorCol}</td>
             <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
-            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(2) : '0.00'}</td>
-            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(2) : '0.00'}</span></td>
+            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(4) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(4) : '0.00'}</span></td>
             <td>${acaoCol}</td>`;
         
         console.log(`✓ Componente adicionado: ${comp.nome} - ${comp.quantidade.toFixed(4)} ${comp.unidade || 'm'}`);
@@ -4295,11 +4295,11 @@ function preencherTabelaComponentesTampa(resultado) {
     const custoTotalGeral = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL</strong></td>
-        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(4)}</strong></td>
         <td></td>`;
     totalRow.style.backgroundColor = '#f8f9fa';
     
-    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(2)}`);
+    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(4)}`);
 }
 
 function calcularGuardaCorpoHorizontal() {
@@ -4569,12 +4569,12 @@ function calcularGuardaCorpoHorizontal() {
         
         console.log('=== RESULTADO FINAL (GUARDA CORPO - HORIZONTAL) ===');
         console.log(`Nome: ${resultado.nome}`);
-        console.log(`Custo Total: R$ ${(resultado.custo_total / 100).toFixed(2)}`);
+        console.log(`Custo Total: R$ ${(resultado.custo_total / 100).toFixed(4)}`);
         console.log(`Componentes: ${resultado.componentes.length}`);
         
         // Preencher campos do resultado
         document.getElementById('nomeProdutoCalculado').textContent = resultado.nome;
-        document.getElementById('custoTotalCalculado').textContent = `R$ ${(resultado.custo_total / 100).toFixed(2)}`;
+        document.getElementById('custoTotalCalculado').textContent = `R$ ${(resultado.custo_total / 100).toFixed(4)}`;
         document.getElementById('pesoTotalCalculado').textContent = 'Calculado pelos componentes';
         document.getElementById('resultadoCalculado').style.display = 'block';
         
@@ -4618,8 +4618,8 @@ function preencherTabelaComponentesGuardaCorpo(resultado) {
             <td>${comp.descricao_produto || 'N/A'}</td>
             <td>${fatorCol}</td>
             <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
-            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(2) : '0.00'}</td>
-            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(2) : '0.00'}</span></td>
+            <td>R$ ${comp.custo_unitario ? (comp.custo_unitario/100).toFixed(4) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total ? (comp.custo_total/100).toFixed(4) : '0.00'}</span></td>
             <td>${acaoCol}</td>`;
         
         console.log(`✓ Componente adicionado: ${comp.nome} - ${comp.quantidade.toFixed(4)} ${comp.unidade || 'unid'}`);
@@ -4630,11 +4630,11 @@ function preencherTabelaComponentesGuardaCorpo(resultado) {
     const custoTotalGeral = resultado.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL</strong></td>
-        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(4)}</strong></td>
         <td></td>`;
     totalRow.style.backgroundColor = '#f8f9fa';
     
-    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(2)}`);
+    console.log(`✅ Tabela preenchida com ${resultado.componentes.length} componentes. Total: R$ ${(custoTotalGeral/100).toFixed(4)}`);
 }
 
 function toggleAreaPintura() {
@@ -4751,7 +4751,7 @@ function calcularEscada() {
         console.log('=== PRODUTOS ENCONTRADOS (ESCADA SIMPLIFICADA) ===');
         produtosValidos.forEach(produto => {
             if (produto) {
-                console.log(`${produto.descricao}: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
+                console.log(`${produto.descricao}: R$ ${(produto.custo_centavos / 100).toFixed(4)}`);
             }
         });
         
@@ -4796,7 +4796,7 @@ function calcularEscada() {
                     observacao: 'Saída para piscina'
                 });
                 
-                console.log(`✅ Saída piscina: ${produto.descricao} - R$ ${custo.toFixed(2)}`);
+                console.log(`✅ Saída piscina: ${produto.descricao} - R$ ${custo.toFixed(4)}`);
             } else {
                 console.warn('Produto SAÍDA PISCINA não encontrado');
             }
@@ -4911,9 +4911,9 @@ function calcularEscada() {
         document.getElementById('salvarProdutoBtn').disabled = false;
         
         console.log('=== CÁLCULO ESCADA SIMPLIFICADO CONCLUÍDO ===');
-        console.log('Custo Total:', custoTotal.toFixed(2));
+        console.log('Custo Total:', custoTotal.toFixed(4));
         console.log('Componentes:', componentes.length);
-        console.log('Base da escada: R$', (escadaBase?.custo_centavos / 100)?.toFixed(2), 'x', dados.comprimento_escada, 'm');
+        console.log('Base da escada: R$', (escadaBase?.custo_centavos / 100)?.toFixed(4), 'x', dados.comprimento_escada, 'm');
         
     }).catch(error => {
         console.error('Erro ao processar produtos para escada:', error);
@@ -5054,7 +5054,7 @@ function calcularNovoPerfil() {
             const resinaSelecionada = produtos.find(p => p.id == tipoResinaId);
             if (resinaSelecionada) {
                 precos.resina = resinaSelecionada.custo_centavos / 100;
-                console.log(`✅ Preço da resina selecionada (${resinaSelecionada.descricao}): R$ ${precos.resina.toFixed(2)}`);
+                console.log(`✅ Preço da resina selecionada (${resinaSelecionada.descricao}): R$ ${precos.resina.toFixed(4)}`);
             } else {
                 console.warn(`⚠️ Resina ID ${tipoResinaId} não encontrada, usando preço padrão: R$ ${precos.resina}`);
             }
@@ -5197,12 +5197,12 @@ function calcularNovoPerfil() {
                 
                 console.log('=== CÁLCULO PINTURA ===');
                 console.log(`Área: ${area} m²`);
-                console.log(`Custo MO por m²: R$ ${CUSTO_MO_POR_M2.toFixed(2)}`);
-                console.log(`Custo tinta por litro: R$ ${custoTintaPorLitro.toFixed(2)}`);
+                console.log(`Custo MO por m²: R$ ${CUSTO_MO_POR_M2.toFixed(4)}`);
+                console.log(`Custo tinta por litro: R$ ${custoTintaPorLitro.toFixed(4)}`);
                 console.log(`Rendimento tinta: ${RENDIMENTO_TINTA_M2_POR_L} m²/L`);
-                console.log(`Custo MO pintura: ${area} × ${CUSTO_MO_POR_M2} = R$ ${custoMaoObraPintura.toFixed(2)}`);
-                console.log(`Custo tinta: (${custoTintaPorLitro} / ${RENDIMENTO_TINTA_M2_POR_L}) × ${area} = R$ ${custoTinta.toFixed(2)}`);
-                console.log(`Custo TOTAL pintura: R$ ${custoTotalPintura.toFixed(2)}`);
+                console.log(`Custo MO pintura: ${area} × ${CUSTO_MO_POR_M2} = R$ ${custoMaoObraPintura.toFixed(4)}`);
+                console.log(`Custo tinta: (${custoTintaPorLitro} / ${RENDIMENTO_TINTA_M2_POR_L}) × ${area} = R$ ${custoTinta.toFixed(4)}`);
+                console.log(`Custo TOTAL pintura: R$ ${custoTotalPintura.toFixed(4)}`);
                 
                 componentes.push({
                     nome: 'Pintura (m²)',
@@ -5246,7 +5246,7 @@ function calcularNovoPerfil() {
                 console.log(`Numerador: (${mo_pultrusao} / 3) * ${maquinas} = ${numerador.toFixed(2)}`);
                 console.log(`Denominador: ${velocidade} * ${matrizes} * 24 * 21 * ${rendimento} = ${denominador}`);
                 console.log(`Resultado: ${numerador.toFixed(2)} / ${denominador} = ${custo_raw.toFixed(8)}`);
-                console.log(`Custo final: ${custo_mao_obra_centavos} centavos = R$ ${custo_mao_obra_reais.toFixed(2)}`);
+                console.log(`Custo final: ${custo_mao_obra_centavos} centavos = R$ ${custo_mao_obra_reais.toFixed(4)}`);
                 
                 componentes.push({
                     nome: 'Mão de Obra - Pultrusão',
@@ -5279,11 +5279,11 @@ function calcularNovoPerfil() {
             
             console.log('=== APLICAÇÃO DE PERDA ===');
             console.log(`Percentual de perda: ${percentualPerda}%`);
-            console.log(`Custo matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
-            console.log(`Custo matérias-primas com ${percentualPerda}% perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
-            console.log(`Custo mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
-            console.log(`Custo pintura (SEM perda): R$ ${custoPintura.toFixed(2)}`);
-            console.log(`Custo total final: R$ ${custoTotal.toFixed(2)}`);
+            console.log(`Custo matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(4)}`);
+            console.log(`Custo matérias-primas com ${percentualPerda}% perda: R$ ${custoMateriasComPerda.toFixed(4)}`);
+            console.log(`Custo mão de obra: R$ ${custoMaoObra.toFixed(4)}`);
+            console.log(`Custo pintura (SEM perda): R$ ${custoPintura.toFixed(4)}`);
+            console.log(`Custo total final: R$ ${custoTotal.toFixed(4)}`);
             
             // Criar resultado
             ultimoCalculo = {
@@ -5311,7 +5311,7 @@ function calcularNovoPerfil() {
             
             // Mostrar resultado na interface padrão
             document.getElementById('nomeProdutoCalculado').textContent = dados.nome_perfil;
-            document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(4)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
             document.getElementById('pesoTotalCalculado').textContent = `${dados.peso_metro_kg} kg`;
             document.getElementById('resultadoCalculado').style.display = 'block';
             
@@ -5347,7 +5347,7 @@ function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
     
     if (precosResinas[tipoResinaId]) {
         precoResina = precosResinas[tipoResinaId];
-        console.log(`✅ Preço de resina ajustado para: R$ ${precoResina.toFixed(2)}`);
+        console.log(`✅ Preço de resina ajustado para: R$ ${precoResina.toFixed(4)}`);
     }
     
     // CONTINUAR COM LÓGICA PADRÃO (código existente)
@@ -5388,7 +5388,7 @@ function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
         
         componentes.push({
             nome: 'Pintura (m²)', 
-            produto_nome: `Pintura + Tinta (${area.toFixed(2)} m² = ${(area / RENDIMENTO_TINTA_M2_POR_L).toFixed(2)}L)`,
+            produto_nome: `Pintura + Tinta (${area.toFixed(4)} m² = ${(area / RENDIMENTO_TINTA_M2_POR_L).toFixed(2)}L)`,
             quantidade: area, 
             custo_unitario: custoTotalPintura / area,
             custo_total: custoTotalPintura
@@ -5425,8 +5425,8 @@ function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
     const custoTotal = custoMateriasComPerda + custoMaoObra + custoPintura;
     
     console.log('⚠️ CÁLCULO COM PREÇOS PADRÃO + 3% PERDA');
-    console.log(`Matérias-primas: R$ ${custoMateriasPrimas.toFixed(2)} → R$ ${custoMateriasComPerda.toFixed(2)} (+3%)`);
-    console.log(`Total final: R$ ${custoTotal.toFixed(2)}`);
+    console.log(`Matérias-primas: R$ ${custoMateriasPrimas.toFixed(4)} → R$ ${custoMateriasComPerda.toFixed(4)} (+3%)`);
+    console.log(`Total final: R$ ${custoTotal.toFixed(4)}`);
     
     ultimoCalculo = {
         success: true, custo_total: Math.round(custoTotal * 100),
@@ -5442,7 +5442,7 @@ function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
     };
     
     document.getElementById('nomeProdutoCalculado').textContent = dados.nome_perfil;
-    document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(2)} (valores padrão + 3% perda)`;
+    document.getElementById('custoTotalCalculado').textContent = `R$ ${(ultimoCalculo.custo_total / 100).toFixed(4)} (valores padrão + 3% perda)`;
     document.getElementById('pesoTotalCalculado').textContent = `${dados.peso_metro_kg} kg`;
     document.getElementById('resultadoCalculado').style.display = 'block';
     
@@ -5482,8 +5482,8 @@ function preencherTabelaComponentes(calculo) {
             <td>${comp.produto_nome || 'N/A'}</td>
             <td>${fatorCol}</td>
             <td><span class="quantidade-display">${comp.quantidade ? comp.quantidade.toFixed(4) : '0.0000'}</span></td>
-            <td>R$ ${comp.custo_unitario ? comp.custo_unitario.toFixed(2) : '0.00'}</td>
-            <td><span class="custo-total-display">R$ ${comp.custo_total.toFixed(2)}</span></td>
+            <td>R$ ${comp.custo_unitario ? comp.custo_unitario.toFixed(4) : '0.00'}</td>
+            <td><span class="custo-total-display">R$ ${comp.custo_total.toFixed(4)}</span></td>
             <td>${acaoCol}</td>`;
     });
     
@@ -5504,7 +5504,7 @@ function preencherTabelaComponentes(calculo) {
     const totalRow = tbody.insertRow();
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL${percentualPerda > 0 ? ` (com ${percentualPerda}% perda)` : ''}</strong></td>
-        <td><strong><span id="custo-total-geral">R$ ${custoTotalGeral.toFixed(2)}</span></strong></td>
+        <td><strong><span id="custo-total-geral">R$ ${custoTotalGeral.toFixed(4)}</span></strong></td>
         <td>
             <button class="btn btn-sm btn-warning" onclick="recalcularTodosComponentes()" title="Recalcular Todos">
                 <i class="fas fa-sync-alt"></i>
@@ -5634,7 +5634,7 @@ function salvarPerfilParametrizado() {
     })
     .then(produto => {
         console.log('✅ Perfil e componentes salvos com sucesso');
-        alert(`Perfil "${dadosPerfil.nome_perfil}" criado com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}`);
+        alert(`Perfil "${dadosPerfil.nome_perfil}" criado com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(4)}`);
         
         // Fechar modal
         closeProdutoParametrizadoModal();
@@ -6285,7 +6285,7 @@ function calcularProdutoParametrizado() {
             ultimoCalculo = data;
             
             // Mostrar resultado
-            document.getElementById('custoTotalCalculado').textContent = `R$ ${(data.custo_total / 100).toFixed(2)}`;
+            document.getElementById('custoTotalCalculado').textContent = `R$ ${(data.custo_total / 100).toFixed(4)}`;
             document.getElementById('pesoTotalCalculado').textContent = `${data.peso_total} kg`;
             document.getElementById('resultadoCalculado').style.display = 'block';
             
@@ -6342,8 +6342,8 @@ function mostrarComponentesCalculados(componentes) {
             <td>${comp.descricao_produto || comp.produto || 'N/A'}</td>
             <td></td>
             <td>${parseFloat(comp.quantidade).toFixed(3)}</td>
-            <td>R$ ${(comp.custo_unitario / 100).toFixed(2)}</td>
-            <td>R$ ${(comp.custo_total / 100).toFixed(2)}</td>
+            <td>R$ ${(comp.custo_unitario / 100).toFixed(4)}</td>
+            <td>R$ ${(comp.custo_total / 100).toFixed(4)}</td>
             <td></td>
         `;
         tbody.appendChild(row);
@@ -6354,7 +6354,7 @@ function mostrarComponentesCalculados(componentes) {
     const totalRow = document.createElement('tr');
     totalRow.innerHTML = `
         <td colspan="5"><strong>TOTAL GERAL</strong></td>
-        <td><strong>R$ ${(custoTotalGeral/100).toFixed(2)}</strong></td>
+        <td><strong>R$ ${(custoTotalGeral/100).toFixed(4)}</strong></td>
         <td></td>
     `;
     totalRow.style.backgroundColor = '#f8f9fa'; // Mesmo estilo da Tampa Montada
@@ -6399,7 +6399,7 @@ function criarCamposParametros(parametros) {
                 
                 opcoesData.forEach(opcao => {
                     const selected = opcao.id.toString() === param.valor_padrao ? 'selected' : '';
-                    opcoes += `<option value="${opcao.id}" ${selected}>${opcao.descricao} - R$ ${opcao.preco.toFixed(2)}</option>`;
+                    opcoes += `<option value="${opcao.id}" ${selected}>${opcao.descricao} - R$ ${opcao.preco.toFixed(4)}</option>`;
                 });
             } catch (e) {
                 console.error('Erro ao processar opções de seleção:', e);
@@ -6466,7 +6466,7 @@ function carregarProdutosParaParametro(nomeParametro) {
     produtosFiltrados.forEach(produto => {
         const option = document.createElement('option');
         option.value = produto.id;
-        option.textContent = `${produto.descricao} - R$ ${(produto.custo_centavos / 100).toFixed(2)}/${produto.unidade}`;
+        option.textContent = `${produto.descricao} - R$ ${(produto.custo_centavos / 100).toFixed(4)}/${produto.unidade}`;
         select.appendChild(option);
     });
 }
@@ -6529,9 +6529,9 @@ function exibirResultadoCalculo(resultado) {
     document.getElementById('resultadoContainer').innerHTML = `
         <div class="alert alert-success">
             <h6><i class="fas fa-check-circle"></i> Cálculo realizado!</h6>
-            <p class="mb-1"><strong>Custo Total:</strong> R$ ${resultado.custo_total.toFixed(2)}</p>
+            <p class="mb-1"><strong>Custo Total:</strong> R$ ${resultado.custo_total.toFixed(4)}</p>
             ${resultado.area_m2 ? `<p class="mb-1"><strong>Área:</strong> ${resultado.area_m2.toFixed(2)} m²</p>` : ''}
-            ${resultado.custo_por_m2 ? `<p class="mb-1"><strong>Custo por m²:</strong> R$ ${resultado.custo_por_m2.toFixed(2)}</p>` : ''}
+            ${resultado.custo_por_m2 ? `<p class="mb-1"><strong>Custo por m²:</strong> R$ ${resultado.custo_por_m2.toFixed(4)}</p>` : ''}
             <p class="mb-2"><small>${resultado.componentes.length} componente(s) calculado(s)</small></p>
         </div>
         
@@ -6560,8 +6560,8 @@ function exibirResultadoCalculo(resultado) {
                 <td>${comp.nome}</td>
                 <td>${comp.produto}</td>
                 <td>${comp.quantidade.toFixed(3)} ${comp.unidade || ''}</td>
-                <td>R$ ${comp.custo_unitario.toFixed(2)}</td>
-                <td>R$ ${comp.custo_total.toFixed(2)}</td>
+                <td>R$ ${comp.custo_unitario.toFixed(4)}</td>
+                <td>R$ ${comp.custo_total.toFixed(4)}</td>
             </tr>
         `;
     });
@@ -6712,7 +6712,7 @@ function salvarProdutoParametrizado() {
     })
     .then(produto => {
         console.log('Produto e componentes salvos com sucesso');
-        alert(`Produto "${produto.descricao}" salvo com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(2)}\nComponentes: ${produto.num_componentes || 'N/A'}`);
+        alert(`Produto "${produto.descricao}" salvo com sucesso como produto composto!\nID: ${produto.id}\nCusto: R$ ${(produto.custo_centavos / 100).toFixed(4)}\nComponentes: ${produto.num_componentes || 'N/A'}`);
         
         // Fechar modal
         closeProdutoParametrizadoModal();
@@ -6771,8 +6771,8 @@ function salvarGradeParametrizada() {
     // (que foi atualizado na função calcularGrade com a soma correta dos componentes)
     const custoTotalComponentes = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     console.log(`💰 Verificação de custos:`);
-    console.log(`   ultimoCalculo.custo_total (já corrigido): ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(2)}`);
-    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(2)}`);
+    console.log(`   ultimoCalculo.custo_total (já corrigido): ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(4)}`);
+    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(4)}`);
     
     // Usar o custo_total que já foi corrigido na função calcularGrade
     const custoFinalCentavos = Math.round(ultimoCalculo.custo_total);
@@ -6900,8 +6900,8 @@ function salvarTampaMontadaParametrizada() {
     // Usar sempre o custo_total que já foi corrigido no ultimoCalculo
     const custoTotalComponentes = ultimoCalculo.componentes.reduce((total, comp) => total + comp.custo_total, 0);
     console.log(`💰 Verificação de custos:`);
-    console.log(`   ultimoCalculo.custo_total: ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(2)}`);
-    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(2)}`);
+    console.log(`   ultimoCalculo.custo_total: ${ultimoCalculo.custo_total} centavos = R$ ${(ultimoCalculo.custo_total/100).toFixed(4)}`);
+    console.log(`   Soma manual dos componentes: ${custoTotalComponentes} centavos = R$ ${(custoTotalComponentes/100).toFixed(4)}`);
     
     // Usar o custo_total que já foi corrigido na função calcularTampaMontada
     const custoFinalCentavos = Math.round(ultimoCalculo.custo_total);
@@ -7425,7 +7425,7 @@ async function salvarComponentesDegrau(produtoId, csrftoken) {
     for (const componente of ultimoCalculo.componentes) {
         console.log(`\n📦 Processando: ${componente.nome}`);
         console.log(`   Quantidade: ${componente.quantidade}`);
-        console.log(`   Custo total: R$ ${(componente.custo_total/100).toFixed(2)}`);
+        console.log(`   Custo total: R$ ${(componente.custo_total/100).toFixed(4)}`);
         
         // Identificar o produto componente
         let produtoComponenteId;
@@ -8395,12 +8395,12 @@ function recalcularComponente(componenteIndex) {
     // Atualizar a exibição na tabela
     const row = document.querySelector(`input[data-component-index="${componenteIndex}"]`).closest('tr');
     row.querySelector('.quantidade-display').textContent = novaQuantidade.toFixed(4);
-    row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(2)}`;
+    row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(4)}`;
     
     // Recalcular total geral
     atualizarTotalGeral();
     
-    console.log(`Componente ${componente.nome} recalculado: Fator: ${novoFator}%, Qtd: ${novaQuantidade.toFixed(4)}, Custo: R$ ${novoCustoTotal.toFixed(2)}`);
+    console.log(`Componente ${componente.nome} recalculado: Fator: ${novoFator}%, Qtd: ${novaQuantidade.toFixed(4)}, Custo: R$ ${novoCustoTotal.toFixed(4)}`);
 }
 
 // Função para recalcular todos os componentes
@@ -8433,9 +8433,9 @@ function recalcularTodosComponentes() {
             // Atualizar exibição
             const row = input.closest('tr');
             row.querySelector('.quantidade-display').textContent = novaQuantidade.toFixed(4);
-            row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(2)}`;
+            row.querySelector('.custo-total-display').textContent = `R$ ${novoCustoTotal.toFixed(4)}`;
             
-            console.log(`Recalculado ${componente.nome}: ${novoFator}% = ${novaQuantidade.toFixed(4)} kg = R$ ${novoCustoTotal.toFixed(2)}`);
+            console.log(`Recalculado ${componente.nome}: ${novoFator}% = ${novaQuantidade.toFixed(4)} kg = R$ ${novoCustoTotal.toFixed(4)}`);
         }
     });
     
@@ -8469,22 +8469,22 @@ function atualizarTotalGeral() {
     const custoTotalGeral = custoMateriasComPerda + custoMaoObra + custoPintura;
     
     console.log('=== RECÁLCULO DO TOTAL ===');
-    console.log(`Matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
+    console.log(`Matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(4)}`);
     console.log(`Percentual de perda: ${percentualPerda}%`);
-    console.log(`Matérias-primas com perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
-    console.log(`Mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
-    console.log(`Pintura (SEM perda): R$ ${custoPintura.toFixed(2)}`);
-    console.log(`Total geral: R$ ${custoTotalGeral.toFixed(2)}`);
+    console.log(`Matérias-primas com perda: R$ ${custoMateriasComPerda.toFixed(4)}`);
+    console.log(`Mão de obra: R$ ${custoMaoObra.toFixed(4)}`);
+    console.log(`Pintura (SEM perda): R$ ${custoPintura.toFixed(4)}`);
+    console.log(`Total geral: R$ ${custoTotalGeral.toFixed(4)}`);
     
     // Atualizar exibição na tabela
     const totalElement = document.getElementById('custo-total-geral');
     if (totalElement) {
-        totalElement.textContent = `R$ ${custoTotalGeral.toFixed(2)}`;
+        totalElement.textContent = `R$ ${custoTotalGeral.toFixed(4)}`;
     }
     
     // Atualizar no resumo também
     ultimoCalculo.custo_total = Math.round(custoTotalGeral * 100);
-    document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(2)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
+    document.getElementById('custoTotalCalculado').textContent = `R$ ${custoTotalGeral.toFixed(4)} (preços atualizados ${percentualPerda > 0 ? `+ ${percentualPerda}% perda` : ''})`;
 }
 
 // Função auxiliar para buscar produto por descrição

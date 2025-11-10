@@ -5554,7 +5554,7 @@ function salvarPerfilParametrizado() {
         peso_und: dadosPerfil.peso_metro_kg.toFixed(3),
         unidade: dadosPerfil.unidade || 'M', // Usar unidade selecionada ou Metro linear como padrão
         referencia: gerarReferenciaPerfil(dadosPerfil.nome_perfil),
-        tipo_produto: 'composto', // CORREÇÃO: Definir como composto
+        tipo_produto: 'parametrizado', // IMPORTANTE: parametrizado para não recalcular automaticamente
         categoria: 'Perfis',
         subcategoria: 'Pultrusão',
         data_revisao: new Date().toISOString(),

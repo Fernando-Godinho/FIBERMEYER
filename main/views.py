@@ -253,6 +253,12 @@ class ProdutoComponenteViewSet(viewsets.ModelViewSet):
         self.recalcular_preco_produto_composto(produto_principal)
 
     def recalcular_preco_produto_composto(self, produto_principal):
+        # Produtos parametrizados (Novo Perfil) NÃO devem ser recalculados
+        # porque o custo já foi calculado COM perda e salvo corretamente
+        if produto_principal.tipo_produto == 'parametrizado':
+            print(f"⏭️  Produto parametrizado '{produto_principal.descricao}' - mantendo custo salvo (R$ {produto_principal.custo_centavos/100:.2f})")
+            return
+        
         # Recalcula o custo total e peso do produto composto
         componentes = ProdutoComponente.objects.filter(produto_principal=produto_principal)
         custo_total = 0

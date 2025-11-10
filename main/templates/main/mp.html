@@ -5013,8 +5013,8 @@ function calcularNovoPerfil() {
                     precosProdutos['cargaMineral'] = precoReais;
                 } else if (desc.includes('pigmento')) {
                     precosProdutos['pigmento'] = precoReais;
-                } else if (desc.includes('pintura')) {
-                    precosProdutos['pintura'] = precoReais;
+                } else if (desc.includes('tinta')) {
+                    precosProdutos['tinta'] = precoReais;
                 }
             });
             
@@ -5035,7 +5035,7 @@ function calcularNovoPerfil() {
                 antichama: 18.50,
                 cargaMineral: 3.20,
                 pigmento: 15.80,
-                pintura: 15.00
+                tinta: 30.00  // Preço padrão por litro
             };
             
             // Usar preço da base ou padrão se não encontrar
@@ -5178,13 +5178,38 @@ function calcularNovoPerfil() {
             ];
             
             // Adicionar pintura se necessário
+            // NOVA FÓRMULA: (Area*CUSTO MO POR M² DE ÁREA PINTADA)+(Custo tinta/RENDIMENTO DA TINTA (M²/L))*Area
             if (temPintura && dados.area_pintura_m2 > 0) {
+                const CUSTO_MO_POR_M2 = 8.00;  // R$ 8,00 por m²
+                const RENDIMENTO_TINTA_M2_POR_L = 7;  // 7 m² por litro
+                
+                const area = dados.area_pintura_m2;
+                const custoTintaPorLitro = precos.tinta || 30.00;
+                
+                // Custo mão de obra: Area × R$ 8,00
+                const custoMaoObraPintura = area * CUSTO_MO_POR_M2;
+                
+                // Custo tinta: (Custo tinta / Rendimento) × Area
+                const custoTinta = (custoTintaPorLitro / RENDIMENTO_TINTA_M2_POR_L) * area;
+                
+                // Custo total da pintura
+                const custoTotalPintura = custoMaoObraPintura + custoTinta;
+                
+                console.log('=== CÁLCULO PINTURA ===');
+                console.log(`Área: ${area} m²`);
+                console.log(`Custo MO por m²: R$ ${CUSTO_MO_POR_M2.toFixed(2)}`);
+                console.log(`Custo tinta por litro: R$ ${custoTintaPorLitro.toFixed(2)}`);
+                console.log(`Rendimento tinta: ${RENDIMENTO_TINTA_M2_POR_L} m²/L`);
+                console.log(`Custo MO pintura: ${area} × ${CUSTO_MO_POR_M2} = R$ ${custoMaoObraPintura.toFixed(2)}`);
+                console.log(`Custo tinta: (${custoTintaPorLitro} / ${RENDIMENTO_TINTA_M2_POR_L}) × ${area} = R$ ${custoTinta.toFixed(2)}`);
+                console.log(`Custo TOTAL pintura: R$ ${custoTotalPintura.toFixed(2)}`);
+                
                 componentes.push({
-                    nome: 'Área pintura (m²)',
-                    produto_nome: 'Pintura Industrial',
-                    quantidade: dados.area_pintura_m2,
-                    custo_unitario: precos.pintura,
-                    custo_total: dados.area_pintura_m2 * precos.pintura
+                    nome: 'Pintura (m²)',
+                    produto_nome: `Pintura + Tinta (${area.toFixed(2)} m² = ${(area / RENDIMENTO_TINTA_M2_POR_L).toFixed(2)}L)`,
+                    quantidade: area,
+                    custo_unitario: custoTotalPintura / area,
+                    custo_total: custoTotalPintura
                 });
             }
             
@@ -5345,11 +5370,23 @@ function calcularNovoPerfilComPrecosDefault(dados, temPintura) {
         { nome: 'Pigmento', produto_nome: 'Pigmento Colorante', quantidade: pesoResinaBase * fatores.pigmento, custo_unitario: 15.80, custo_total: (pesoResinaBase * fatores.pigmento) * 15.80 }
     ];
     
+    // Adicionar pintura com nova fórmula
     if (temPintura && dados.area_pintura_m2 > 0) {
+        const CUSTO_MO_POR_M2 = 8.00;
+        const RENDIMENTO_TINTA_M2_POR_L = 7;
+        const custoTintaPorLitro = 30.00; // Padrão
+        
+        const area = dados.area_pintura_m2;
+        const custoMaoObraPintura = area * CUSTO_MO_POR_M2;
+        const custoTinta = (custoTintaPorLitro / RENDIMENTO_TINTA_M2_POR_L) * area;
+        const custoTotalPintura = custoMaoObraPintura + custoTinta;
+        
         componentes.push({
-            nome: 'Área pintura (m²)', produto_nome: 'Pintura Industrial',
-            quantidade: dados.area_pintura_m2, custo_unitario: 15.86,
-            custo_total: dados.area_pintura_m2 * 15.86
+            nome: 'Pintura (m²)', 
+            produto_nome: `Pintura + Tinta (${area.toFixed(2)} m² = ${(area / RENDIMENTO_TINTA_M2_POR_L).toFixed(2)}L)`,
+            quantidade: area, 
+            custo_unitario: custoTotalPintura / area,
+            custo_total: custoTotalPintura
         });
     }
     

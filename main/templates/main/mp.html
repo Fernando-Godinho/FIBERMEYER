@@ -8449,26 +8449,31 @@ function recalcularTodosComponentes() {
 function atualizarTotalGeral() {
     if (!ultimoCalculo || !ultimoCalculo.componentes) return;
     
-    // Separar matérias-primas de mão de obra
+    // Separar matérias-primas de mão de obra e pintura
     const custoMateriasPrimas = ultimoCalculo.componentes
-        .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão')
+        .filter(comp => comp.nome !== 'Mão de Obra - Pultrusão' && comp.nome !== 'Pintura (m²)')
         .reduce((total, comp) => total + comp.custo_total, 0);
     
     const custoMaoObra = ultimoCalculo.componentes
         .filter(comp => comp.nome === 'Mão de Obra - Pultrusão')
         .reduce((total, comp) => total + comp.custo_total, 0);
     
-    // Aplicar percentual de perda nas matérias-primas (manter do cálculo original)
+    const custoPintura = ultimoCalculo.componentes
+        .filter(comp => comp.nome === 'Pintura (m²)')
+        .reduce((total, comp) => total + comp.custo_total, 0);
+    
+    // Aplicar percentual de perda APENAS nas matérias-primas (manter do cálculo original)
     const percentualPerda = ultimoCalculo.dados_originais?.percentual_perda || 0;
     const fatorPerda = 1 + (percentualPerda / 100);
     const custoMateriasComPerda = custoMateriasPrimas * fatorPerda;
-    const custoTotalGeral = custoMateriasComPerda + custoMaoObra;
+    const custoTotalGeral = custoMateriasComPerda + custoMaoObra + custoPintura;
     
     console.log('=== RECÁLCULO DO TOTAL ===');
     console.log(`Matérias-primas sem perda: R$ ${custoMateriasPrimas.toFixed(2)}`);
     console.log(`Percentual de perda: ${percentualPerda}%`);
     console.log(`Matérias-primas com perda: R$ ${custoMateriasComPerda.toFixed(2)}`);
     console.log(`Mão de obra: R$ ${custoMaoObra.toFixed(2)}`);
+    console.log(`Pintura (SEM perda): R$ ${custoPintura.toFixed(2)}`);
     console.log(`Total geral: R$ ${custoTotalGeral.toFixed(2)}`);
     
     // Atualizar exibição na tabela
